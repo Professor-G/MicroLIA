@@ -4,10 +4,8 @@ Created on Fri Jan 13 14:46:19 2017
 
 @author: danielgodinez
 """
-import RMS, meanMag, medianMag, minMag, maxMag, medianAbsDev
-import kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio
-import above1, above3, above5, below1, below3, below5
-import compute_statistics
+
+from stats_computation import RMS, meanMag, medianMag, minMag, maxMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, above1, above3, above5, below1, below3, below5, compute_statistics
 import numpy as np
 import unittest
 
