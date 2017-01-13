@@ -5,7 +5,7 @@ Created on Fri Jan 13 14:46:19 2017
 @author: danielgodinez
 """
 
-from stats_computation import RMS, meanMag, medianMag, minMag, maxMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, above1, above3, above5, below1, below3, below5, compute_statistics
+from stats_computation import RootMeanSquare, meanMag, medianMag, minMag, maxMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, above1, above3, above5, below1, below3, below5, compute_statistics
 import numpy as np
 import unittest
 
@@ -14,7 +14,7 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 mjd = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
 
 def test_rms(value):
-    value.assertEqual( RMS(mag), 18.661538461538463 )
+    value.assertEqual( RootMeanSquare(mag), 18.661538461538463 )
 
 def test_mean(value):
     value.assertEqual( meanMag(mag), 18.661538461538463 )
