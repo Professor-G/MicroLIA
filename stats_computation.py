@@ -117,7 +117,7 @@ def below5(mag):
       
 
 def compute_statistics(mjd, mag, magerr):
-      """This function will compute all the statistics and return them in an array in the following order: Root Mean Square, Median, Mean, Min, Max, Median Absolute Deviation, Kurtosis, Skewness, StetsonJ, StetsonK, vonNeumannRatio, Above 1, Above 3, Above 4, Below 1, Below 3, Below 5."""
+      """This function will compute all the statistics and return them in an array in the following order: Root Mean Square, Median, Mean, Min, Max, Median Absolute Deviation, Kurtosis, Skewness, StetsonJ, StetsonK, vonNeumannRatio, Above 1, Above 3, Above 5, Below 1, Below 3, Below 5."""
     
       t = float(len(mjd))
     
@@ -154,4 +154,5 @@ def compute_statistics(mjd, mag, magerr):
       BelowMeanBySTD_5 = np.float(len((np.where(mag < 5*np.std(mag)+np.mean(mag))[0]))) / t
  
       return [RMS, median, mean, maxMag, minMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5]
+
 
