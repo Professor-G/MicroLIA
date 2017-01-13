@@ -5,7 +5,7 @@ Created on Fri Jan 13 14:46:19 2017
 @author: danielgodinez
 """
 
-from stats_computation import RootMeanSquare, meanMag, medianMag, minMag, maxMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, above1, above3, above5, below1, below3, below5, compute_statistics
+import stats_computation as sc
 import numpy as np
 import unittest
 
@@ -14,57 +14,57 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 mjd = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
 
 def test_rms(value):
-    value.assertEqual( RootMeanSquare(mag), 18.661538461538463 )
+   value.assertEqual( sc.RootMeanSquare(mag), 18.661538461538463 )
 
 def test_mean(value):
-    value.assertEqual( meanMag(mag), 18.661538461538463 )
+    value.assertEqual( sc.meanMag(mag), 18.661538461538463 )
 
 def test_median(value):
-    value.assertEqual( medianMag(mag), 18.600000000000001)
+    value.assertEqual( sc.medianMag(mag), 18.600000000000001)
     
 def test_min(value):
-    value.assertEqual( minMag(mag), 18.0)
+    value.assertEqual( sc.minMag(mag), 18.0)
 
 def test_max(value):
-    value.assertEqual( maxMag(mag), 19.5)
+    value.assertEqual( sc.maxMag(mag), 19.5)
     
 def test_medianAbsDev(value):
-    value.assertEqual( medianAbsDev(mag), 0.5)
+    value.assertEqual( sc.medianAbsDev(mag), 0.5)
     
 def test_kurtosis(value):
-    value.assertEqual( kurtosis(mjd, mag), -1.0149598629254664 )
+    value.assertEqual( sc.kurtosis(mjd, mag), -1.0149598629254664 )
     
 def test_skewness(value):
-    value.assertEqual( skewness(mag), 0.1868991393928264 )
+    value.assertEqual( sc.skewness(mag), 0.1868991393928264 )
 
 def test_stetsonJ(value):
-    value.assertEqual( stetsonJ(mjd, mag, magerr), 159412.78061393721 )
+    value.assertEqual( sc.stetsonJ(mjd, mag, magerr), 159412.78061393721 )
 
 def test_stetsonK(value):
-    value.assertEqual( stetsonK(mjd, mag, magerr), 0.64699834923516031 )
+    value.assertEqual( sc.stetsonK(mjd, mag, magerr), 0.64699834923516031 )
 
 def test_vonNeumannRatio(value):
-    value.assertEqual( vonNeumannRatio(mag), 0.38896680691912117 )
+    value.assertEqual( sc.vonNeumannRatio(mag), 0.38896680691912117 )
     
 def test_above1(value):
-    value.assertEqual( above1(mag), 0.3076923076923077 )
+    value.assertEqual( sc.above1(mag), 0.3076923076923077 )
     
 def test_above3(value):
-    value.assertEqual( above3(mag), 0.0 )
+    value.assertEqual( sc.above3(mag), 0.0 )
     
 def test_above5(value):
-    value.assertEqual( above5(mag), 0.0)
+    value.assertEqual( sc.above5(mag), 0.0)
     
 def test_below1(value):
-    value.assertEqual( below1(mag), 0.6923076923076923 )
+    value.assertEqual( sc.below1(mag), 0.6923076923076923 )
 
 def test_below3(value):
-    value.assertEqual( below3(mag), 1.0 )
+    value.assertEqual( sc.below3(mag), 1.0 )
 
 def test_below5(value):
-    value.assertEqual( below5(mag), 1.0 )
+    value.assertEqual( sc.below5(mag), 1.0 )
 
 def test_compute_statistics(value):
-    value.assertEqual( compute_statistics(mjd, mag, magerr), [18.661538461538463, 18.600000000000001, 18.661538461538463, 19.5, 18.0, 0.5, -1.0149598629254664, 0.1868991393928264, 159412.78061393721, 0.64699834923516031, 0.38896680691912117, 0.3076923076923077, 0.0, 0.0, 0.6923076923076923, 1.0, 1.0] )
+    value.assertEqual( sc.compute_statistics(mjd, mag, magerr), [18.661538461538463, 18.600000000000001, 18.661538461538463, 19.5, 18.0, 0.5, -1.0149598629254664, 0.1868991393928264, 159412.78061393721, 0.64699834923516031, 0.38896680691912117, 0.3076923076923077, 0.0, 0.0, 0.6923076923076923, 1.0, 1.0] )
     
 unittest.main()
