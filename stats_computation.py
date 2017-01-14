@@ -10,7 +10,7 @@ from astropy.stats import median_absolute_deviation
 from scipy.stats import tvar
 import unittest
 
-def RootMeanSqare(mag):
+def RMS(mag):
     """A measure of the quadratic mean"""
     RMS = np.sqrt((np.mean(mag)**2))
     return RMS
