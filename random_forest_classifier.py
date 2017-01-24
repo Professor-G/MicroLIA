@@ -11,11 +11,6 @@ from scipy.stats import skew
 from astropy.stats import median_absolute_deviation
 from scipy.stats import tvar
 
-data = np.loadtxt('flat_7.dat')
-time = data[:,4]
-mag = data[:,5]
-magerr = data[:,6]
-
 def predict_class(time, mag, magerr):
       """This function uses machine learning to classify any given lightcurve as either a Cataclysmic Variable (CV), a Lyrae Variable, Microlensing, or a constant source."""
       t = float(len(time))
@@ -64,6 +59,5 @@ def predict_class(time, mag, magerr):
       print prediction
       print probability_prediction
       
-predict_class(time, mag, magerr)  
     
     
