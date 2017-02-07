@@ -11,7 +11,7 @@ import unittest
 
 mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
 magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
-mjd = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+mjd = np.array([1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13.])
 
 class Test(unittest.TestCase):
     def test_rms(value):
@@ -66,6 +66,11 @@ class Test(unittest.TestCase):
         value.assertEqual( sc.below5(mag), 1.0, "Below 5 incorrect" )
 
     def test_compute_statistics(value):
-        value.assertEqual( sc.compute_statistics(mjd, mag, magerr), [18.661538461538463, 18.600000000000001, 18.661538461538463, 19.5, 18.0, 0.5, -1.0149598629254664, 0.1868991393928264, 159412.78061393721, 0.64699834923516031, 0.38896680691912117, 0.3076923076923077, 0.0, 0.0, 0.6923076923076923, 1.0, 1.0], "Statistics array incorrect" )
+        value.assertEqual( sc.compute_statistics(mjd, mag, magerr), [6.92307692e-01,   1.00000000e+00,   1.00000000e+00,
+         3.07692308e-01,   0.00000000e+00,   0.00000000e+00,
+         1.86899139e-01,   6.46998349e-01,   3.88966807e-01,
+        -1.01495986e+00,   5.00000000e-01,   1.59412781e+05,
+         1.50000000e+00,   2.69606025e-02,   5.38461538e-01,
+         1.86615385e+0], "Statistics array incorrect" )
     
 unittest.main()
