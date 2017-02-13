@@ -11,10 +11,6 @@ from scipy.stats import skew
 from astropy.stats import median_absolute_deviation
 from scipy.stats import tvar
 
-data = np.loadtxt('flat_54.dat')
-mjd = data[:,4]
-mag = data[:,5]
-magerr = data[:,6]
 
 def simulate_microlensing(time, mag, magerr):
     """Simulates a microlensing event given the inserted lightcurve. The angular impact parameter is chosen 
@@ -52,7 +48,6 @@ def simulate_microlensing(time, mag, magerr):
     print ('u_0 :',u_0, 't_0 :',t_0, 't_e :', t_e)
     return plt.errorbar(time, microlensing_mag, yerr = magerr, fmt = 'ro')
     
-simulate_microlensing(mjd, mag, magerr)  
 def microlensing_statistics(time, mag, magerr):
     """Simulates a microlensing event given an inserted lightcurve, and calculates
     various lightcurve statistics. Returns them in an array in the following order: 
