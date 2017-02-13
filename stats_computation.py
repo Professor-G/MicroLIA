@@ -8,7 +8,7 @@ import numpy as np
 from scipy.stats import skew
 from astropy.stats import median_absolute_deviation
 from scipy.stats import tvar
-import unittest
+
 
 def RMS(mag):
     """A measure of the quadratic mean"""
@@ -115,20 +115,37 @@ def below5(mag):
     t = np.float(len(mag))
     BelowMeanBySTD_5 = np.float(len((np.where(mag < 5*np.std(mag)+np.mean(mag))[0]))) / t
     return BelowMeanBySTD_5
+    
+def std_over_mean(mag):
+    """A measure of the ratio of standard deviation and sample mean"""
+    std_over_mean = np.std(mag)/np.mean(mag)
+    return std_over_mean
+
+def amplitude(mag):
+    """The amplitude of the lightcurve defined as the difference between the maximum magnitude measurement and the lowest magnitude measurement"""
+    amplitude = np.max(mag) - np.min(mag)
+    return amplitude
+    
+def median_buffer_range(mag):
+    """This function returns the ratio of points that are between plus or minus 10% of the amplitude value"""
+    t = np.float(len(mag))
+    amplitude = np.max(mag) - np.min(mag)    
+    median_buffer_range = np.float(len((np.where(((amplitude/10) - np.median(mag) < mag) & ((amplitude/10) + np.median(mag) > mag))[0]))) / t
+    return median_buffer_range
       
 
 def compute_statistics(mjd, mag, magerr):
-      """This function will compute all the statistics and return them in an array in the following order: Root Mean Square, Median, Mean, Min, Max, Median Absolute Deviation, Kurtosis, Skewness, StetsonJ, StetsonK, vonNeumannRatio, Above 1, Above 3, Above 5, Below 1, Below 3, Below 5."""
+      """This function will compute all the statistics and return them in an array in the following order: BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, skewness, stetsonK, vonNeumannRatio, kurtosis, medianAbsDev, stetsonJ, amplitude, std_over_mean, median_buffer_range, RMS."""
     
       t = float(len(mjd))
     
       RMS = np.sqrt((np.mean(mag)**2))    
-      median = np.median(mag)       
-      mean = np.mean(mag)    
-      maxMag = np.amax(mag)    
-      minMag = np.amin(mag)    
       medianAbsDev = median_absolute_deviation(mag, axis = None)
-    
+      
+      std_over_mean = np.std(mag)/np.mean(mag)
+      amplitude = np.max(mag) - np.min(mag)
+      median_buffer_range = np.float(len((np.where(((amplitude/10) - np.median(mag) < mag) & ((amplitude/10) + np.median(mag) > mag))[0]))) / t
+
       skewness = skew(mag, axis = 0, bias = True)
       kurtosis = (t*(t+1.)/((t-1.)*(t-2.)*(t-3.))*sum(((mag - np.mean(mag))/np.std(mag))**4)) - (3.*((t-1.)**2.)/((t-2.)*(t-3.)))
 
@@ -154,5 +171,5 @@ def compute_statistics(mjd, mag, magerr):
       BelowMeanBySTD_3 = np.float(len((np.where(mag < 3*np.std(mag)+np.mean(mag))[0]))) / t
       BelowMeanBySTD_5 = np.float(len((np.where(mag < 5*np.std(mag)+np.mean(mag))[0]))) / t
  
-      return [RMS, median, mean, maxMag, minMag, medianAbsDev, kurtosis, skewness, stetsonJ, stetsonK, vonNeumannRatio, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5]
-
+      stat_array = np.array([BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, skewness, stetsonK, vonNeumannRatio, kurtosis, medianAbsDev, stetsonJ, amplitude, std_over_mean, median_buffer_range, RMS])
+      return stat_array
