@@ -8,13 +8,10 @@ from __future__ import print_function
 import numpy as np
 from stats_computation import compute_statistics
 
-mjd = np.loadtxt('flat_54.dat')[:,4]
-mag = np.loadtxt('flat_54.dat')[:,5]
-magerr = np.loadtxt('flat_54.dat')[:,6]
 
 def simulate_microlensing(time, mag, magerr):
     """Simulates a microlensing event given the inserted lightcurve. The angular impact parameter is chosen 
-    from a random distribution between 0.0 and 1.0. Likewise the time of maximum amplification t_0 is chosen f
+    from a random distribution between 0.0 and 1.0. Likewise the time of maximum amplification t_0 is chosen
     from a normal distribution with a mean of 20 days and a standard deviation of 5 days and the timescale t_e 
     from a uniform distribution between 0.0 and 30 days. These parameter spaces were determined given an analysis of
     the OGLE III microlensing survey. See: The OGLE-III planet detection efficiency from six years of microlensing observations (2003 to 2008), (Y. Tsapras et al (2016)).
