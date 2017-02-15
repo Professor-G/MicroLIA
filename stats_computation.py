@@ -40,7 +40,7 @@ def medianAbsDev(mag):
     medianAbsDev = median_absolute_deviation(mag, axis = None)
     return medianAbsDev
     
-def kurtosis(mjd, mag):
+def kurtosis(mag):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve. It's a measure of the peakedness (or flatness) of the lightcurve relative to a normal distribution. See http://www.xycoon.com/peakedness_small_sample_test_1.htm"""""
     t = float(len(mag))
     kurtosis = (t*(t+1.)/((t-1.)*(t-2.)*(t-3.))*sum(((mag - np.mean(mag))/np.std(mag))**4)) - (3.*((t-1.)**2.)/((t-2.)*(t-3.)))
@@ -52,18 +52,18 @@ def skewness(mag):
     skewness = skew(mag, axis = 0, bias = True)
     return skewness
 
-def stetsonJ(mjd, mag, magerr):
+def stetsonJ(time, mag, magerr):
     """The variability index J was first suggested by Peter B. Stetson and is defined as the measure of the correlation between the data points. J tends to 0 for variable sources and gets large as the difference between the successive data points increases. See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996))."""
     t = np.float(len(mag))
-    range1 = range(0, len(mjd)-1)
-    range2 = range(1, len(mjd))
+    range1 = range(0, len(time)-1)
+    range2 = range(1, len(time))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
 
     sign = np.sign(((delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
     stetsonJ = sum(((sign*delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
     return stetsonJ
     
-def stetsonK(mjd, mag, magerr):
+def stetsonK(time, mag, magerr):
     """The variability index K was first suggested by Peter B. Stetson and serves as a measure of the kurtosis of the magnitude distribution. See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996))."""
     t = np.float(len(mag))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
@@ -134,42 +134,16 @@ def median_buffer_range(mag):
     return median_buffer_range
       
 
-def compute_statistics(mjd, mag, magerr):
-      """This function will compute all the statistics and return them in an array in the following order: BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, skewness, stetsonK, vonNeumannRatio, kurtosis, medianAbsDev, stetsonJ, amplitude, std_over_mean, median_buffer_range, RMS."""
-    
-      t = float(len(mjd))
-    
-      RMS = np.sqrt((np.mean(mag)**2))    
-      medianAbsDev = median_absolute_deviation(mag, axis = None)
-      
-      std_over_mean = np.std(mag)/np.mean(mag)
-      amplitude = np.max(mag) - np.min(mag)
-      median_buffer_range = np.float(len((np.where(((amplitude/10) - np.median(mag) < mag) & ((amplitude/10) + np.median(mag) > mag))[0]))) / t
-
-      skewness = skew(mag, axis = 0, bias = True)
-      kurtosis = (t*(t+1.)/((t-1.)*(t-2.)*(t-3.))*sum(((mag - np.mean(mag))/np.std(mag))**4)) - (3.*((t-1.)**2.)/((t-2.)*(t-3.)))
-
-      range1 = range(0, len(mjd)-1)
-      range2 = range(1, len(mjd))
-
-      delta3 = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
-      sign = np.sign(((delta3[range1]*delta3[range2]))*(np.sqrt(np.absolute(delta3[range1]*delta3[range2]))))
-      
-      stetsonJ = sum(((sign*delta3[range1]*delta3[range2]))*(np.sqrt(np.absolute(delta3[range1]*delta3[range2]))))
-      stetsonK = ((1./t)*sum(abs(delta3)))/(np.sqrt((1./t)*sum((delta3)**2)))
-     
-      delta2 = sum((mag[1:] - mag[:-1])**2 / (t-1.))
-      sample_variance = tvar(mag, limits=None)
-    
-      vonNeumannRatio = delta2 / sample_variance
-          
-      AboveMeanBySTD_1 = np.float(len((np.where(mag > np.std(mag)+np.mean(mag)))[0])) / t
-      AboveMeanBySTD_3 = np.float(len((np.where(mag > 3*np.std(mag)+np.mean(mag)))[0])) / t
-      AboveMeanBySTD_5 = np.float(len((np.where(mag > 5*np.std(mag)+np.mean(mag)))[0])) / t
-
-      BelowMeanBySTD_1 = np.float(len((np.where(mag < np.std(mag)+np.mean(mag))[0]))) / t
-      BelowMeanBySTD_3 = np.float(len((np.where(mag < 3*np.std(mag)+np.mean(mag))[0]))) / t
-      BelowMeanBySTD_5 = np.float(len((np.where(mag < 5*np.std(mag)+np.mean(mag))[0]))) / t
+def compute_statistics(time, mag, magerr):
+    """This function will compute all the statistics and return them in an array in the following order: BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, skewness, stetsonK, vonNeumannRatio, kurtosis, medianAbsDev, stetsonJ, amplitude, std_over_mean, median_buffer_range, RMS."""
  
-      stat_array = np.array([BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, AboveMeanBySTD_1, AboveMeanBySTD_3, AboveMeanBySTD_5, skewness, stetsonK, vonNeumannRatio, kurtosis, medianAbsDev, stetsonJ, amplitude, std_over_mean, median_buffer_range, RMS])
-      return stat_array
+    stat_array = np.array([below1(mag), below3(mag), below5(mag),
+                           above1(mag), above3(mag), above5(mag),
+                           skewness(mag), stetsonK(time, mag, magerr), 
+                           vonNeumannRatio(mag), kurtosis(mag),
+                           medianAbsDev(mag), stetsonJ(time, mag, magerr), 
+                           amplitude(mag), std_over_mean(mag), median_buffer_range(mag),
+                           RMS(mag)])
+
+
+    return stat_array
