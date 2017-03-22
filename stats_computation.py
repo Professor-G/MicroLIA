@@ -289,9 +289,11 @@ def median_buffer_range(mag):
     """
     
     t = np.float(len(mag))
-    amplitude = np.max(mag) - np.min(mag)    
+    amplitude = np.max(mag) - np.min(mag)   
+    
     median_buffer_range = np.float(len((np.where(((amplitude/10) - np.median(mag) < mag) & 
     ((amplitude/10) + np.median(mag) > mag))[0]))) / t
+    
     return median_buffer_range
       
 def compute_statistics(time, mag, magerr):
@@ -307,7 +309,7 @@ def compute_statistics(time, mag, magerr):
     :param magerr: photometric error for the intensity. Must be an array.
     If magerr = None the default is 0 for every photometric point. 
     
-    :return: the function will return a an array with the statistics.
+    :return: the function will return an array with the statistics.
     :rtype: array, float
     """
     if magerr is None:
