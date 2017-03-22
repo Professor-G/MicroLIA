@@ -307,8 +307,8 @@ def compute_statistics(time, mag, magerr):
     :param magerr: photometric error for the intensity. Must be an array.
     If magerr = None the default is 0 for every photometric point. 
     
-    :return: the function will return a float.
-    :rtype: float
+    :return: the function will return a an array with the statistics.
+    :rtype: array, float
     """
     if magerr is None:
         magerr = np.array([0] * len(time))
