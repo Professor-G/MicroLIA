@@ -119,11 +119,19 @@ def stetsonJ(time, mag, magerr):
     sources and gets large as the difference between the successive data points increases. 
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
     
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param time: the time-varying data of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
+    :param mag: the time-varying intensity of the object. Must be an array.
+    
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is 0 for every photometric point. 
+    
+    :return: the function will return the calculated StetsonJ.
     :rtype: float
     """
+    
+    if magerr is None:
+        magerr = np.array([0] * len(time))
     
     t = np.float(len(mag))
     range1 = range(0, len(time)-1)
@@ -139,11 +147,20 @@ def stetsonK(time, mag, magerr):
     measure of the kurtosis of the magnitude distribution. 
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
     
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param time: the time-varying data of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
-    :rtype: float"""
+    :param mag: the time-varying intensity of the object. Must be an array.
     
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is 0 for every photometric point. 
+    
+    :return: the function will return the calculated StetsonK.
+    :rtype: float
+    """
+    
+    if magerr is None:
+        magerr = np.array([0] * len(time))
+        
     t = np.float(len(mag))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
         
@@ -158,7 +175,7 @@ def vonNeumannRatio(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
+    :return: the function will return the calculated ratio.
     :rtype: float
     """
 
@@ -312,6 +329,7 @@ def compute_statistics(time, mag, magerr):
     :return: the function will return an array with the statistics.
     :rtype: array, float
     """
+    
     if magerr is None:
         magerr = np.array([0] * len(time))
         
