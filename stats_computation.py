@@ -140,7 +140,7 @@ def stetsonJ(time, mag, magerr):
 
     sign = np.sign(((delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
     stetsonJ = sum(((sign*delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
-    return stetsonJ
+    return np.nan_to_num(stetsonJ)
     
 def stetsonK(time, mag, magerr):
     """The variability index K was first suggested by Peter B. Stetson and serves as a 
@@ -165,7 +165,7 @@ def stetsonK(time, mag, magerr):
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
         
     stetsonK = ((1./t)*sum(abs(delta)))/(np.sqrt((1./t)*sum((delta)**2)))
-    return stetsonK
+    return np.nan_to_num(stetsonK)
 
 def vonNeumannRatio(mag):
     """The von Neumann ratio η was defined in 1941 by John von Neumann and serves as the 
@@ -324,14 +324,14 @@ def compute_statistics(time, mag, magerr):
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
     :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is ~ 0 for every photometric point. 
+    If magerr = None the default is 0 for every photometric point. 
     
     :return: the function will return an array with the statistics.
     :rtype: array, float
     """
     
     if magerr is None:
-        magerr = np.array([0.000001] * len(time))
+        magerr = np.array([0.0] * len(time))
         
     stat_array = np.array([below1(mag), below3(mag), below5(mag),
                            above1(mag), above3(mag), above5(mag),
