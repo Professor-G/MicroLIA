@@ -24,15 +24,15 @@ def simulate_microlensing(time, mag, magerr = None):
     
     :param mag: the time-varying intensity of the object. Must be an array.
     
-    :param magerr: photometric error for the intensity. If magerr = None the 
-    default is 0 for every photometric point.
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is ~ 0 for every photometric point. 
     
     :return: the function will return the simulated intensity of the simulated
     lightcurve as well as the following simulation parameters: u_0, t_0, t_e.
     :rtype: array, float
     """
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.000001] * len(time))
     
     u_0 = np.random.uniform(low = 0, high = 1.0, size = 1)
     t_0 = np.random.choice(time)
@@ -65,23 +65,24 @@ def plot_microlensing(time, mag, magerr = None):
     
     :param mag: the time-varying intensity of the object. Must be an array.
     
-    :param magerr: photometric error for the intensity. If magerr = None the 
-    default is 0 for every photometric point.
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is ~ 0 for every photometric point. 
     
     :return: the function will return a plot of the microlensing lightcurve.
     :rtype: plot
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.000001] * len(time))
         
     intensity = simulate_microlensing(time, mag, magerr)
     
-    plt.plot(time, intensity, 'ro')
+    plt.errorbar(time, intensity, yerr = magerr, fmt='o')
     plt.gca().invert_yaxis
     plt.xlabel('Time')
     plt.ylabel('Intensity')
     plt.title('Simulated Microlensing')
+    plt.show()
     
 def microlensing_statistics(time, mag, magerr = None):
     """Simulates a microlensing event given an inserted lightcurve, and calculates
@@ -94,16 +95,15 @@ def microlensing_statistics(time, mag, magerr = None):
     
     :param mag: the time-varying intensity of the object. Must be an array.
     
-    :param magerr: photometric error for the intensity. If magerr = None the 
-    default is 0 for every photometric point.
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is ~ 0 for every photometric point. 
     
     :return: the function will return the lightcurve statistics in the order listed above.
-    :rtype: array
-    
+    :rtype: array 
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.000001] * len(time))
         
     microlensing_mag = simulate_microlensing(time, mag, magerr)
     stats = compute_statistics(time, microlensing_mag, magerr)
