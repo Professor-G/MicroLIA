@@ -94,8 +94,8 @@ def kurtosis(mag):
     """""
    
     t = float(len(mag))
-    kurtosis = (t*(t+1.)/((t-1.)*(t-2.)*(t-3.))*sum(((mag - np.mean(mag))/np.std(mag))**4)) \
-    - (3.*((t-1.)**2.)/((t-2.)*(t-3.)))
+    kurtosis = (t*(t+1.)/((t-1.)*(t-2.)*(t-3.))*sum(((mag - np.mean(mag))/np.std(mag))**4)) - \
+    (3.*((t-1.)**2.)/((t-2.)*(t-3.)))
     return kurtosis
     
     
@@ -324,14 +324,14 @@ def compute_statistics(time, mag, magerr):
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
     :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point. 
+    If magerr = None the default is ~ 0 for every photometric point. 
     
     :return: the function will return an array with the statistics.
     :rtype: array, float
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.000001] * len(time))
         
     stat_array = np.array([below1(mag), below3(mag), below5(mag),
                            above1(mag), above3(mag), above5(mag),
