@@ -21,14 +21,14 @@ def predict_class(time, mag, magerr = None):
     :param mag: the time-varying intensity of the object. Must be an array.
     
     :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point. 
+    If magerr = None the default is ~ 0 for every photometric point. 
     
     :return: the function will return the predicted class.
     :rtype: string
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.000001] * len(time))
         
     stat_array = compute_statistics(time, mag, magerr)
       
