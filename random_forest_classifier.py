@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 training_set = np.loadtxt('training_set_ALL.txt', dtype = str)
-rf = RandomForestClassifier(n_estimators=100) 
+rf = RandomForestClassifier(n_estimators=100, max_features = 3) 
 rf.fit(training_set[:,7:16].astype(float),training_set[:,0])
 
 def predict_class(time, mag, magerr = None):
