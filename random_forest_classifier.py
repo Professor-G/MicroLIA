@@ -28,15 +28,19 @@ def predict_class(time, mag, magerr = None):
     """
     
     if magerr is None:
-        magerr = np.array([0.0] * len(time))
+        magerr = np.array([0.001] * len(time))
         
     stat_array = compute_statistics(time, mag, magerr)
       
     prediction = rf.predict(stat_array[6:15])#.astype(float)
     probability_prediction = rf.predict_proba(stat_array[6:15])
-     
+    
+    print(probability_prediction)     
     return prediction
-    return probability_prediction
+    
+
+
+
 
       
     

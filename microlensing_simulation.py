@@ -32,7 +32,7 @@ def simulate_microlensing(time, mag, magerr = None):
     :rtype: array, float
     """
     if magerr is None:
-        magerr = np.array([0.0] * len(time))
+        magerr = np.array([0.001] * len(time))
     
     u_0 = np.random.uniform(low = 0, high = 1.0, size = 1)
     t_0 = np.random.choice(time)
@@ -73,7 +73,7 @@ def plot_microlensing(time, mag, magerr = None):
     """
     
     if magerr is None:
-        magerr = np.array([0.0] * len(time))
+        magerr = np.array([0.001] * len(time))
         
     intensity = simulate_microlensing(time, mag, magerr)
     
@@ -103,7 +103,7 @@ def microlensing_statistics(time, mag, magerr = None):
     """
     
     if magerr is None:
-        magerr = np.array([0.0] * len(time))
+        magerr = np.array([0.001] * len(time))
         
     microlensing_mag = simulate_microlensing(time, mag, magerr)
     stats = compute_statistics(time, microlensing_mag, magerr)
