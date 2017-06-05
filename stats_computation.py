@@ -131,7 +131,7 @@ def stetsonJ(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.001] * len(time))
     
     t = np.float(len(mag))
     range1 = range(0, len(time)-1)
@@ -159,7 +159,7 @@ def stetsonK(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0] * len(time))
+        magerr = np.array([0.001] * len(time))
         
     t = np.float(len(mag))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
@@ -331,7 +331,7 @@ def compute_statistics(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.0] * len(time))
+        magerr = np.array([0.001] * len(time))
         
     stat_array = np.array([below1(mag), below3(mag), below5(mag),
                            above1(mag), above3(mag), above5(mag),
