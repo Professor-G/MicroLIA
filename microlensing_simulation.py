@@ -56,7 +56,7 @@ def simulate_microlensing(time, mag, magerr = None):
     microlensing_mag = zp - 2.5*np.log10(microlensing_flux)
     
     return microlensing_mag  
-    print ('u_0 :',u_0, 't_0 :',t_0, 't_e :', t_e)
+    print('u_0 :',u_0, 't_0 :',t_0, 't_e :', t_e)
     
 def plot_microlensing(time, mag, magerr = None):
     """Plots a simulated microlensing event from an inserted flat lightcurve.
