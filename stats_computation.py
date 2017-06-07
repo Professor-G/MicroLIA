@@ -108,10 +108,7 @@ def auto_correlation(mag):
     detection in photometric surveys, D. Mislis et al., 2015)
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
-    :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point.
-    
+        
     :rtype: float
     """
     n = len(mag)
