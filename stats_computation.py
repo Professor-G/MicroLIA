@@ -10,14 +10,24 @@ from astropy.stats import median_absolute_deviation
 from scipy.stats import tvar
 from scipy.integrate import quad
 
-def shannon_entropy(mag, magerr):
+def shannon_entropy(mag, magerr=None):
     """Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
     information carried by a signal. The procedure employed here follows that outlined by
     (D. Mislis et al. 2015). The probability of each point is given by a Cumulative Distribution 
     Function (CDF). Following the same procedure as (D. Mislis et al. 2015), this function employs
     both the normal and inversed gaussian CDF, with the total shannon entropy given by a combination of
     the two. See: (SIDRA: a blind algorithm for signal detection in photometric surveys, D. Mislis et al., 2015)
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is 0 for every photometric point.
+    
+    :rtype: float
     """
+    if magerr is None:
+        magerr = np.array([0.001] * len(mag))
+        
     RMS = np.sqrt((np.mean(mag)**2))
     mean = np.mean(mag)
     
@@ -96,6 +106,13 @@ def auto_correlation(mag):
     the time delay of each measurement. Has been employed in previous research as a metric to 
     differentitate between lightcurve classes. See: (SIDRA: a blind algorithm for signal
     detection in photometric surveys, D. Mislis et al., 2015)
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is 0 for every photometric point.
+    
+    :rtype: float
     """
     n = len(mag)
     mean = np.mean(mag)
@@ -156,7 +173,6 @@ def vonNeumannRatio(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return the calculated ratio.
     :rtype: float
     """
 
@@ -180,7 +196,6 @@ def stetsonJ(time, mag, magerr):
     :param magerr: photometric error for the intensity. Must be an array.
     If magerr = None the default is 0 for every photometric point. 
     
-    :return: the function will return the calculated StetsonJ.
     :rtype: float
     """
     
@@ -208,7 +223,6 @@ def stetsonK(time, mag, magerr):
     :param magerr: photometric error for the intensity. Must be an array.
     If magerr = None the default is 0 for every photometric point. 
     
-    :return: the function will return the calculated StetsonK.
     :rtype: float
     """
     
@@ -227,7 +241,6 @@ def median_buffer_range(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -244,7 +257,6 @@ def std_over_mean(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -257,7 +269,6 @@ def amplitude(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -270,7 +281,6 @@ def above1(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -284,7 +294,6 @@ def above3(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -298,7 +307,6 @@ def above5(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -312,7 +320,6 @@ def below1(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -326,7 +333,6 @@ def below3(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -340,7 +346,6 @@ def below5(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -354,7 +359,6 @@ def medianAbsDev(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -366,7 +370,6 @@ def RMS(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -378,7 +381,6 @@ def medianMag(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -390,7 +392,6 @@ def meanMag(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float"""
    
     mean = np.mean(mag)
@@ -401,7 +402,6 @@ def minMag(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
    
@@ -413,7 +413,6 @@ def maxMag(mag):
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     
-    :return: the function will return a float.
     :rtype: float
     """
    
