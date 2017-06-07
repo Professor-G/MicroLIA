@@ -129,7 +129,6 @@ def auto_correlation(mag):
         
     auto_corr = abs(sum([x*y for x,y in zip(sum_list, val_list)]))        
    
-    #auto_corr = abs(sum((1/((n-t)*RMS**2))*sum((mag[0:n-t] - mean)*(mag[t:n] - mean))))
     return auto_corr
     
 def kurtosis(mag):
