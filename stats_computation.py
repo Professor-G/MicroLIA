@@ -26,28 +26,37 @@ def shannon_entropy(mag, magerr=None):
     :rtype: float
     """
     if magerr is None:
-        magerr = np.array([0.001] * len(mag))
+        magerr = np.array([0.0001] * len(mag))
         
-    RMS = np.sqrt((np.mean(mag)**2))
-    mean = np.mean(mag)
+    magerr = np.nan_to_num(magerr)
+    
+    mean = np.mean(mag)   
+    RMS = np.sqrt((np.mean(mag**2)))
+
     
     p_list1 = []
     p_list2 = [] 
     inv_list1 = []
     inv_list2 = []
-    inv_list3 = []
-    inv_list4 = []
     
     t = range(0, len(mag))
+    d_delta = [i*2.0 for i in magerr]
     
-    def normal_gauss(t):
-        return 0.5*((1 + 2/np.sqrt(np.pi))*np.e**(-t**2))
+    """Error fn definition: http://mathworld.wolfram.com/Erf.html"""
+    def errfn(x):
+        def integral(t):
+            integrand =  (2./np.sqrt(np.pi))*np.e**(-t**2)
+            return integrand 
+        integ, err = quad(integral, 0, x)
+        return integ
         
-    def inverse_gauss1(t):
-        return 0.5*((1 + 2/np.sqrt(np.pi))*np.e**(-t**2)) 
+    """The Gaussian CDF: http://mathworld.wolfram.com/NormalDistribution.html"""   
+    def normal_gauss(x):
+        return 0.5*(1. + errfn(x))
     
-    def inverse_gauss2(t):
-        return (0.5*np.e**((2*RMS)/mean))*(1 - (2/np.sqrt(np.pi))*np.e**(-t**2))
+    """Inverse Gaussian CDF: http://mathworld.wolfram.com/InverseGaussianDistribution.html"""    
+    def inv_gauss(x, y):
+        return 0.5*(1 + errfn(x)) + (0.5*np.e**((2.*RMS)/mean))*(1 - errfn(y))
         
     def shannon_entropy1(mag, magerr):
         """
@@ -56,17 +65,18 @@ def shannon_entropy(mag, magerr=None):
         """
         
         for i in t:
-            prob, err = quad(normal_gauss, 0, (mag[i] + magerr[i] - mean)/(RMS*np.sqrt(2)))
-            p_list1.append(prob)
+            val = normal_gauss((mag[i] + magerr[i] - mean)/(RMS*np.sqrt(2)))
+            p_list1.append(val)
         
-            prob2, err = quad(normal_gauss, 0, (mag[i] - magerr[i] - mean)/(RMS*np.sqrt(2)))
-            p_list2.append(prob2)
+            val2 = normal_gauss((mag[i] - magerr[i] - mean)/(RMS*np.sqrt(2)))
+            p_list2.append(val2)
+                                    
+        p_list3 = np.nan_to_num(p_list1)
+        p_list4 = np.nan_to_num(p_list2)
         
-        d_delta = [i * 2.0 for i in magerr]    
-      
-        entropy1 = -sum(np.nan_to_num(np.log2(p_list1))*d_delta + np.nan_to_num(np.log2(p_list2))*d_delta)
-        return np.array(entropy1)
-        
+        entropy = -sum(np.nan_to_num(np.log2(p_list3)*d_delta) + np.nan_to_num(np.log2(p_list4)*d_delta))
+        return entropy
+            
     def shannon_entropy2(mag, magerr):
         """
         This function utilizes the inverse Gaussian CDF to set the probability of each point
@@ -74,33 +84,26 @@ def shannon_entropy(mag, magerr=None):
         """
         
         for i in t:
-            prob, err = quad(inverse_gauss1, 0, np.sqrt(RMS/(2*mag[i] + magerr[i]))*(((mag[i] + magerr[i])/mean) - 1))
-            inv_list1.append(prob)
+            val = inv_gauss(np.nan_to_num(np.sqrt(RMS/(2.*mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) - 1.), 
+                            np.nan_tp_num(np.sqrt(RMS/(2.*mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) + 1.))
+            inv_list1.append(val)
             
-            prob2, err = quad(inverse_gauss2, 0, np.sqrt(RMS/(2*mag[i] + magerr[i]))*(((mag[i] + magerr[i])/mean) + 1))
-            inv_list2.append(prob2)
+            val2 = inv_gauss(np.nan_to_num(np.sqrt(RMS/(2.*mag[i] - magerr[i])))*(((mag[i] - magerr[i])/mean) - 1.), 
+                            np.nan_to_num(np.sqrt(RMS/(2.*mag[i] - magerr[i])))*(((mag[i] - magerr[i])/mean) + 1.))
+            inv_list2.append(val2)         
             
-        p2_list1 = [inv_list1[i] + inv_list2[i] for i in range(len(inv_list1))]
+        inv_list3 = np.nan_to_num(inv_list1)
+        inv_list4 = np.nan_to_num(inv_list2)
         
-        for i in t:
-            prob, err = quad(inverse_gauss1, 0, np.sqrt(RMS/(2*mag[i] - magerr[i]))*(((mag[i] - magerr[i])/mean) - 1))
-            inv_list3.append(prob)
-            
-            prob2, err = quad(inverse_gauss2, 0, np.sqrt(RMS/(2*mag[i] - magerr[i]))*(((mag[i] - magerr[i])/mean) + 1))
-            inv_list4.append(prob2)
-            
-        p2_list2 = [inv_list3[i] + inv_list4[i] for i in range(len(inv_list3))]
+        entropy = -sum(np.nan_to_num(np.log2(inv_list3)*d_delta) + np.nan_to_num(np.log2(inv_list4)*d_delta))
+        return entropy
         
-        d_delta = [i * 2 for i in magerr]
-        entropy2 = -sum(np.nan_to_num(np.log2(p2_list1))*d_delta + np.nan_to_num(np.log2(p2_list2))*d_delta)
-        return np.array(entropy2)
-    
     """The total Shannon Entropy is calculated by adding the values calculated using both the normal
     and inverse Gaussian CDF
-    """    
+    """      
     total_entropy = shannon_entropy1(mag, magerr) + shannon_entropy2(mag, magerr)
     return total_entropy
-
+   
 def auto_correlation(mag):
     """The autocorrelation integral calculates the correlation of a given signal as a function of 
     the time delay of each measurement. Has been employed in previous research as a metric to 
@@ -113,7 +116,7 @@ def auto_correlation(mag):
     """
     n = len(mag)
     mean = np.mean(mag)
-    RMS = np.sqrt((np.mean(mag)**2))
+    RMS = np.sqrt((np.mean(mag**2)))
     
     sum_list = []
     val_list = []
@@ -196,8 +199,8 @@ def stetsonJ(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.001] * len(time))
-    
+        magerr = np.array([0.0001] * len(time))
+            
     t = np.float(len(mag))
     range1 = range(0, len(time)-1)
     range2 = range(1, len(time))
@@ -223,8 +226,8 @@ def stetsonK(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.001] * len(time))
-        
+        magerr = np.array([0.0001] * len(time))
+                
     t = np.float(len(mag))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
         
@@ -369,7 +372,7 @@ def RMS(mag):
     :rtype: float
     """
     
-    RMS = np.sqrt((np.mean(mag)**2))
+    RMS = np.sqrt((np.mean(mag**2)))
     return RMS
     
 def medianMag(mag):
@@ -434,7 +437,9 @@ def compute_statistics(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.001] * len(time))
+        magerr = np.array([0.0001] * len(time))
+        
+    magerr = np.nan_to_num(magerr)
         
     stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag), kurtosis(mag), skewness(mag), 
                   vonNeumannRatio(mag), stetsonJ(time, mag, magerr), stetsonK(time, mag, magerr),
