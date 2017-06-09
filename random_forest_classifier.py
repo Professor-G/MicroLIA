@@ -8,9 +8,9 @@ from stats_computation import compute_statistics
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-training_set = np.loadtxt('training_set_ALL.txt', dtype = str)
+training_set = np.loadtxt('training_set_all.txt', dtype = str)
 rf = RandomForestClassifier(n_estimators=100, max_features = 3) 
-rf.fit(training_set[:,7:16].astype(float),training_set[:,0])
+rf.fit(training_set[:,1:18].astype(float),training_set[:,0])
 
 def predict_class(time, mag, magerr = None):
     """This function uses machine learning to classify any given lightcurve as either
@@ -28,12 +28,12 @@ def predict_class(time, mag, magerr = None):
     """
     
     if magerr is None:
-        magerr = np.array([0.001] * len(time))
+        magerr = np.array([0.0001] * len(time))
         
     stat_array = compute_statistics(time, mag, magerr)
       
-    prediction = rf.predict(stat_array[6:15])#.astype(float)
-    probability_prediction = rf.predict_proba(stat_array[6:15])
+    prediction = rf.predict(stat_array[0:17])#.astype(float)
+    probability_prediction = rf.predict_proba(stat_array[0:17])
     
     print(probability_prediction)     
     return prediction
