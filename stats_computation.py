@@ -85,7 +85,7 @@ def shannon_entropy(mag, magerr=None):
         
         for i in t:
             val = inv_gauss(np.nan_to_num(np.sqrt(RMS/(2.*mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) - 1.), 
-                            np.nan_tp_num(np.sqrt(RMS/(2.*mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) + 1.))
+                            np.nan_to_num(np.sqrt(RMS/(2.*mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) + 1.))
             inv_list1.append(val)
             
             val2 = inv_gauss(np.nan_to_num(np.sqrt(RMS/(2.*mag[i] - magerr[i])))*(((mag[i] - magerr[i])/mean) - 1.), 
@@ -182,41 +182,11 @@ def vonNeumannRatio(mag):
     vonNeumannRatio = delta / sample_variance
     return vonNeumannRatio
     
-def stetsonJ(time, mag, magerr):
-    """The variability index J was first suggested by Peter B. Stetson and is defined 
-    as the measure of the correlation between the data points. J tends to 0 for variable 
-    sources and gets large as the difference between the successive data points increases. 
-    See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
-    
-    :param time: the time-varying data of the lightcurve. Must be an array.
-    
-    :param mag: the time-varying intensity of the object. Must be an array.
-    
-    :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point. 
-    
-    :rtype: float
-    """
-    
-    if magerr is None:
-        magerr = np.array([0.0001] * len(time))
-            
-    t = np.float(len(mag))
-    range1 = range(0, len(time)-1)
-    range2 = range(1, len(time))
-    delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
-
-    sign = np.sign(((delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
-    stetsonJ = sum(((sign*delta[range1]*delta[range2]))*(np.sqrt(np.absolute(delta[range1]*delta[range2]))))
-    return np.nan_to_num(stetsonJ)
-    
-def stetsonK(time, mag, magerr):
+def StetsonJ(mag, magerr):
     """The variability index K was first suggested by Peter B. Stetson and serves as a 
     measure of the kurtosis of the magnitude distribution. 
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
-    
-    :param time: the time-varying data of the lightcurve. Must be an array.
-    
+        
     :param mag: the time-varying intensity of the object. Must be an array.
     
     :param magerr: photometric error for the intensity. Must be an array.
@@ -226,7 +196,37 @@ def stetsonK(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.0001] * len(time))
+       magerr = np.array([0.0001] * len(mag))
+        
+    n = len(mag)
+    mean = np.mean(mag)
+    delta_list = []
+    
+    for i in range(0, len(mag)):
+        delta = np.sqrt(n/(n-1))*((mag[i] - mean)/magerr[i])
+        delta_list.append(delta)
+        
+    sign = np.sign(delta[0:n-1]*delta[1:n])
+    stetj = sum(sign*np.sqrt(abs(delta[0:n-1]*delta[1:n])))
+    return stetj
+    
+
+    
+def stetsonK(mag, magerr):
+    """The variability index K was first suggested by Peter B. Stetson and serves as a 
+    measure of the kurtosis of the magnitude distribution. 
+    See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
+        
+    :param mag: the time-varying intensity of the object. Must be an array.
+    
+    :param magerr: photometric error for the intensity. Must be an array.
+    If magerr = None the default is 0 for every photometric point. 
+    
+    :rtype: float
+    """
+    
+    if magerr is None:
+        magerr = np.array([0.0001] * len(mag))
                 
     t = np.float(len(mag))
     delta = np.sqrt((t/(t-1.)))*((mag - np.mean(mag))/magerr)
