@@ -182,7 +182,7 @@ def vonNeumannRatio(mag):
     vonNeumannRatio = delta / sample_variance
     return vonNeumannRatio
     
-def StetsonJ(mag, magerr):
+def stetsonJ(mag, magerr):
     """The variability index K was first suggested by Peter B. Stetson and serves as a 
     measure of the kurtosis of the magnitude distribution. 
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
@@ -206,8 +206,8 @@ def StetsonJ(mag, magerr):
         delta = np.sqrt(n/(n-1))*((mag[i] - mean)/magerr[i])
         delta_list.append(delta)
         
-    sign = np.sign(delta[0:n-1]*delta[1:n])
-    stetj = sum(sign*np.sqrt(abs(delta[0:n-1]*delta[1:n])))
+    sign = np.sign(delta_list[0:n-1]*delta_list[1:n])
+    stetj = sum(sign*np.sqrt(abs(delta_list[0:n-1]*delta_list[1:n])))
     return stetj
     
 
@@ -442,7 +442,7 @@ def compute_statistics(time, mag, magerr):
     magerr = np.nan_to_num(magerr)
         
     stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag), kurtosis(mag), skewness(mag), 
-                  vonNeumannRatio(mag), stetsonJ(time, mag, magerr), stetsonK(time, mag, magerr),
+                  vonNeumannRatio(mag), stetsonJ(mag, magerr), stetsonK(mag, magerr),
                   median_buffer_range(mag), std_over_mean(mag), amplitude(mag), above1(mag), above3(mag),
                   above5(mag), below1(mag), below3(mag), below5(mag), medianAbsDev(mag), RMS(mag))
 
