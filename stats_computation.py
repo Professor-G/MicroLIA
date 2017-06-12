@@ -418,7 +418,7 @@ def maxMag(mag):
     max_mag = np.amax(mag)
     return max_mag
         
-def compute_statistics(time, mag, magerr):
+def compute_statistics(mag, magerr):
     """This function will compute all the statistics and return them in an array in the 
     following order: shannon_entropy, auto_correlation, kurtosis, skewness, vonNeumannRatio,
     stetsonJ, stetsonK, median_buffer_Rance, std_over_mean, amplitude, AboveMeanBySTD_1,
@@ -437,9 +437,7 @@ def compute_statistics(time, mag, magerr):
     """
     
     if magerr is None:
-        magerr = np.array([0.0001] * len(time))
-        
-    magerr = np.nan_to_num(magerr)
+        magerr = np.array([0.0001] * len(mag))
         
     stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag), kurtosis(mag), skewness(mag), 
                   vonNeumannRatio(mag), stetsonJ(mag, magerr), stetsonK(mag, magerr),
