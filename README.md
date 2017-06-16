@@ -22,4 +22,8 @@ The code is written entirely in python, and makes use of several familiar packag
 * astropy
 * sklearn
 
-The main module that classifies the lightcurve is the random_forest_classifier. It makes use of the module stats_computation, which computes the statistical metrics that were used to train the classifier. Note that some of the statistics from stats_computation are *not* computed, as they were low-performing and hence omitted to improve the efficiency of the program.
+The main module that classifies the lightcurve is the random_forest_classifier. It makes use of the module stats_computation, which computes the statistical metrics that were used to train the classifier. Note that some of the statistics from stats_computation are *not* computed, as they were low-performing and hence omitted to improve the efficiency of the program. 
+
+# Test Script
+
+To make sure that the algorithm is working as intended, please run the sadf
