@@ -4,8 +4,9 @@ Created on Mon Jun  5 10:48:32 2017
 
 @author: danielgodinez
 """
-
-from ... import stats_computation as sc
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import stats_computation as sc
 import random_forest_classifier as rf
 import numpy as np
 import unittest
