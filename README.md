@@ -28,12 +28,12 @@ The main module that classifies the lightcurve is the random_forest_classifier. 
 
 # Test Script
 
-To make sure that the algorithm is working as intended, please run the following test scripts:
+To make sure that the algorithm is working, please run the following test scripts:
 
 * test_script1
 * test_script2
 
-Both test scripts should classify the test lightcurve as microlensing. Can additionally run the stats_computation_unittest to ensure that all the statistical metrics are working as intended.
+Both test scripts should classify the test lightcurve as microlensing. For an additional test, run the stats_computation_unittest to ensure that all the statistical metrics are working as intended.
 
 # How to Contribute?
 
