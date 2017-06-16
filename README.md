@@ -1,4 +1,5 @@
-# MicrolensingLCOGT
+# A Gravitational Microlensing Detection Algorithm
+![alt text](https://avatars0.githubusercontent.com/u/3358238?v=3&s=200)
 
 # Microlensing Detection
 
