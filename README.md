@@ -11,7 +11,9 @@ Clone the repository or download to a local system as a ZIP file.
 It's best to use this as an external module, by doing a global import:
 
 import sys
+
 sys.path.append(your-path-to-directory)
+
 from random_forest_classifier import predict_class
 
 # Required libraries
