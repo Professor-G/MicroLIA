@@ -9,10 +9,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 training_set = np.loadtxt('training_set_all.txt', dtype = str)
-rf = RandomForestClassifier(n_estimators=100, max_features = 3) 
-rf.fit(training_set[:,1:18].astype(float),training_set[:,0])
+rf = RandomForestClassifier(n_estimators=300, max_features = 3) 
+rf.fit(training_set[:,[1,2,3,5,6,7,8,11,13,14,20,21]].astype(float),training_set[:,0])
 
-def predict_class(time, mag, magerr = None):
+def predict_class(mag, magerr):
     """This function uses machine learning to classify any given lightcurve as either
     a Cataclysmic Variable (CV), a Lyrae Variable, Microlensing, or a constant source.
     
@@ -20,23 +20,16 @@ def predict_class(time, mag, magerr = None):
     
     :param mag: the time-varying intensity of the object. Must be an array.
     
-    :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point. 
-    
-    :return: the function will return the predicted class.
-    :rtype: string
+    :return: the function will return the predicted class along with the probability that it's microlensing.
+    :rtype: string, float
     """
-    
-    if magerr is None:
-        magerr = np.array([0.0001] * len(time))
         
-    stat_array = compute_statistics(time, mag, magerr)
+    stat_array = compute_statistics(mag, magerr)
       
-    prediction = rf.predict(stat_array[0:17])#.astype(float)
-    probability_prediction = rf.predict_proba(stat_array[0:17])
+    prediction =rf.predict(stat_array[0:11])#.astype(float)
+    probability_prediction = rf.predict_proba(stat_array[0:11])
     
-    print(probability_prediction)     
-    return prediction
+    return prediction, probability_prediction[:,3]
     
 
 
