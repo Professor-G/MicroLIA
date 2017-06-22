@@ -4,8 +4,8 @@ Created on Mon Jun  5 10:48:32 2017
 
 @author: danielgodinez
 """
-import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+sys.path.append('../')
 import stats_computation as sc
 import random_forest_classifier as rf
 import numpy as np
@@ -13,18 +13,21 @@ import unittest
 
 data = np.loadtxt('TestML_1')
 
-mjd = data[:,0]
 mag = data[:,1]
 magerr = data[:,2]
 
 class Test(unittest.TestCase):
     def test_compute_statistics(value):
-        value.assertEqual( sc.compute_statistics(mjd, mag, magerr), (1.0, 1.0, 1.0, 0.0, 0.0, 0.0, -5.4354180599375495,
-                          0.34793189299316019, 1.130441843074534, 31.401821018066236, 0.0097154255645506282, 6798930.9057225743,
-                          1.0119460116981802, 0.0084235779847892222, 1.0, 15.048898825155755), "Statistics array incorrect" )
+        value.assertEqual( sc.compute_statistics(mag, magerr), (24.8758591877797, 0.70346613225989629, 27.905462817947186, 
+                          -5.0100150397808205, 1.080251522752754, 1423.3576640580793, 0.36144175147524155, 0.952513966480447, 
+                          0.0086303068969277325, 0, 0.0097154255645506282, 0.12967701108376908), "Statistics array incorrect" )
          
     def test_predict_class(value):
-        value.assertEqual( rf.predict_class(mjd, mag, magerr), ['ML'], "Incorrect classification")
+        value.assertEqual( rf.predict_class(mag, magerr)[0], ['ML'], "Incorrect classification")
+        
+    def test_prob_prediction(value):
+        value.assertGreater(rf.predict_class(mag, magerr)[1], 0.75, msg = "Incorrect probability prediction")
+
     
 unittest.main()
 
