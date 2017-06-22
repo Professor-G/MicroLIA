@@ -17,7 +17,6 @@ def shannon_entropy(mag, magerr):
     the two. See: (SIDRA: a blind algorithm for signal detection in photometric surveys, D. Mislis et al., 2015)
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
@@ -104,8 +103,7 @@ def auto_correlation(mag, magerr):
     differentitate between lightcurve classes. See: (SIDRA: a blind algorithm for signal
     detection in photometric surveys, D. Mislis et al., 2015)
     
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.  
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
 
     :rtype: float
@@ -139,6 +137,11 @@ def con(mag, magerr):
     assuming a  flat lightcurve prior to the event. The magnitude measurements 
     are split into bins such that the reference  magnitude is defined as the mean 
     of the measurements in the largest bin.
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.  
+    :param magerr: photometric error for the intensity. Must be an array.
+
+    :rtype: float
     """
     
     mag, magerr = remove_bad(mag, magerr)
@@ -177,6 +180,11 @@ def con2(mag, magerr):
     consecutive observations with magnitudes brighter than the mean plus
     2 standard deviations. For a microlensing event Con = 1, assuming a 
     flat lightcurve prior to the event. 
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.  
+    :param magerr: photometric error for the intensity. Must be an array.
+
+    :rtype: float
     """
     
     mag, magerr = remove_bad(mag, magerr)
@@ -216,8 +224,8 @@ def kurtosis(mag, magerr):
     to a normal distribution. See 
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
-    :return: the function will return a float.
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """""
     
@@ -232,7 +240,13 @@ def kurtosis(mag, magerr):
     
 def kurtosis2(mag, magerr):
     """
-    From SIDRA algorithm paper.
+    Same kurtosis function in a different form. From SIDRA algorithm paper. See: (SIDRA: a blind 
+    algorithm for signal detection in photometric surveys, D. Mislis et al., 2015).
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
+
+    :rtype: float
     """
     
     mag, magerr = remove_bad(mag, magerr)
@@ -247,10 +261,8 @@ def skewness(mag, magerr):
     indicating a skew to the right, and a negative skewness indicating a skew to the left. 
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
 
-    :return: the function will return a float.
     :rtype: float
     """
     
@@ -270,7 +282,8 @@ def vonNeumannRatio(mag, magerr):
     See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -288,7 +301,6 @@ def stetsonJ(mag, magerr):
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
     :param mag: the time-varying intensity of the object. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
@@ -314,7 +326,6 @@ def stetsonK(mag, magerr):
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
     :param mag: the time-varying intensity of the object. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
@@ -336,6 +347,7 @@ def median_buffer_range(mag, magerr):
     amplitude value over the mean
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
@@ -356,7 +368,8 @@ def median_buffer_range2(mag, magerr):
     value over the mean
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -373,10 +386,11 @@ def median_buffer_range2(mag, magerr):
     
     
 def std_over_mean(mag, magerr):
-    """A measure of the ratio of standard deviation and sample mean.
+    """A measure of the ratio of standard deviation and mean, both weighted by the errors.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -392,9 +406,12 @@ def amplitude(mag, magerr):
     measurement and the lowest magnitude measurement.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
+    #max_limit = np.where((meanMag(mag, magerr) - 4*deviation(mag, magerr)) > mag)
+    #min_limit = np.where((meanMag(mag, magerr) + 4*deviation(mag, magerr)) > mag)
     
     mag = remove_bad(mag, magerr)[0]
     amplitude = np.max(mag) - np.min(mag)
@@ -405,7 +422,8 @@ def above1(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -421,6 +439,7 @@ def above3(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
@@ -437,6 +456,7 @@ def above5(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
@@ -453,7 +473,8 @@ def below1(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -469,6 +490,7 @@ def below3(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
@@ -485,6 +507,7 @@ def below5(mag, magerr):
     from the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
@@ -501,7 +524,8 @@ def medianAbsDev(mag, magerr):
     and the mean magnitude.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -511,10 +535,11 @@ def medianAbsDev(mag, magerr):
     return medianAbsDev
     
 def RootMS(mag, magerr):
-    """A measure of the root mean square deviation, weighted with the errors
+    """A measure of the root mean square deviation, weighted by the errors.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    :param magerr: photometric error for the intensity. Must be an array.
+
     :rtype: float
     """
     
@@ -529,8 +554,10 @@ def meanMag(mag, magerr):
     """Calculates mean magnitude, weighted by the errors.
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
     
-    :rtype: float"""
+    rtype: float
+    """
    
     mag, magerr = remove_bad(mag, magerr)
     mean = sum(mag/magerr**2)/sum(1./magerr**2)
@@ -538,7 +565,14 @@ def meanMag(mag, magerr):
     return mean
     
 def deviation(mag, magerr):
+     """Calculates the standard deviation, weighted by the errors.
     
+     :param mag: the time-varying intensity of the lightcurve. Must be an array.  
+     :param magerr: photometric error for the intensity. Must be an array.
+    
+     rtype: float
+     """
+
      mag, magerr = remove_bad(mag, magerr)
      m = np.float(len(np.argwhere(magerr != 0)))
      std = np.sqrt(sum((1./magerr**2)*(mag - meanMag(mag, magerr))**2)/(((m - 1.)/m)*sum(1./magerr**2)))
@@ -546,6 +580,14 @@ def deviation(mag, magerr):
      return std
         
 def remove_bad(mag, magerr):
+    """This function removes all points in the lightcurve that do not contain
+    a calculation for photometric error.
+    
+    :param mag: the time-varying intensity of the lightcurve. Must be an array.
+    :param magerr: photometric error for the intensity. Must be an array.
+    
+    rtype: float
+    """
          
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
@@ -562,18 +604,16 @@ def compute_statistics(mag, magerr):
     medianAbdsDev, RMS
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
-    If magerr = None the default is 0 for every photometric point. 
     
     :return: the function will return an array with the statistics.
     :rtype: array, float
     """
-
+ 
     stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr), kurtosis2(mag, magerr), 
                   skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), con(mag, magerr), 
                   con2(mag, magerr), median_buffer_range(mag, magerr), median_buffer_range2(mag, magerr), std_over_mean(mag, magerr), 
                   below1(mag, magerr), below3(mag, magerr),below5(mag, magerr), above1(mag, magerr), 
-                  above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag), RootMS(mag, magerr), amplitude(mag, magerr))
+                  above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr))
 
     return stat_array
