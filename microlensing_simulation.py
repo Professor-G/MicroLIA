@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from stats_computation import compute_statistics
 
 
-def simulate_microlensing(time, mag, magerr = None):
+def simulate_microlensing(time, mag, magerr):
     """Simulates a microlensing event given the inserted flat lightcurve. The angular 
     impact parameter is chosen from a random distribution between 0.0 and 1.0. 
     Likewise the time of maximum amplification t_0 is chosen from a normal 
@@ -20,10 +20,8 @@ def simulate_microlensing(time, mag, magerr = None):
     microlensing survey. See: The OGLE-III planet detection efficiency from six 
     years of microlensing observations (2003 to 2008), (Y. Tsapras et al (2016)).
     
-    :param time: the time-varying data of the lightcurve. Must be an array.
-    
-    :param mag: the time-varying intensity of the object. Must be an array.
-    
+    :param time: the time-varying data of the lightcurve. Must be an array.   
+    :param mag: the time-varying intensity of the object. Must be an array.   
     :param magerr: photometric error for the intensity. Must be an array.
     
     :return: the function will return the simulated intensity of the simulated
@@ -58,17 +56,15 @@ def simulate_microlensing(time, mag, magerr = None):
 def plot_microlensing(time, mag, magerr):
     """Plots a simulated microlensing event from an inserted flat lightcurve.
     
-    :param time: the time-varying data of the lightcurve. Must be an array.
-    
+    :param time: the time-varying data of the lightcurve. Must be an array.  
     :param mag: the time-varying intensity of the object. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
     
     :return: the function will return a plot of the microlensing lightcurve.
     :rtype: plot
     """    
         
-    intensity = simulate_microlensing(mag, magerr)
+    intensity = simulate_microlensing(time, mag, magerr)
     
     plt.errorbar(time, intensity, yerr = magerr, fmt='o')
     plt.gca().invert_yaxis
@@ -85,16 +81,14 @@ def microlensing_statistics(time, mag, magerr = None):
     medianMag, minMag, maxMag.
 
     :param time: the time-varying data of the lightcurve. Must be an array.
-    
     :param mag: the time-varying intensity of the object. Must be an array.
-    
     :param magerr: photometric error for the intensity. Must be an array.
     
     :return: the function will return the lightcurve statistics in the order listed above.
     :rtype: array 
     """
             
-    microlensing_mag = simulate_microlensing(mag, magerr)
+    microlensing_mag = simulate_microlensing(time, mag, magerr)
     stats = compute_statistics(microlensing_mag, magerr)
     
     return stats
