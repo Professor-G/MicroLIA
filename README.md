@@ -29,7 +29,7 @@ The main module that classifies the lightcurve is the **random_forest_classifier
 
 # Test Script
 
-To make sure that the algorithm is working, please run the following test scripts locaed in the **test** folder:
+To make sure that the algorithm is working, please run the following test scripts located in the **test** folder:
 
 * test_script1
 * test_script2
