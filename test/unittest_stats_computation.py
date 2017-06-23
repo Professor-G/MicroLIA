@@ -2,7 +2,7 @@
 """
     Created on Fri Jan 13 14:46:19 2017
     @author: danielgodinez
-    """
+"""
 import sys
 sys.path.append('../')
 import stats_computation as sc
