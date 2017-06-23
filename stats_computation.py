@@ -599,9 +599,7 @@ def remove_bad(mag, magerr):
 def compute_statistics(mag, magerr):
     """This function will compute all the statistics and return them in an array in the 
     following order: shannon_entropy, auto_correlation, kurtosis, skewness, vonNeumannRatio,
-    stetsonJ, stetsonK, median_buffer_Rance, std_over_mean, amplitude, AboveMeanBySTD_1,
-    AboveMeanBySTD_3, AboveMeanBySTD_5, BelowMeanBySTD_1, BelowMeanBySTD_3, BelowMeanBySTD_5, 
-    medianAbdsDev, RMS
+    stetsonJ, stetsonK, median_buffer_Rance, std_over_mean, std_over_mean, below1, medianAbdsDev, RMS
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     :param magerr: photometric error for the intensity. Must be an array.
@@ -616,8 +614,8 @@ def compute_statistics(mag, magerr):
        #           below1(mag, magerr), below3(mag, magerr),below5(mag, magerr), above1(mag, magerr), 
         #          above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr))
     
-    stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr),
-                  stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), 
-                  median_absolute_deviation(mag, magerr), RootMS(mag, magerr))              
+    stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), 
+                  vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), 
+                  std_over_mean(mag, magerr), below1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr))              
   
     return stat_array

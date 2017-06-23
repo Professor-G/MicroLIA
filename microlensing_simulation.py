@@ -73,12 +73,11 @@ def plot_microlensing(time, mag, magerr):
     plt.title('Simulated Microlensing')
     plt.show()
     
-def microlensing_statistics(time, mag, magerr = None):
+def microlensing_statistics(time, mag, magerr):
     """Simulates a microlensing event given an inserted lightcurve, and calculates
     various lightcurve statistics. Returns them in an array in the following order: 
-    skewness, kurtosis, stetsonJ, stetsonK, vonNeumannRatio, std_over_mean, median_buffer_range, 
-    amplitude, Below1, Below3, Below5, Above1, Above3, Above5, magRMS, medianAbsDev, meanMag, 
-    medianMag, minMag, maxMag.
+    shannon_entropy, auto_correlation, kurtosis, skewness, vonNeumannRatio,
+    stetsonJ, stetsonK, median_buffer_Rance, std_over_mean, std_over_mean, below1, medianAbdsDev, RMS
 
     :param time: the time-varying data of the lightcurve. Must be an array.
     :param mag: the time-varying intensity of the object. Must be an array.
