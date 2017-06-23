@@ -9,13 +9,9 @@ This is an open source algorithm that utilizes machine learning to classify a gi
 
 Clone the repository or download to a local system as a ZIP file. 
 
-It's best to use this as an external module, by doing a global import:
+It's best to work off the same directory in which the package is saved, so that the modules can be called directly, such as: 
 
-import sys
-
-sys.path.append(your-path-to-directory)
-
-from random_forest_classifier import predict_class
+from **random_forest_classifier** import **predict_class**
 
 # Required libraries
 
