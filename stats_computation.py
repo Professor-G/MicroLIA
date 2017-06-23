@@ -221,7 +221,7 @@ def con2(mag, magerr):
 def kurtosis(mag, magerr):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve. 
     It's a measure of the peakedness (or flatness) of the lightcurve relative 
-    to a normal distribution. See 
+    to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     :param magerr: photometric error for the intensity. Must be an array.
@@ -237,6 +237,9 @@ def kurtosis(mag, magerr):
     kurtosis = (n*(n+1.)/((n-1.)*(n-2.)*(n-3.))*sum(((mag - mean)/std)**4)) - \
     (3.*((n-1.)**2)/((n-2.)*(n-3.)))
     return kurtosis
+    
+def finn(mag):
+    return 0
     
 def kurtosis2(mag, magerr):
     """
