@@ -237,10 +237,7 @@ def kurtosis(mag, magerr):
     kurtosis = (n*(n+1.)/((n-1.)*(n-2.)*(n-3.))*sum(((mag - mean)/std)**4)) - \
     (3.*((n-1.)**2)/((n-2.)*(n-3.)))
     return kurtosis
-    
-def finn(mag):
-    return 0
-    
+        
 def kurtosis2(mag, magerr):
     """
     Same kurtosis function in a different form. From SIDRA algorithm paper. See: (SIDRA: a blind 
