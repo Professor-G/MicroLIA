@@ -17,7 +17,6 @@ def predict_class(mag, magerr):
     a Cataclysmic Variable (CV), a Lyrae Variable, Microlensing, or a constant source.
     
     :param time: the time-varying data of the lightcurve. Must be an array.
-    
     :param mag: the time-varying intensity of the object. Must be an array.
     
     :return: the function will return the predicted class along with the probability that it's microlensing.
@@ -26,8 +25,8 @@ def predict_class(mag, magerr):
         
     stat_array = compute_statistics(mag, magerr)
       
-    prediction =rf.predict(stat_array[0:11])#.astype(float)
-    probability_prediction = rf.predict_proba(stat_array[0:11])
+    prediction =rf.predict(stat_array[0:12])#.astype(float)
+    probability_prediction = rf.predict_proba(stat_array[0:12])
     
     return prediction, probability_prediction[:,3]
     
