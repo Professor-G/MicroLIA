@@ -401,20 +401,34 @@ def std_over_mean(mag, magerr):
     std_over_mean = std/mean
     return std_over_mean
       
+    
 def amplitude(mag, magerr):
     """The amplitude of the lightcurve defined as the difference between the maximum magnitude
-    measurement and the lowest magnitude measurement.
+    measurement and the lowest magnitude measurement. To account for outliers, an array of the
+    absolute value of the magnitude minus weighted mean is created. From this array, a 5% 
+    threshold is applied such that top 5% of points are ommitted as outliers and the amplitude
+    is left to be defined as the maximun magnitude minus the minium magnitude of the remaining points. 
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     :param magerr: photometric error for the intensity. Must be an array.
     
     :rtype: float
     """
-    #max_limit = np.where((meanMag(mag, magerr) - 4*deviation(mag, magerr)) > mag)
-    #min_limit = np.where((meanMag(mag, magerr) + 4*deviation(mag, magerr)) > mag)
     
-    mag = remove_bad(mag, magerr)[0]
+    mag, magerr = remove_bad(mag, magerr)
+    array_list = [] 
+    
+    for i in range(0, len(mag)):
+        array = np.abs(mag[i] - meanMag(mag, magerr))
+        array_list.append(array)
+        
+    index = np.argsort(array_list)
+    index2 = len(mag) - np.int(len(mag)*0.95)
+    threshold = index[-index2]
+    
+    mag = np.delete(mag, threshold)
     amplitude = np.max(mag) - np.min(mag)
+    
     return amplitude
     
 def above1(mag, magerr):
@@ -614,8 +628,8 @@ def compute_statistics(mag, magerr):
        #           below1(mag, magerr), below3(mag, magerr),below5(mag, magerr), above1(mag, magerr), 
         #          above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr))
     
-    stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), 
+    stat_array = (auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), 
                   vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), 
-                  std_over_mean(mag, magerr), below1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr))              
+                  std_over_mean(mag, magerr), below1(mag, magerr), above1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr))              
   
     return stat_array
