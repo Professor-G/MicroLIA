@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
         value.assertEqual( sc.std_over_mean(mag, magerr), 0.020281331511023799, "STDoverMean function failed")
     
     def test_amplitude(value):
-        value.assertEqual( sc.amplitude(mag, magerr), 1.5, "Amplitude function failed")
+        value.assertEqual( sc.amplitude(mag, magerr), 1.3000000000000007, "Amplitude function failed")
     
     def test_above1(value):
         value.assertEqual( sc.above1(mag, magerr), 0.0, "Above 1 incorrect" )
@@ -86,7 +86,7 @@ class Test(unittest.TestCase):
         value.assertEqual( sc.deviation(mag, magerr), 0.3703013051804151, "Standard Deviation function failed")
     
     def test_compute_statistics(value):
-        value.assertEqual( sc.compute_statistics(mag, magerr), (2.9615690385194195, 6.1866744592471097, 35.73018979880348, 7.7924269178998333, 0.77789008863456521, 73.105694334803772, 0.70898031447518206, 0.23076923076923078, 0.020281331511023799, 6.0, 0.5, 0.35577398610092409), "Compute Statistics function failed")
+        value.assertEqual( sc.compute_statistics(mag, magerr), (6.1866744592471097, 35.73018979880348, 7.7924269178998333, 0.77789008863456521, 73.105694334803772, 0.70898031447518206, 0.23076923076923078, 0.020281331511023799, 6.0, 0.0, 0.5, 0.35577398610092409), "Compute Statistics function failed")
 
 unittest.main()
     
