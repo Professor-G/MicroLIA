@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 training_set = np.loadtxt('training_set_all.txt', dtype = str)
 rf = RandomForestClassifier(n_estimators=300, max_features = 3) 
-rf.fit(training_set[:,[1,2,3,5,6,7,8,11,13,14,20,21]].astype(float),training_set[:,0])
+rf.fit(training_set[:,[2,3,5,6,7,8,11,13,14,17,20,21]].astype(float),training_set[:,0])
 
 def predict_class(mag, magerr):
     """This function uses machine learning to classify any given lightcurve as either
