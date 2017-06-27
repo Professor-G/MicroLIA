@@ -8,7 +8,7 @@ from stats_computation import compute_statistics
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-training_set = np.loadtxt('training_set_all.txt', dtype = str)
+training_set = np.loadtxt('training_set.txt', dtype = str)
 rf = RandomForestClassifier(n_estimators=300, max_features = 3) 
 rf.fit(training_set[:,[2,3,5,6,7,8,11,13,14,17,20,21]].astype(float),training_set[:,0])
 
