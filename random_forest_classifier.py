@@ -25,8 +25,8 @@ def predict_class(mag, magerr):
         
     stat_array = compute_statistics(mag, magerr)
       
-    prediction =rf.predict(stat_array[0:12])#.astype(float)
-    probability_prediction = rf.predict_proba(stat_array[0:12])
+    prediction =rf.predict(stat_array[0:13])#.astype(float)
+    probability_prediction = rf.predict_proba(stat_array[0:13])
     
     return prediction, probability_prediction[:,3]
     
