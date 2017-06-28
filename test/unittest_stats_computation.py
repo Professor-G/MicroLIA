@@ -44,7 +44,7 @@ class Test(unittest.TestCase):
         value.assertEqual( sc.stetsonK(mag, magerr), 0.70898031447518206, "stetsonK function failed" )
     
     def test_median_buffer_range(value):
-        value.assertEqual( sc.median_buffer_range(mag, magerr), 0.23076923076923078, "Median Buffer Range function failed")
+        value.assertEqual( sc.median_buffer_range(mag, magerr), 0.15384615384615385, "Median Buffer Range function failed")
     
     def test_median_buffer_range(value):
         value.assertEqual( sc.median_buffer_range2(mag, magerr), 0.0, "Median Buffer Range2 function failed")
@@ -86,7 +86,7 @@ class Test(unittest.TestCase):
         value.assertEqual( sc.deviation(mag, magerr), 0.3703013051804151, "Standard Deviation function failed")
     
     def test_compute_statistics(value):
-        value.assertEqual( sc.compute_statistics(mag, magerr), (6.1866744592471097, 35.73018979880348, 7.7924269178998333, 0.77789008863456521, 73.105694334803772, 0.70898031447518206, 0.23076923076923078, 0.020281331511023799, 6.0, 0.0, 0.5, 0.35577398610092409), "Compute Statistics function failed")
+        value.assertEqual( sc.compute_statistics(mag, magerr), (6.1866744592471097, 35.73018979880348, 7.7924269178998333, 0.77789008863456521, 73.105694334803772, 0.70898031447518206, 0.0, 0.0, 0.15384615384615385, 0.0, 0.020281331511023799, 6.0, 0.35577398610092409), "Compute Statistics function failed")
 
 unittest.main()
     
