@@ -354,10 +354,10 @@ def median_buffer_range(mag, magerr):
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
-    amplitude = np.max(mag) - np.min(mag)  
+    amp = amplitude(mag, magerr) 
     mean = meanMag(mag, magerr)
-    a = mean - amplitude/10. 
-    b = mean + amplitude/10. 
+    a = mean - amp/10. 
+    b = mean + amp/10. 
     
     median_buffer_range = len(np.argwhere((mag > a) & (mag < b))) / n
     
@@ -375,9 +375,9 @@ def median_buffer_range2(mag, magerr):
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
-    amplitude = np.max(mag) - np.min(mag)  
+    amp = amplitude(mag, magerr) 
     mean = meanMag(mag, magerr)
-    a = mean - amplitude/5. 
+    a = mean - amp/5. 
  
     
     median_buffer_range = len(np.argwhere((mag < a))) / n
@@ -628,8 +628,8 @@ def compute_statistics(mag, magerr):
        #           below1(mag, magerr), below3(mag, magerr),below5(mag, magerr), above1(mag, magerr), 
         #          above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr))
     
-    stat_array = (auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), 
-                  vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), 
-                  std_over_mean(mag, magerr), below1(mag, magerr), above1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr))              
+    stat_array = (auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr), 
+                  stetsonJ(mag, magerr), stetsonK(mag, magerr), con(mag, magerr), con2(mag, magerr), median_buffer_range(mag, magerr), 
+                  median_buffer_range2(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), RootMS(mag, magerr))              
   
     return stat_array
