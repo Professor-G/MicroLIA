@@ -407,7 +407,7 @@ def amplitude(mag, magerr):
     measurement and the lowest magnitude measurement. To account for outliers, an array of the
     absolute value of the magnitude minus weighted mean is created. From this array, a 5% 
     threshold is applied such that top 5% of points are ommitted as outliers and the amplitude
-    is left to be defined as the maximun magnitude minus the minium magnitude of the remaining points. 
+    is left to be defined as the maximun magnitude minus the minimum magnitude of the remaining points. 
     
     :param mag: the time-varying intensity of the lightcurve. Must be an array.
     :param magerr: photometric error for the intensity. Must be an array.
