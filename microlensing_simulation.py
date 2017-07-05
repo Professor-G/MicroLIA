@@ -51,6 +51,7 @@ def simulate_microlensing(time, mag, magerr):
     microlensing_mag = zp - 2.5*np.log10(flux_obs)
     
     return microlensing_mag  
+
     print('u_0 :',u_0, 't_0 :',t_0, 't_e :', t_e)
     
 def plot_microlensing(time, mag, magerr):
