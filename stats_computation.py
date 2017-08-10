@@ -7,6 +7,7 @@ Created on Thu Jan 12 14:30:12 2017
 import numpy as np
 from astropy.stats import median_absolute_deviation
 from scipy.integrate import quad
+from scipy.cluster.hierarchy import fclusterdata
 
 def shannon_entropy(mag, magerr):
     """Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
@@ -21,7 +22,8 @@ def shannon_entropy(mag, magerr):
     
     :rtype: float
     """
-     
+    
+    
     mag, magerr = remove_bad(mag, magerr)
     
     mean =  meanMag(mag, magerr)   
@@ -96,6 +98,7 @@ def shannon_entropy(mag, magerr):
     """      
     total_entropy = np.nan_to_num(shannon_entropy1(mag, magerr) + shannon_entropy2(mag, magerr))
     return total_entropy
+
    
 def auto_correlation(mag, magerr):
     """The autocorrelation integral calculates the correlation of a given signal as a function of 
@@ -111,7 +114,7 @@ def auto_correlation(mag, magerr):
     
     mag, magerr = remove_bad(mag, magerr)    
     n = np.float(len(mag))
-    mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     RMS = RootMS(mag, magerr)
     t = range(1, len(mag))
         
@@ -129,41 +132,29 @@ def auto_correlation(mag, magerr):
     auto_corr = abs(sum([x*y for x,y in zip(sum_list, val_list)]))        
    
     return auto_corr
-    
+"""
 def con(mag, magerr):
-    """Con is defined as the number of clusters containing three or more 
-    consecutive observations with magnitudes brighter than the reference
-    magnitude plus 3 standard deviations. For a microlensing event Con = 1, 
-    assuming a  flat lightcurve prior to the event. The magnitude measurements 
-    are split into bins such that the reference  magnitude is defined as the mean 
-    of the measurements in the largest bin.
-    
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.  
-    :param magerr: photometric error for the intensity. Must be an array.
 
-    :rtype: float
-    """
+
+
     
-    mag, magerr = remove_bad(mag, magerr)
-    diff = mag - meanMag(mag, magerr)
-    hist, edges = np.histogram(diff, bins = 10)
-    val = np.where(hist == max(hist))
-    bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
     
-    mean = meanMag(mag[bin_range], magerr[bin_range])
     std = deviation(mag, magerr)
-    deviatingThreshold = mean - 3*std    
+    
+    
+    deviatingThreshold = median - magerr
     con = 0  
     deviating = False
     
-    a = np.argwhere(mag < deviatingThreshold)
+    a = np.argwhere(magerr < deviatingThreshold)
+    
     if len(a) < 3:
         return 0
     else:
-        for i in xrange(len(mag)-2):
-            first = mag[i]
-            second = mag[i+1]
-            third = mag[i+2]    
+        for i in xrange(len(magerr)-2):
+            first = magerr[i]
+            second = magerr[i+1]
+            third = magerr[i+2]
             if (first <= deviatingThreshold and
                 second <= deviatingThreshold and
                 third <= deviatingThreshold):
@@ -173,19 +164,33 @@ def con(mag, magerr):
                     elif deviating:
                         deviating = False
 
-    return con
-    
-def con2(mag, magerr):
-    """Con is defined as the number of clusters containing three or more 
-    consecutive observations with magnitudes brighter than the mean plus
-    2 standard deviations. For a microlensing event Con = 1, assuming a 
-    flat lightcurve prior to the event. 
-    
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.  
-    :param magerr: photometric error for the intensity. Must be an array.
 
-    :rtype: float
-    """
+    con2 = 0
+    deviating = False
+    a = np.argwhere(magerr < deviatingThreshold)
+    deviatingThreshold = median + magerr
+
+    if len(a) < 3:
+        return 0
+    else:
+        for i in xrange(len(mag)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if (first <= deviatingThreshold and
+                second <= deviatingThreshold and
+                third <= deviatingThreshold):
+                    if (not deviating):
+                        con += 1
+                        deviating = True
+                    elif deviating:
+                        deviating = False
+
+    return con + con2
+
+
+def con2(mag, magerr):
+
     
     mag, magerr = remove_bad(mag, magerr)
     diff = mag - meanMag(mag, magerr)
@@ -199,7 +204,8 @@ def con2(mag, magerr):
     con = 0  
     deviating = False
     
-    a = np.argwhere(mag < deviatingThreshold)
+    a = np.argwhere(magerr < deviatingThreshold)
+    
     if len(a) < 3:
         return 0
     else:
@@ -217,7 +223,106 @@ def con2(mag, magerr):
                         deviating = False
 
     return con
+"""
+
+def con(mag, magerr):
+    """Con is defined as the number of clusters containing three or more
+        consecutive observations with magnitudes brighter than the median
+        magnitude plus 3 standard deviations. For a microlensing event Con = 1,
+        assuming a  flat lightcurve prior to the event.
+        :param mag: the time-varying intensity of the lightcurve. Must be an array.
+        :param magerr: photometric error for the intensity. Must be an array.
+        
+        :rtype: float
+    """
     
+    #diff = mag - meanMag(mag, magerr)
+    #hist, edges = np.histogram(diff, bins = 10)
+    #val = np.where(hist == max(hist))
+    #bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
+    
+    mag, magerr = remove_bad(mag, magerr)
+    median = np.median(mag)
+    
+    deviatingThreshold = np.array(median - magerr)
+    con = 0
+    deviating = False
+    
+    a = np.argwhere(magerr < deviatingThreshold)
+    
+    if len(a) < 3:
+        return 0
+    else:
+        for i in xrange(len(magerr)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if ((first <= deviatingThreshold[i]).all() == True and
+                (second <= deviatingThreshold[i+1]).all() == True and
+                (third <= deviatingThreshold[i+2]).all() == True):
+                if (not deviating):
+                    con += 1
+                    deviating = True
+                elif deviating:
+                    deviating = False
+
+    con2 = 0
+    deviating = False
+
+    deviatingThreshold = np.array(median + magerr)
+    a = np.argwhere(magerr > deviatingThreshold)
+    
+    if len(a) < 3:
+        return 0
+    else:
+        for i in xrange(len(mag)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if ((first >= deviatingThreshold).all() == True and
+                (second >= deviatingThreshold).all() == True and
+                (third >= deviatingThreshold).all() == True):
+                if (not deviating):
+                    con2 += 1
+                    deviating = True
+                elif deviating:
+                    deviating = False
+
+    return con + con2
+
+
+def con2(mag, magerr):
+    """Only looks at bin below the reference magnitude
+    """
+
+    mag, magerr = remove_bad(mag, magerr)
+    median = np.median(mag)
+    
+    deviatingThreshold = np.array(median + magerr)
+    con = 0
+    deviating = False
+    
+    a = np.argwhere(magerr > deviatingThreshold)
+    
+    if len(a) < 3:
+        return 0
+    else:
+        for i in xrange(len(mag)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if ((first >= deviatingThreshold).all() == True and
+                (second >= deviatingThreshold).all() == True and
+                (third >= deviatingThreshold).all() == True):
+                if (not deviating):
+                    con += 1
+                    deviating = True
+                elif deviating:
+                    deviating = False
+
+    return con
+
+
 def kurtosis(mag, magerr):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve. 
     It's a measure of the peakedness (or flatness) of the lightcurve relative 
@@ -230,7 +335,8 @@ def kurtosis(mag, magerr):
     """""
     
     mag, magerr = remove_bad(mag, magerr)
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     std = deviation(mag, magerr)
    
     n = np.float(len(mag))
@@ -238,24 +344,7 @@ def kurtosis(mag, magerr):
     (3.*((n-1.)**2)/((n-2.)*(n-3.)))
     return kurtosis
         
-def kurtosis2(mag, magerr):
-    """
-    Same kurtosis function in a different form. From SIDRA algorithm paper. See: (SIDRA: a blind 
-    algorithm for signal detection in photometric surveys, D. Mislis et al., 2015).
-    
-    :param mag: the time-varying intensity of the lightcurve. Must be an array.
-    :param magerr: photometric error for the intensity. Must be an array.
 
-    :rtype: float
-    """
-    
-    mag, magerr = remove_bad(mag, magerr)
-    mean = meanMag(mag, magerr)
-    std = deviation(mag, magerr)
-    
-    kurt = sum(((mag - mean)**4)/std**4)
-    return kurt
-    
 def skewness(mag, magerr):
     """Skewness measures the assymetry of a lightcurve, with a positive skewness
     indicating a skew to the right, and a negative skewness indicating a skew to the left. 
@@ -267,7 +356,8 @@ def skewness(mag, magerr):
     """
     
     mag, magerr = remove_bad(mag, magerr)
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     std = deviation(mag, magerr)
     n = np.float(len(mag))
     
@@ -308,7 +398,8 @@ def stetsonJ(mag, magerr):
 
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     delta_list = []
     
     for i in range(0, len(mag)):
@@ -333,7 +424,8 @@ def stetsonK(mag, magerr):
     
     mag, magerr = remove_bad(mag, magerr)            
     n = np.float(len(mag))
-    mean = meanMag(mag, magerr)    
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     
     delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
         
@@ -355,7 +447,8 @@ def median_buffer_range(mag, magerr):
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
     amp = amplitude(mag, magerr) 
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     a = mean - amp/10. 
     b = mean + amp/10. 
     
@@ -376,7 +469,8 @@ def median_buffer_range2(mag, magerr):
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
     amp = amplitude(mag, magerr) 
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     a = mean - amp/5. 
  
     
@@ -419,7 +513,7 @@ def amplitude(mag, magerr):
     array_list = [] 
     
     for i in range(0, len(mag)):
-        array = np.abs(mag[i] - meanMag(mag, magerr))
+        array = np.abs(mag[i] -np.median(mag))
         array_list.append(array)
         
     index = np.argsort(array_list)
@@ -430,7 +524,29 @@ def amplitude(mag, magerr):
     amplitude = np.max(mag) - np.min(mag)
     
     return amplitude
+
+def median_distance(mjd, mag, magerr):
     
+    bad = np.where(np.isnan(magerr) == True)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delete(mjd, bad)
+
+    mag1 = (mag[1:] - mag[:-1])**2
+    time1 = (mjd[1:] - mjd[:-1])**2
+
+    distance = np.median(np.sqrt(mag1 + time1))
+    return distance
+
+def clusters(mag, magerr):
+    
+    mag, magerr = remove_bad(mag, magerr)
+    new_mag = mag.reshape(len(mag), 1)
+
+    cluster = fclusterdata(new_mag, 0.1, criterion='distance')
+    num_clusters =  len(np.unique(cluster))
+    return num_clusters
+
 def above1(mag, magerr):
     """This function measures the ratio of data points that are above 1 standard deviation 
     from the mean magnitude.
@@ -558,7 +674,8 @@ def RootMS(mag, magerr):
     """
     
     mag, magerr = remove_bad(mag, magerr)
-    mean = meanMag(mag, magerr)
+    #mean = meanMag(mag, magerr)
+    mean = np.median(mag)
     rms = np.sqrt(sum(((mag - mean)/magerr)**2)/sum(1./magerr**2))
     
     return rms
@@ -602,15 +719,25 @@ def remove_bad(mag, magerr):
     
     rtype: float
     """
-         
+    
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
     
     return mag, magerr
 
+def beyond1std(mag, magerr):
+    
+    num = above1(mag, magerr)
+    above1_std = np.float(num/len(mag))
+    
+    num2 = below1(mag, magerr)
+    below1_std = np.float(num2/len(mag))
+    tot_beyond = below1_std + above1_std
+    
+    return tot_beyond
         
-def compute_statistics(mag, magerr):
+def compute_statistics(mjd, mag, magerr):
     """This function will compute all the statistics and return them in an array in the 
     following order: shannon_entropy, auto_correlation, kurtosis, skewness, vonNeumannRatio,
     stetsonJ, stetsonK, median_buffer_Rance, std_over_mean, std_over_mean, below1, medianAbdsDev, RMS
@@ -622,14 +749,13 @@ def compute_statistics(mag, magerr):
     :rtype: array, float
     """
     
-    #stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr), kurtosis2(mag, magerr), 
-     #             skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), con(mag, magerr), 
-      #            con2(mag, magerr), median_buffer_range(mag, magerr), median_buffer_range2(mag, magerr), std_over_mean(mag, magerr), 
-       #           below1(mag, magerr), below3(mag, magerr),below5(mag, magerr), above1(mag, magerr), 
-        #          above3(mag, magerr), above5(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr))
+    stat_array = (shannon_entropy(mag, magerr), auto_correlation(mag, magerr), kurtosis(mag, magerr),
+             skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), con(mag, magerr),
+  median_buffer_range(mag, magerr), median_buffer_range2(mag, magerr), std_over_mean(mag, magerr),
+                medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr), median_distance(mjd, mag, magerr), clusters(mag, magerr), deviation(mag, magerr), beyond1std(mag, magerr), con(mag, magerr), con2(mag, magerr))
     
-    stat_array = (auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr), 
-                  stetsonJ(mag, magerr), stetsonK(mag, magerr), con(mag, magerr), con2(mag, magerr), median_buffer_range(mag, magerr), 
-                  median_buffer_range2(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), RootMS(mag, magerr))              
+    #stat_array = (auto_correlation(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr),
+    #               stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr),
+    #              median_buffer_range2(mag, magerr), std_over_mean(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr))
   
     return stat_array
