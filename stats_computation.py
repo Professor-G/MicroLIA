@@ -526,12 +526,22 @@ def amplitude(mag, magerr):
     return amplitude
 
 def median_distance(mjd, mag, magerr):
+
+    bad = np.where(mag == 0)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delete(mjd, bad)
     
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
     mjd = np.delete(mjd, bad)
-
+    
+    bad = np.where(np.isfinite == False)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delete(mjd, bad)
+    
     mag1 = (mag[1:] - mag[:-1])**2
     time1 = (mjd[1:] - mjd[:-1])**2
 
@@ -720,7 +730,19 @@ def remove_bad(mag, magerr):
     rtype: float
     """
     
+    bad = np.where(magerr == 0)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    
+    bad = np.where(mag == 0)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    
     bad = np.where(np.isnan(magerr) == True)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    
+    bad = np.where(np.isfinite == False)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
     
