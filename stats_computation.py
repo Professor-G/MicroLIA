@@ -742,7 +742,7 @@ def remove_bad(mag, magerr):
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
     
-    bad = np.where(np.isfinite == False)
+    bad = np.where(np.isfinite(magerr) == False)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
     
