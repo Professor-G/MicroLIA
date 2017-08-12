@@ -31,29 +31,32 @@ def simulate_microlensing(time, mag, magerr):
     
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
+    mjd = np.delete(time, bad)
     mag = np.delete(mag, bad)
     
-    u_0 = np.random.uniform(low = 0, high = 1.0, size = 1)
+    u_0 = np.random.uniform(low = 0, high = 1.5, size = 1)
     t_0 = np.random.choice(time)
     t_e = np.random.normal(loc = 30, scale = 10.0, size = 1)
     
     zp = 23.4
     g = np.random.uniform(0,10)
     
-    u_t = np.sqrt(u_0**2 + ((time - t_0) / t_e)**2)
+    u_t = np.sqrt(u_0**2 + ((mjd - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
     
     flux = 10**((mag - zp) / -2.5)
-    f_s = flux / (1 + g)
+    baseline = np.mean(mag)
+    flux_base = np.median(flux)
+    flux_noise = flux-flux_base
+    f_s = flux_base / (1 + g)
     f_b = g * f_s
     
-    flux_obs = f_s*magnification + f_b
+    flux_obs = f_s*magnification + f_b+flux_noise
     microlensing_mag = zp - 2.5*np.log10(flux_obs)
     
-    return microlensing_mag  
+    return mjd, microlensing_mag, magerr, u_0, t_0, t_e, baseline, f_b, f_s
 
-    print('u_0 :',u_0, 't_0 :',t_0, 't_e :', t_e)
-    
+
 def plot_microlensing(time, mag, magerr):
     """Plots a simulated microlensing event from an inserted flat lightcurve.
     
@@ -64,8 +67,8 @@ def plot_microlensing(time, mag, magerr):
     :return: the function will return a plot of the microlensing lightcurve.
     :rtype: plot
     """    
-        
-    intensity = simulate_microlensing(time, mag, magerr)
+    
+    intensity = simulate_microlensing(time, mag, magerr)[1]
     
     plt.errorbar(time, intensity, yerr = magerr, fmt='o')
     plt.gca().invert_yaxis
