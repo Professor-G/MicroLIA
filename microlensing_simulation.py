@@ -12,7 +12,7 @@ from stats_computation import compute_statistics
 
 def simulate_microlensing(time, mag, magerr):
     """Simulates a microlensing event given the inserted flat lightcurve. The angular 
-    impact parameter is chosen from a random distribution between 0.0 and 1.0. 
+    impact parameter is chosen from a random distribution between 0.0 and 1.5. 
     Likewise the time of maximum amplification t_0 is chosen from a normal 
     distribution with a mean of 20 days and a standard deviation of 5 days and 
     the timescale t_e from a uniform distribution between 0.0 and 30 days. 
