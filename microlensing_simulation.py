@@ -13,9 +13,8 @@ from stats_computation import compute_statistics
 def simulate_microlensing(time, mag, magerr, zp = 25):
     """Simulates a microlensing event given the inserted flat lightcurve. The angular 
     impact parameter is chosen from a random distribution between 0.0 and 1.5.
-    Likewise the time of maximum amplification t_0 is chosen from a normal 
-    distribution with a mean of 20 days and a standard deviation of 5 days and 
-    the timescale t_e from a uniform distribution between 0.0 and 30 days. 
+    Likewise the time of maximum amplification t_0 is chosen randomly and
+    the timescale t_e is selected from a uniform distribution between 0.0 and 30 days. 
     These parameter spaces were determined given an analysis of the OGLE III
     microlensing survey. See: The OGLE-III planet detection efficiency from six 
     years of microlensing observations (2003 to 2008), (Y. Tsapras et al (2016)).
