@@ -765,22 +765,22 @@ def lomb_scargle(mjd, mag, magerr):
     bad = np.where(magerr == 0)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
-    mjd = np.delelte(mjd, bad)
+    mjd = np.delete(mjd, bad)
     
     bad = np.where(mag == 0)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
-    mjd = np.delelte(mjd, bad)
+    mjd = np.delete(mjd, bad)
 
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
-    mjd = np.delelte(mjd, bad)
+    mjd = np.delete(mjd, bad)
     
     bad = np.where(np.isfinite(magerr) == False)
     magerr = np.delete(magerr, bad)
     mag = np.delete(mag, bad)
-    mjd = np.delelte(mjd, bad)
+    mjd = np.delete(mjd, bad)
 
 
     def frequency_grid(times):
