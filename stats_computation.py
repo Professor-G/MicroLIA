@@ -8,6 +8,7 @@ import numpy as np
 from astropy.stats import median_absolute_deviation
 from scipy.integrate import quad
 from scipy.cluster.hierarchy import fclusterdata
+from astroML.time_series import lomb_scargle
 
 def shannon_entropy(mag, magerr):
     """Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
@@ -758,7 +759,49 @@ def beyond1std(mag, magerr):
     tot_beyond = below1_std + above1_std
     
     return tot_beyond
-        
+
+def lomb_scargle(mjd, mag, magerr):
+
+    bad = np.where(magerr == 0)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delelte(mjd, bad)
+    
+    bad = np.where(mag == 0)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delelte(mjd, bad)
+
+    bad = np.where(np.isnan(magerr) == True)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delelte(mjd, bad)
+    
+    bad = np.where(np.isfinite(magerr) == False)
+    magerr = np.delete(magerr, bad)
+    mag = np.delete(mag, bad)
+    mjd = np.delelte(mjd, bad)
+
+
+    def frequency_grid(times):
+        freq_min = 2*np.pi / (times[-1]-times[0])
+        freq_max = np.pi / np.median(times[1:]-times[:-1])
+        n_bins = np.floor((freq_max-freq_min)/freq_min * 5.)
+        # print 'Using {} bins'.format(n_bins)
+        return np.linspace(freq_min, freq_max, n_bins)
+    
+    def LS_peak_to_period(omegas, P_LS):
+    """find the highest peak in the LS periodogram and return the corresponding period."""
+        max_freq = omegas[np.argmax(P_LS)]
+    return 2*np.pi/max_freq
+
+    omegas = frequency_grid(mjd)
+    P_LS = lomb_scargle( mjd, mag, magerr, omegas, generalized=True)
+    best_period = LS_peak_to_period(omegas, P_LS)
+
+    return best_period
+
+
 def compute_statistics(mjd, mag, magerr):
     """This function will compute all the statistics and return them in an array in the 
     following order: shannon_entropy, auto_correlation, kurtosis, skewness, vonNeumannRatio,
