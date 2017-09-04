@@ -793,7 +793,7 @@ def lomb_scargle(mjd, mag, magerr):
     def LS_peak_to_period(omegas, P_LS):
     """find the highest peak in the LS periodogram and return the corresponding period."""
         max_freq = omegas[np.argmax(P_LS)]
-    return 2*np.pi/max_freq
+        return 2*np.pi/max_freq
 
     omegas = frequency_grid(mjd)
     P_LS = lomb_scargle( mjd, mag, magerr, omegas, generalized=True)
