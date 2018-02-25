@@ -10,7 +10,7 @@ This is an open source algorithm that utilizes machine learning to classify a gi
 ![alt text](https://user-images.githubusercontent.com/19847448/36644907-f044aeda-1a2e-11e8-80b6-706d83ffdcf1.png)
 
 # pyLIMA
-The algorithm implements pyLIMA as an additional filter when a microlensing candidate is detected. This is an open source for modeling microlensing events, and must be installed for the algorithm to work (please see: https://github.com/ebachelet/pyLIMA). By restricitng fitted parameters, we are able to eliminiate false alerts from misclassified transients and variables.
+The algorithm implements pyLIMA as an additional filter when a microlensing candidate is detected. This is an open source for modeling microlensing events, and must be installed for the algorithm to work (please see: https://github.com/ebachelet/pyLIMA). By restricitng fitted parameters, we are able to eliminiate false alerts from misclassified transients and variables. Microlensing detections that don't fall within this parameter space are thus classified as OTHER.
 
 # Installation 
 Clone the repository or download to a local system as a ZIP file. 
