@@ -4,12 +4,6 @@ Created on Thu Jan 12 14:30:12 2017
 
 @author: danielgodinez
 """
-# -*- coding: utf-8 -*-
-"""
-    Created on Thu Jan 12 14:30:12 2017
-    
-    @author: danielgodinez
-    """
 from __future__ import print_function
 import numpy as np
 from astropy.stats import median_absolute_deviation
