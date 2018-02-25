@@ -91,13 +91,14 @@ def shannon_entropy(mag, magerr):
         inv_list3 = [1 if i <= 0 else i for i in inv_list1]
         inv_list4 = [1 if i <= 0 else i for i in inv_list2]
         
-    entropy = -sum(np.log2(inv_list3)*d_delta + np.log2(inv_list4)*d_delta)
-    return entropy
+        entropy = -sum(np.log2(inv_list3)*d_delta + np.log2(inv_list4)*d_delta)
+        return entropy
 
-"""The total Shannon Entropy is calculated by adding the values calculated using both the normal
+    """
+    The total Shannon Entropy is calculated by adding the values calculated using both the normal
     and inverse Gaussian CDF
     """
-        total_entropy = np.nan_to_num(shannon_entropy1(mag, magerr) + shannon_entropy2(mag, magerr))
+    total_entropy = np.nan_to_num(shannon_entropy1(mag, magerr) + shannon_entropy2(mag, magerr))
     return total_entropy
 
 
