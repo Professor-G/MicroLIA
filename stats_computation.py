@@ -569,7 +569,7 @@ def remove_bad(mag, magerr):
     
     return mag, magerr
 
-def remove_bad2(mjd, mag, magerr):
+def remove_allbad(mjd, mag, magerr):
     """Function to remove bad photometric points"""
     
     bad = np.where(np.isfinite(magerr) == True)
