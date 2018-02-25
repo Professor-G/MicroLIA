@@ -612,11 +612,3 @@ def compute_statistics(mjd, mag, magerr):
     
     return stat_array
 
-
-
-
-
-
-
-
-
