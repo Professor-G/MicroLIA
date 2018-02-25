@@ -132,7 +132,6 @@ def auto_correlation(mag, magerr):
         val_list.append(val)
     
     auto_corr = abs(sum([x*y for x,y in zip(sum_list, val_list)]))
-
     return auto_corr
 
 def con(mag, magerr):
@@ -201,9 +200,6 @@ def con(mag, magerr):
 
     return con + con2
 
-
-
-
 def kurtosis(mag, magerr):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve.
         It's a measure of the peakedness (or flatness) of the lightcurve relative
@@ -225,7 +221,6 @@ def kurtosis(mag, magerr):
         kurtosis = 0
     
     return kurtosis
-
 
 def skewness(mag, magerr):
     """Skewness measures the assymetry of a lightcurve, with a positive skewness
@@ -345,7 +340,6 @@ def median_buffer_range2(mag, magerr):
     
     return median_buffer_range
 
-
 def std_over_mean(mag, magerr):
     """A measure of the ratio of standard deviation and mean, both weighted by the errors.
         
@@ -358,7 +352,6 @@ def std_over_mean(mag, magerr):
     
     std_over_mean = std/mean
     return std_over_mean
-
 
 def amplitude(mag, magerr):
     """The amplitude of the lightcurve defined as the difference between the maximum magnitude
@@ -609,7 +602,6 @@ def compute_statistics(mjd, mag, magerr):
     
     stat_array = (shannon_entropy(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr), median_distance(mjd, mag, magerr))
     
-
     
     return stat_array
 
