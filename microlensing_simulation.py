@@ -7,7 +7,7 @@ Created on Wed Oct 19 15:30:15 2016
 from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
-from stats_computation import compute_statistics
+from stats_computation import compute_statistics, remove_allbad
 
 
 def simulate_microlensing(time, mag, magerr, zp = 25):
@@ -28,7 +28,7 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
     as well as the following simulation parameters: u_0, t_0, t_e, baseline, f_b, f_s.
     """
     
-    mjd, mag, magerr = remove_bad(mjd, mag, magerr)
+    mjd, mag, magerr = remove_allbad(mjd, mag, magerr) #removes bad points
 
 
     #Simulates microlensing event but rejects events with poor signal!
@@ -79,64 +79,5 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
     else:
         return mjd, microlensing_mag, magerr, u_0, t_0, t_e, baseline, f_b, f_s
 
-def plot_microlensing(time, mag, magerr):
-    """Plots a simulated microlensing event from an inserted flat lightcurve.
-    
-    :param time: the time-varying data of the lightcurve. Must be an array.  
-    :param mag: the time-varying intensity of the object. Must be an array.
-    :param magerr: photometric error for the intensity. Must be an array.
-    
-    :return: the function will return a plot of the microlensing lightcurve.
-    :rtype: plot
-    """    
-    
-    intensity = simulate_microlensing(time, mag, magerr)[1]
-    
-    plt.errorbar(time, intensity, yerr = magerr, fmt='o')
-    plt.gca().invert_yaxis
-    plt.xlabel('Time')
-    plt.ylabel('Intensity')
-    plt.title('Simulated Microlensing')
-    plt.show()
-    
-def microlensing_statistics(time, mag, magerr):
-    """Simulates a microlensing event given an inserted lightcurve, and calculates
-    various lightcurve statistics from the compute_statistics function.
 
-    :param time: the time-varying data of the lightcurve. Must be an array.
-    :param mag: the time-varying intensity of the object. Must be an array.
-    :param magerr: photometric error for the intensity. Must be an array.
-    
-    :return: the function will return the lightcurve statistics.
-    :rtype: array 
-    """
-            
-    microlensing_mag = simulate_microlensing(time, mag, magerr)
-    stats = compute_statistics(microlensing_mag, magerr)
-    
-    return stats
 
-def remove_bad(mjd, mag, magerr):
-    """Function to remove bad photometric points"""
-    
-    bad = np.where(np.isfinite(magerr) == True)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(time, bad)
-    mag = np.delete(mag, bad)
-    
-    bad = np.where(np.isnan(magerr) == True)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(time, bad)
-    mag = np.delete(mag, bad)
-    
-    bad = np.where(magerr == 0)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(time, bad)
-    mag = np.delete(mag, bad)
-    
-    bad = np.where(mag == 0)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(time, bad)
-    mag = np.delete(mag, bad)
-
-    return mjd, mag, magerr
