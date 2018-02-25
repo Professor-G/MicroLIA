@@ -3,19 +3,25 @@
 
 # Microlensing Detection
 
-This is an open source algorithm that utilizes machine learning to classify a given lightcurve as either a constant source, a cataclysmic variable (CV), an RR Lyrae variable, or a microlensing event. The algorithm uses only the photometric data (magnitude + error) to compute statistical metrics and through the Random Forest algorithm classify the source. 
+This is an open source algorithm that utilizes machine learning to classify a given lightcurve as either a constant source, a cataclysmic variable (CV), an RR Lyrae variable, a microlensing event, or other. The algorithm uses photometric data (time + magnitude + error) to compute statistical metrics and through the Random Forest algorithm classify the source. This algorithm has been optimized for microlensing detection, with the algorithm being trained with simulated microlensing events from real data. Lightcurves from all other classes are from the intermediate Palomar Transient Factory (iPTF).
 
-# Installation
+# Algorithm Performance
+![alt text](https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png)
+![alt text](https://user-images.githubusercontent.com/19847448/36644907-f044aeda-1a2e-11e8-80b6-706d83ffdcf1.png)
 
+# pyLIMA
+The algorithm implements pyLIMA as an additional filter when a microlensing candidate is detected. This is an open source for modeling microlensing events, and must be installed for the algorithm to work (please see: https://github.com/ebachelet/pyLIMA). By restricitng fitted parameters, we are able to eliminiate false alerts from misclassified transients and variables.
+
+# Installation 
 Clone the repository or download to a local system as a ZIP file. 
 
-It's best to work off the same directory in which the package is saved, so that the modules can be called directly, such as: 
+It's best to work off the same directory in which the package (as well as pyLIMA) is saved, so that the modules can be called directly, such as: 
 
 from **random_forest_classifier** import **predict_class**
 
 # Required libraries
 
-The code is written entirely in python, and makes use of several familiar packages. They are:
+In addition to pyLIMA, the code is written entirely in python, and makes use of several familiar packages. They are:
 * numpy
 * scipy
 * astropy
