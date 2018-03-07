@@ -15,8 +15,8 @@ import csv
 import os
 
 training_set = np.loadtxt('Training_dataset.txt', dtype = str)
-rf = RandomForestClassifier(n_estimators=300, max_features = 3)
-rf.fit(training_set[:,[2,3,5,6,7,8,9,10,11,12,13,14,21]].astype(float),training_set[:,0])
+rf = RandomForestClassifier(n_estimators=300, max_features = None)
+rf.fit(training_set[:,[1,3,4,5,6,7,10,12,13,19,20,21,22]].astype(float),training_set[:,0])
 
 
 def predict_class(mjd, mag, magerr):
@@ -61,6 +61,7 @@ def predict_class(mjd, mag, magerr):
         to_err = your_event.fits[0].outputs.fit_errors.err_to
         tE_err = your_event.fits[0].outputs.fit_errors.err_tE
         uo_err = your_event.fits[0].outputs.fit_errors.err_uo
+        
         Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
         uo = your_event.fits[0].outputs.fit_parameters.uo
         to = your_event.fits[0].outputs.fit_parameters.to
@@ -69,18 +70,19 @@ def predict_class(mjd, mag, magerr):
         
         if to_err*tE_err*uo_err == 0.0:
             
-            print 'LM method failed -- changed fitting method to differential evolution.
+            print 'Fitting now...'
             
-            your_event.fit(model_1,'DE', DE_population_size = 2)
-            your_event.fits[0].produce_outputs()
+            your_event.fit(model_1,'DE')
+            your_event.fits[-1].produce_outputs()
             plt.close()
-            Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
-            uo = your_event.fits[0].outputs.fit_parameters.uo
-            to = your_event.fits[0].outputs.fit_parameters.to
-            tE = your_event.fits[0].outputs.fit_parameters.tE
-            reduced_chi = Chi2/(len(mjd)-4.0)
-       
+            Chi2 = your_event.fits[-1].outputs.fit_parameters.chichi
+            uo = your_event.fits[-1].outputs.fit_parameters.uo
+            to = your_event.fits[-1].outputs.fit_parameters.to
+            tE = your_event.fits[-1].outputs.fit_parameters.tE
+            reduced_chi = 3.0
+                
         os.remove('temporary.txt')
+        
         if tE >= 1 and uo != 0 and uo < 2.0 and reduced_chi <= 3.0 and len(np.argwhere(((to - np.abs(tE)) < mjd) & ((to + np.abs(tE)) > mjd))) >= 2:
             prediction = prediction
             print 'Mirolensing candidate detected with parameters { uo:', uo,'|tE:', tE,'|to:', to,'}'
