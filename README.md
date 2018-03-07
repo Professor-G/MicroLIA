@@ -1,5 +1,5 @@
 # A Gravitational Microlensing Detection Algorithm
-<img src="https://avatars0.githubusercontent.com/u/3358238?v=3&s=200" width="250" height="250">                       <img src="https://user-images.githubusercontent.com/19847448/37118270-b0fc1d9e-2221-11e8-9246-b59761cfcf23.png" width="700" height="450">
+<img src="https://avatars0.githubusercontent.com/u/3358238?v=3&s=200" width="200" height="200">                       <img src="https://user-images.githubusercontent.com/19847448/37118270-b0fc1d9e-2221-11e8-9246-b59761cfcf23.png" width="700" height="450">
 
 
 # Random Forest Classifier
@@ -7,7 +7,7 @@
 This is an open source algorithm that utilizes machine learning to classify a given lightcurve as either a constant source, a cataclysmic variable (CV), an RR Lyrae variable, a microlensing event, or other. The algorithm uses photometric data (time + magnitude + error) to compute statistical metrics and through the Random Forest algorithm classify the source. This algorithm has been optimized for microlensing detection, with the algorithm being trained with simulated microlensing events from real data. Lightcurves from all other classes are from the intermediate Palomar Transient Factory (iPTF).
 
 # Algorithm Performance
-<img src="https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png" width="450" height="420">                       <img src="https://user-images.githubusercontent.com/19847448/36644907-f044aeda-1a2e-11e8-80b6-706d83ffdcf1.png" width="420" height="420">
+<img src="https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png" width="400" height="450">                       <img src="https://user-images.githubusercontent.com/19847448/36644907-f044aeda-1a2e-11e8-80b6-706d83ffdcf1.png" width="420" height="420">
 
 # pyLIMA
 The algorithm implements pyLIMA as an additional filter when a microlensing candidate is detected. This is an open source for modeling microlensing events, and must be installed for the algorithm to work (please see: https://github.com/ebachelet/pyLIMA). By restricitng fitted parameters, we are able to eliminiate false alerts from misclassified transients and variables. Microlensing detections that don't fall within this parameter space are then classified as OTHER.
