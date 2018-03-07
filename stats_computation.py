@@ -24,7 +24,6 @@ def shannon_entropy(mag, magerr):
         :rtype: float
         """
     
-    
     mag, magerr = remove_bad(mag, magerr)
     
     mean =  meanMag(mag, magerr)
@@ -225,7 +224,7 @@ def skewness(mag, magerr):
         indicating a skew to the right, and a negative skewness indicating a skew to the left.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     #mean = meanMag(mag, magerr)
@@ -244,7 +243,7 @@ def vonNeumannRatio(mag, magerr):
         See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
 
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
@@ -263,7 +262,7 @@ def stetsonJ(mag, magerr):
         See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
@@ -286,7 +285,7 @@ def stetsonK(mag, magerr):
         See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
 
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
@@ -305,7 +304,7 @@ def median_buffer_range(mag, magerr):
         amplitude value over the mean
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
@@ -324,7 +323,7 @@ def median_buffer_range2(mag, magerr):
         value over the mean
   
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     n = np.float(len(mag))
@@ -342,7 +341,7 @@ def std_over_mean(mag, magerr):
     """A measure of the ratio of standard deviation and mean, both weighted by the errors.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     mean = meanMag(mag, magerr)
@@ -359,7 +358,7 @@ def amplitude(mag, magerr):
         is left to be defined as the maximun magnitude minus the minimum magnitude of the remaining points.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     array_list = []
@@ -602,4 +601,3 @@ def compute_statistics(mjd, mag, magerr):
     
     
     return stat_array
-
