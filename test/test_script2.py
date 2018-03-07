@@ -11,22 +11,18 @@ import random_forest_classifier as rf
 import numpy as np
 import unittest
 
-data = np.loadtxt('TestML_2')
+data = np.loadtxt('ML__0.55__268.33051201___-30.21089307_.txt')
 
+hjd = data[:,0]
 mag = data[:,1]
 magerr = data[:,2]
 
 class Test(unittest.TestCase):
     def test_compute_statistics(value):
-        value.assertEqual( sc.compute_statistics(mag, magerr), (0.87383493175485616, 45.801672292354191,
-                          -6.4480083062854563, 1.5740162737474053, 517.25538087579378, 0.55438404839089117, 0.0, 1.0,
-                           0.9071235347159603, 0.027051397655545536, 0.0053277971807380031, 82, 0.09804122669179631), "Statistics array incorrect" )
+        value.assertEqual( sc.compute_statistics(mag, magerr), (10.639980200569692, -1.3951623050335764, -0.88075925533940425, 0.0293252276553836, 4191.4315058255061, 0.58676955737970438, 0.2366412213740458, 0.031868709124813495, 50, 0.26666000000000167, 0.76975206077278036, 1.5553899999999992, 0.059940895316137464), "Statistics array incorrect" )
          
     def test_predict_class(value):
         value.assertEqual( rf.predict_class(mag, magerr)[0], ['ML'], "Incorrect classification")
         
-    def test_prob_prediction(value):
-        value.assertGreater(rf.predict_class(mag, magerr)[1], 0.5, msg = "Incorrect probability prediction")
-    
 unittest.main()
 
