@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from pyLIMA import event
 from pyLIMA import telescopes
 from pyLIMA import microlmodels
-from stats_computation2 import compute_statistics
+from stats_computation import compute_statistics
 import csv
 import os
 
@@ -26,8 +26,7 @@ def predict_class(mjd, mag, magerr):
         
         :param time: the time-varying data of the lightcurve. Must be an array.
         :param mag: the time-varying intensity of the object. Must be an array.
-        :param accuracy: when accuracy is 2 the algorithm repeats the RF prediction
-        three times for a more accurate, averaged result. Default is 1 with no repetition.
+        :param magerr: photometric error for the intensity. Must be an array.
         
         :return: the function will return the predicted class along with the probability that it's microlensing.
         :rtype: string, float
@@ -58,19 +57,35 @@ def predict_class(mjd, mag, magerr):
         your_event.fit(model_1,'LM')
         your_event.fits[0].produce_outputs()
         plt.close()
-        os.remove('temporary.txt')
         
+        to_err = your_event.fits[0].outputs.fit_errors.err_to
+        tE_err = your_event.fits[0].outputs.fit_errors.err_tE
+        uo_err = your_event.fits[0].outputs.fit_errors.err_uo
         Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
         uo = your_event.fits[0].outputs.fit_parameters.uo
         to = your_event.fits[0].outputs.fit_parameters.to
         tE = your_event.fits[0].outputs.fit_parameters.tE
         reduced_chi = Chi2/(len(mjd)-4.0)
         
+        if to_err*tE_err*uo_err == 0.0:
+            
+            print 'LM method failed -- changed fitting method to differential evolution.
+            
+            your_event.fit(model_1,'DE', DE_population_size = 2)
+            your_event.fits[0].produce_outputs()
+            plt.close()
+            Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
+            uo = your_event.fits[0].outputs.fit_parameters.uo
+            to = your_event.fits[0].outputs.fit_parameters.to
+            tE = your_event.fits[0].outputs.fit_parameters.tE
+            reduced_chi = Chi2/(len(mjd)-4.0)
+       
+        os.remove('temporary.txt')
         if tE >= 1 and uo != 0 and uo < 2.0 and reduced_chi <= 3.0 and len(np.argwhere(((to - np.abs(tE)) < mjd) & ((to + np.abs(tE)) > mjd))) >= 2:
             prediction = prediction
             print 'Mirolensing candidate detected with parameters { uo:', uo,'|tE:', tE,'|to:', to,'}'
         else:
-            prediction = 'BAD'
+            prediction = 'OTHER'
             print 'False alert -- fitted PSPL parameters not within range'
 
     return prediction, np.float(probability_prediction)
