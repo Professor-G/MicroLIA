@@ -6,9 +6,7 @@
 This is an open source algorithm that utilizes machine learning to classify a given lightcurve as either a constant source, a cataclysmic variable (CV), an RR Lyrae variable, a microlensing event, or other. The algorithm uses photometric data (time + magnitude + error) to compute statistical metrics and through the Random Forest algorithm classify the source. This algorithm has been optimized for microlensing detection, with the algorithm being trained with simulated microlensing events from real data. Lightcurves from all other classes are from the intermediate Palomar Transient Factory (iPTF).
 
 # Algorithm Performance
-![alt text](https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png){:class="img-responsive"}
-![alt text](https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png){:height="50%" width="50%"}
-![alt text](https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png){:height="700px" width="400px"}
+<img src="https://user-images.githubusercontent.com/19847448/36644558-fa4297f8-1a29-11e8-987b-9b1b22779c5a.png" width="400" height="790">
 
 ![alt text](https://user-images.githubusercontent.com/19847448/36644907-f044aeda-1a2e-11e8-80b6-706d83ffdcf1.png)
 
