@@ -16,9 +16,6 @@ The main module that classifies the lightcurve is the **random_forest_classifier
 
 When a lightcurve is flagged as a potential microlensing candidate, a PSPL fit is attempted using the Levenberg-Marquardt algorithm. Microlensing parameters (t<sub>o</sub>, u<sub>o</sub>, t<sub>E</sub>) as well as the reduced chi-squred must fall within a reasonable parameter space otherwise the algorihtm forwards the event as a false-alert. If the LM fit fails, another attempt is made using the differential evolution algorithm -- in this case the reduced chi-squared is fixed to the maximum accepted value of 3.0, as outliers and poor data are to be expected in this case. For documentation, see: https://ebachelet.github.io/pyLIMA/pyLIMA.microlfits.html.
 
-# Example
-
-
 
 # Installation + Libraries
 Clone the repository or download to a local system as a ZIP file. 
