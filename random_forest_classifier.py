@@ -62,16 +62,9 @@ def predict_class(mjd, mag, magerr):
         tE_err = your_event.fits[0].outputs.fit_errors.err_tE
         uo_err = your_event.fits[0].outputs.fit_errors.err_uo
         
-        Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
-        uo = your_event.fits[0].outputs.fit_parameters.uo
-        to = your_event.fits[0].outputs.fit_parameters.to
-        tE = your_event.fits[0].outputs.fit_parameters.tE
-        reduced_chi = Chi2/(len(mjd)-4.0)
-        
+        #Error volume is 0 when fit is unsuccesful
         if to_err*tE_err*uo_err == 0.0:
-            
-            print 'Fitting now...'
-            
+
             your_event.fit(model_1,'DE')
             your_event.fits[-1].produce_outputs()
             plt.close()
@@ -80,7 +73,13 @@ def predict_class(mjd, mag, magerr):
             to = your_event.fits[-1].outputs.fit_parameters.to
             tE = your_event.fits[-1].outputs.fit_parameters.tE
             reduced_chi = 3.0
-                
+        else:
+            Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
+            uo = your_event.fits[0].outputs.fit_parameters.uo
+            to = your_event.fits[0].outputs.fit_parameters.to
+            tE = your_event.fits[0].outputs.fit_parameters.tE
+            reduced_chi = Chi2/(len(mjd)-4.0)
+        
         os.remove('temporary.txt')
         
         if tE >= 1 and uo != 0 and uo < 2.0 and reduced_chi <= 3.0 and len(np.argwhere(((to - np.abs(tE)) < mjd) & ((to + np.abs(tE)) > mjd))) >= 2:
