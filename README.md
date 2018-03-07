@@ -25,7 +25,7 @@ It's best to work off the same directory in which the package (as well as pyLIMA
 
 from **random_forest_classifier** import **predict_class**
 
-In addition to pyLIMA, the code is written entirely in python, and makes use of several familiar packages. They are:
+Besides pyLIMA, the code is written entirely in python, and makes use of several familiar packages. They are:
 * numpy
 * scipy
 * astropy
