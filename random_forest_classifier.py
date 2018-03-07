@@ -92,3 +92,8 @@ def predict_class(mjd, mag, magerr):
 
     return prediction, np.float(probability_prediction)
 
+data=np.loadtxt('ml_event.txt')
+print predict_class(data[:,0], data[:,1], data[:,2])
+
+
+
