@@ -18,7 +18,6 @@ training_set = np.loadtxt('Training_dataset.txt', dtype = str)
 rf = RandomForestClassifier(n_estimators=300, max_features = None)
 rf.fit(training_set[:,[1,3,4,5,6,7,10,12,13,19,20,21,22]].astype(float),training_set[:,0])
 
-
 def predict_class(mjd, mag, magerr):
     """This function uses machine learning to classify any given lightcurve as either
         a Cataclysmic Variable (CV), a Lyrae Variable, Microlensing, a constant source, or
@@ -47,7 +46,6 @@ def predict_class(mjd, mag, magerr):
             writer.writerows(zip(mjd, mag, magerr))
         
         data = np.loadtxt('temporary.txt')
-        
         your_event = event.Event()
         your_event.name = 'Detection'
         
@@ -64,7 +62,7 @@ def predict_class(mjd, mag, magerr):
         
         #Error volume is 0 when fit is unsuccesful
         if to_err*tE_err*uo_err == 0.0:
-
+            #changing method to differential evolution
             your_event.fit(model_1,'DE')
             your_event.fits[-1].produce_outputs()
             plt.close()
@@ -74,6 +72,7 @@ def predict_class(mjd, mag, magerr):
             tE = your_event.fits[-1].outputs.fit_parameters.tE
             reduced_chi = 3.0
         else:
+         
             Chi2 = your_event.fits[0].outputs.fit_parameters.chichi
             uo = your_event.fits[0].outputs.fit_parameters.uo
             to = your_event.fits[0].outputs.fit_parameters.to
@@ -81,7 +80,6 @@ def predict_class(mjd, mag, magerr):
             reduced_chi = Chi2/(len(mjd)-4.0)
         
         os.remove('temporary.txt')
-        
         if tE >= 1 and uo != 0 and uo < 2.0 and reduced_chi <= 3.0 and len(np.argwhere(((to - np.abs(tE)) < mjd) & ((to + np.abs(tE)) > mjd))) >= 2:
             prediction = prediction
             print 'Mirolensing candidate detected with parameters { uo:', uo,'|tE:', tE,'|to:', to,'}'
