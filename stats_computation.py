@@ -399,7 +399,7 @@ def clusters(mag, magerr):
     """Calculates number of clustered magnitude measurements -- unstable metric
         
         rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     new_mag = mag.reshape(len(mag), 1)
@@ -413,7 +413,7 @@ def above1(mag, magerr):
         from the mean magnitude.
 
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) - deviation(mag, magerr)
@@ -427,7 +427,7 @@ def above3(mag, magerr):
         from the mean magnitude.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) - 3*deviation(mag, magerr)
@@ -441,7 +441,7 @@ def above5(mag, magerr):
         from the mean magnitude.
 
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) - 5*deviation(mag, magerr)
@@ -455,7 +455,7 @@ def below1(mag, magerr):
         from the mean magnitude.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) + deviation(mag, magerr)
@@ -469,7 +469,7 @@ def below3(mag, magerr):
         from the mean magnitude.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) + 3*deviation(mag, magerr)
@@ -483,7 +483,7 @@ def below5(mag, magerr):
         from the mean magnitude.
         
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     a = meanMag(mag, magerr) + 5*deviation(mag, magerr)
@@ -497,7 +497,7 @@ def medianAbsDev(mag, magerr):
         and the mean magnitude.
 
         :rtype: float
-        """
+    """
     
     mag = remove_bad(mag, magerr)[0]
     medianAbsDev = median_absolute_deviation(mag)
@@ -508,7 +508,7 @@ def RootMS(mag, magerr):
     """A measure of the root mean square deviation, weighted by the errors.
 
         :rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     #mean = meanMag(mag, magerr)
@@ -522,7 +522,7 @@ def meanMag(mag, magerr):
     """Calculates mean magnitude, weighted by the errors.
  
         rtype: float
-        """
+    """
     
     mag, magerr = remove_bad(mag, magerr)
     mean = sum(mag/magerr**2)/sum(1./magerr**2)
@@ -533,7 +533,7 @@ def deviation(mag, magerr):
     """Calculates the standard deviation, weighted by the errors.
     
         rtype: float
-        """
+    """
             
     mag, magerr = remove_bad(mag, magerr)
     m = np.float(len(np.argwhere(magerr != 0)))
@@ -546,7 +546,7 @@ def remove_bad(mag, magerr):
         a calculation for photometric error.
         
         rtype: float
-        """
+    """
     
     bad = np.where(np.isnan(magerr) == True)
     magerr = np.delete(magerr, bad)
@@ -579,11 +579,6 @@ def remove_allbad(mjd, mag, magerr):
     
     return mjd, mag, magerr
 
-def compute_top_statistics(mjd, mag, magerr):
-    
-    stat_array = (shannon_entropy(mag, magerr), medianAbsDev(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr))
-    return stat_array
-
 def compute_statistics(mjd, mag, magerr):
     """This function will compute all the statistics and return them in an array in the
         following order: shannon_entropy, kurtosis, skewness, vonNeumannRatio, stetsonJ,
@@ -593,9 +588,9 @@ def compute_statistics(mjd, mag, magerr):
         :param mag: the time-varying intensity of the lightcurve. Must be an array.
         :param magerr: photometric error for the intensity. Must be an array.
         
-        :return: the function will return an array with the statistics.
+        :return: array.
         :rtype: array, float
-        """
+    """
     
     stat_array = (shannon_entropy(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr), median_distance(mjd, mag, magerr))
     
