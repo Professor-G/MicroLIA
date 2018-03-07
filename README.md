@@ -39,8 +39,7 @@ To make sure that the algorithm is working, please run the following test script
 * test_script1
 * test_script2
 
-Both test scripts should classify the test lightcurve as microlensing. For an additional test, run the **stats_computation_unittest** to ensure that all the statistical metrics are working as intended.
-
+Both test scripts should classify the test lightcurve as microlensing. 
 # How to Contribute?
 
 Want to contribute? Bug detections? Comments? Please email us : dg7541@bard.edu, etibachelet@gmail.com, rstreet@lcogt.net
