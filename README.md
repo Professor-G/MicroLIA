@@ -1,5 +1,5 @@
 # A Gravitational Microlensing Detection Algorithm 
-<img src="https://user-images.githubusercontent.com/19847448/37119294-e7734a5c-2224-11e8-8d06-930c600c5e1d.jpg" width="800" height="600">
+<img src="https://user-images.githubusercontent.com/19847448/37119294-e7734a5c-2224-11e8-8d06-930c600c5e1d.jpg" width="900" height="500">
 
 
 # Random Forest Classifier
