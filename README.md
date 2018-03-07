@@ -19,17 +19,11 @@ When a lightcurve is flagged by the RF as a potential microlensing candidate, a 
 
 
 # Installation + Libraries
-Clone the repository or download to a local system as a ZIP file. 
-
-It's best to work off the same directory in which the package (as well as pyLIMA) is saved, so that the modules can be called directly, such as: 
+Clone the repository or download to a local system as a ZIP file. It's best to work off the same directory in which the package (as well as pyLIMA) is saved, so that the modules can be called directly, such as: 
 
 from **random_forest_classifier** import **predict_class**
 
-Besides pyLIMA, the code is written entirely in python, and makes use of several familiar packages. They are:
-* numpy
-* scipy
-* astropy
-* sklearn
+Besides pyLIMA, the code is written entirely in python, and makes use of familiar packages including sklearn and scipy.
 
 
 # Test Script
