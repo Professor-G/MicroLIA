@@ -594,5 +594,4 @@ def compute_statistics(mjd, mag, magerr):
     
     stat_array = (shannon_entropy(mag, magerr), kurtosis(mag, magerr), skewness(mag, magerr), vonNeumannRatio(mag, magerr), stetsonJ(mag, magerr), stetsonK(mag, magerr), median_buffer_range(mag, magerr), std_over_mean(mag, magerr), below1(mag, magerr), medianAbsDev(mag, magerr), RootMS(mag, magerr), amplitude(mag, magerr), median_distance(mjd, mag, magerr))
     
-    
     return stat_array
