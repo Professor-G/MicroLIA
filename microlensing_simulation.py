@@ -13,13 +13,25 @@ from stats_computation import compute_statistics, remove_allbad
 def simulate_microlensing(time, mag, magerr, zp = 25):
     """Simulates a microlensing event given the inserted flat lightcurve. The angular 
     impact parameter is chosen from a random distribution between 0.0 and 1.5.
-    Likewise the time of maximum amplification t_0 is chosen randomly and
-    the timescale t_e is selected from a uniform distribution between 0.0 and 30 days. 
-    These parameter spaces were determined given an analysis of the OGLE III
-    microlensing survey. See: The OGLE-III planet detection efficiency from six 
-    years of microlensing observations (2003 to 2008), (Y. Tsapras et al (2016)).
+    The time of maximum amplification t_0 is chosen randomly and the timescale t_e is selected 
+    from a uniform distribution between 0.0 and 30 days. These parameter spaces were determined
+    given an analysis of the OGLE III microlensing survey. See: The OGLE-III planet detection
+    efficiency from six years of microlensing observations (2003 to 2008), (Y. Tsapras et al (2016)).
     
-    :param time: the time-varying data of the lightcurve. Must be an array.   
+    The main purpose of simulating events with real lightcurves is the advantage of creating
+    a training set that reflects the candence of any given survey. The ML events simulated and
+    currently in the training set were derived from flat iPTF lightcurves, but can be easily
+    modified by removing all ML entries in the training set with simulated events  of your own (400 
+    for consistency). Record the following values for each event and replace the ML rows in the training set:
+    
+    [ML, (shannonentropy), (autocorrelation), (kurtosis), (skewness), (vonNeumannRatio), (stetsonJ), 
+    (stetsonK), (con), (con2), (medianbufferrange), (medianbufferrange2), (stdovermean), (below1), 
+    (below3), (below5), (above1), (above3), (above5), (medianAbsDev), (RMS), (amplitude), (mediandistance), (clusters)]
+    
+    All the above statistics can be derived using the functions available in the stats_computation module.
+  
+    
+    :param time: the time-varying data of the lightcurve. Must be an array.
     :param mag: the time-varying intensity of the object. Must be an array.   
     :param magerr: photometric error for the intensity. Must be an array.
     :param zp: zeropoint of the instrument that measured the inserted lightcurve. Default is 25.
@@ -70,7 +82,7 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
             list1.append(value)
                                                     
         list1 = np.array(list1)
-                                                        
+        
         if len(np.argwhere(list1 >= 3)) > 0 and m2 < (m1 - 0.05) and ((magnitude[to_index] - mag[to_index])/magerr[to_index]) >= 3.5 and len(np.argwhere(list1 > 3)) >= 0.33*len(signal_measurements) and (1.0/u_0) > (f_s/f_b):
                 
             n = n + 1
