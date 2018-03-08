@@ -81,7 +81,6 @@ def predict_class(mjd, mag, magerr):
         
         os.remove('temporary.txt')
         if tE >= 1 and uo != 0 and uo < 2.0 and reduced_chi <= 3.0 and len(np.argwhere(((to - np.abs(tE)) < mjd) & ((to + np.abs(tE)) > mjd))) >= 2:
-            prediction = prediction
             print 'Mirolensing candidate detected with parameters { uo:', uo,'|tE:', tE,'|to:', to,'}'
         else:
             prediction = 'OTHER'
