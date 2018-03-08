@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stats_computation import compute_statistics, remove_allbad
 
-
 def simulate_microlensing(time, mag, magerr, zp = 25):
     """Simulates a microlensing event given the inserted flat lightcurve. The angular 
     impact parameter is chosen from a random distribution between 0.0 and 1.5.
@@ -21,8 +20,9 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
     The main purpose of simulating events with real lightcurves is the advantage of creating
     a training set that reflects the candence of any given survey. The ML events simulated and
     currently in the training set were derived from flat iPTF lightcurves, but can be easily
-    modified by removing all ML entries in the training set with simulated events  of your own (400 
-    for consistency). Record the following values for each event and replace the ML rows in the training set:
+    replaced by removing all ML entries in the training set with simulated events from your own
+    flat lightcurves (simulate 400 for consistency). Record the following values for each
+    event and replace the ML rows in the training set:
     
     [ML, (shannonentropy), (autocorrelation), (kurtosis), (skewness), (vonNeumannRatio), (stetsonJ), 
     (stetsonK), (con), (con2), (medianbufferrange), (medianbufferrange2), (stdovermean), (below1), 
@@ -30,7 +30,6 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
     
     All the above statistics can be derived using the functions available in the stats_computation module.
   
-    
     :param time: the time-varying data of the lightcurve. Must be an array.
     :param mag: the time-varying intensity of the object. Must be an array.   
     :param magerr: photometric error for the intensity. Must be an array.
@@ -89,6 +88,4 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
 
     else:
         return mjd, microlensing_mag, magerr, u_0, t_0, t_e, baseline, f_b, f_s
-
-
 
