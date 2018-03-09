@@ -197,6 +197,38 @@ def con(mag, magerr):
 
     return con + con2
 
+def con2(mag, magerr):
+    """Only looks at the bin below the reference magnitude. 
+        Note: Not helpful.
+        """
+    
+    mag, magerr = remove_bad(mag, magerr)
+    median = np.median(mag)
+    
+    deviatingThreshold = np.array(median + magerr)
+    con = 0
+    deviating = False
+    
+    a = np.argwhere(magerr > deviatingThreshold)
+    
+    if len(a) < 3:
+        return 0
+    else:
+        for i in xrange(len(mag)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if ((first >= deviatingThreshold).all() == True and
+                (second >= deviatingThreshold).all() == True and
+                (third >= deviatingThreshold).all() == True):
+                if (not deviating):
+                    con += 1
+                    deviating = True
+                elif deviating:
+                    deviating = False
+
+    return con
+
 def kurtosis(mag, magerr):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve.
         It's a measure of the peakedness (or flatness) of the lightcurve relative
@@ -257,8 +289,9 @@ def vonNeumannRatio(mag, magerr):
     return vonNeumannRatio
 
 def stetsonJ(mag, magerr):
-    """The variability index K was first suggested by Peter B. Stetson and serves as a
-        measure of the kurtosis of the magnitude distribution.
+    """The variability index J was first suggested by Peter B. Stetson and serves as a
+        measure of the correlation between the data points, tending to 0 for variable stars 
+        and getting large as the difference between the successive data points increases.
         See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
         :rtype: float
@@ -580,9 +613,11 @@ def remove_allbad(mjd, mag, magerr):
     return mjd, mag, magerr
 
 def compute_statistics(mjd, mag, magerr):
-    """This function will compute all the statistics and return them in an array in the
-        following order: shannon_entropy, kurtosis, skewness, vonNeumannRatio, stetsonJ,
-        stetsonK, median_buffer_Rance, std_over_mean, below1, medianAbdsDev, RMS, amplitude, MedDistance
+    """This function will compute the statistics used to train the RF, returns in an array in the
+        following order: 
+        
+        [shannon_entropy, kurtosis, skewness, vonNeumannRatio, stetsonJ, stetsonK, median_buffer_Rance, 
+        std_over_mean, below1, medianAbdsDev, RMS, amplitude, MedDistance]
         
         :param time: the time-varying data of the lightcurve. Must be an array.
         :param mag: the time-varying intensity of the lightcurve. Must be an array.
