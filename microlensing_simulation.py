@@ -36,7 +36,7 @@ def simulate_microlensing(time, mag, magerr, zp = 25):
     :param zp: zeropoint of the instrument that measured the inserted lightcurve. Default is 25.
     
     :return: the function will return the simulated lightcurve (mjd, mag, magerr)
-    as well as the following simulation parameters: u_0, t_0, t_e, baseline, source flux(f_b), source flux(f_s).
+    as well as the following simulation parameters: u_0, t_0, t_e, baseline, blend flux(f_b), source flux(f_s).
     """
     
     mjd, mag, magerr = remove_allbad(mjd, mag, magerr) #removes bad points
