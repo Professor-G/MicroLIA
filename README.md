@@ -1,4 +1,4 @@
-https://zenodo.org/badge/78798347.svg
+ [![DOI](https://zenodo.org/badge/78798347.svg)](https://zenodo.org/badge/latestdoi/78798347)
 # A Gravitational Microlensing Detection Algorithm 
 <img src="https://user-images.githubusercontent.com/19847448/37119532-ae69efbc-2225-11e8-81bf-a21ae6a21978.jpg" width="900" height="500">
 
