@@ -25,7 +25,7 @@ def create_models(all_feats, pca_feats):
     pca_model : fn
         PCA transformation.
     """
-    coeffs = np.loadtxt(all_feats,usecols=np.arange(1,48))
+    coeffs = np.loadtxt(all_feats,usecols=np.arange(2,49))
     pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
