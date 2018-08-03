@@ -24,9 +24,8 @@ def shannon_entropy(mag, magerr):
         :param magerr: photometric error for the intensity. Must be an array.
         
         :rtype: float
-        """
+    """
     
-    #mean =  meanMag(mag, magerr)
     mean = np.median(mag)
     RMS = root_mean_squared(mag)
     
@@ -163,9 +162,8 @@ def kurtosis(mag):
         to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
         
         :rtype: float
-        """""
     
-    #mean = meanMag(mag, magerr)
+    """
     mean = np.median(mag)
     std = np.std(mag)
     n = np.float(len(mag))
@@ -183,9 +181,8 @@ def skewness(mag):
         indicating a skew to the right, and a negative skewness indicating a skew to the left.
         
         :rtype: float
-        """
+    """
     
-    #mean = meanMag(mag, magerr)
     mean = np.median(mag)
     std = np.std(mag)
     n = np.float(len(mag))
@@ -193,7 +190,6 @@ def skewness(mag):
         skewness = (1./n)*sum((mag - mean)**3/std**3)
     except ZeroDivisionError:
         skewness = 0.0
-    #skewness = skew(mag, axis = 0, bias = True)
     return skewness
 
 def vonNeumannRatio(mag):
@@ -203,7 +199,7 @@ def vonNeumannRatio(mag):
         See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
         
         :rtype: float
-        """
+    """
     
     n = np.float(len(mag))
     delta = sum((mag[1:] - mag[:-1])**2 / (n-1.))
@@ -223,10 +219,9 @@ def stetsonJ(mag, magerr):
         See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
         :rtype: float
-        """
+    """
     
     n = np.float(len(mag))
-    #mean = meanMag(mag, magerr)
     mean = np.median(mag)
     delta_list=[]
     
@@ -250,13 +245,12 @@ def stetsonK(mag, magerr):
     """  
     
     n = np.float(len(mag))
-    #mean = meanMag(mag, magerr)
     mean = np.median(mag)
     try:
         delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
     except ZeroDivisionError:
         delta = 0.0
-    #delta = ((mag - mean)/magerr)
+
     try:
         stetsonK = ((1./n)*sum(abs(delta)))/(np.sqrt((1./n)*sum(delta**2)))
     except ZeroDivisionError:
@@ -265,6 +259,16 @@ def stetsonK(mag, magerr):
     return np.nan_to_num(stetsonK)
 
 def stetsonL(mag,magerr):
+    """The variability index L was first suggested by Peter B. Stetson and serves as a
+        means of distinguishing between different types of variation. When individual random
+        errors dominate over the actual variation of the signal, K approaches 0.798 (Gaussian limit).
+        Thus, when the nature of the errors is Gaussian, stetsonL = stetsonJ, except it will be amplified
+        by a small factor for smoothly varying signals, or suppressed by a large factor when data
+        is infrequent or corrupt.
+        See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
+        
+        :rtype: float
+    """  
     
     stetL = (stetsonJ(mag,magerr)*stetsonK(mag,magerr)) / 0.798
     return stetL
@@ -493,6 +497,8 @@ def remove_allbad(mjd, mag, magerr):
 
 def peak_detection(mag):
     """Function to detect number of peaks.
+    
+        rtype: int
     """
     
     mag = abs(mag - np.median(mag))
@@ -505,64 +511,96 @@ def peak_detection(mag):
     
     return len(indices)
 
+# The following features are derived using the Python package tsfresh.
+# Please see: http://tsfresh.readthedocs.io/en/latest/
+
 def abs_energy(mag):
-    #Returns the absolute energy of the time series, summed over the squared values
+    """Returns the absolute energy of the time series, summed over the squared values.
+
+        rtype: float
+    """
     energy = ts.abs_energy(mag)
     return energy
 
 def abs_sum_changes(mag):
-    #Returns sum over the abs value of consecutive changes in mag
-    
+    """Returns sum over the abs value of consecutive changes in mag.
+
+    rtype: float
+    """
     val = ts.absolute_sum_of_changes(mag)
     return val
 
 def auto_corr(mag):
-    #Autocorrelation with specified lag of len - 1
+    """Autocorrelation with specified lag of len - 1
+
+    rtype:float
+    """
     auto_corr = ts.autocorrelation(mag, 1)
     return auto_corr
 
 def c3(mag):
-    """
-    Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
+    """A measure of non-linearity.
+    See: Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
     Discrimination power of measures for nonlinearity in a time series
     PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
+
+    rtype: float
     """
     c3 = ts.c3(mag, 1)
     return c3
 
 def complexity(mag):
-    """
-    This function calculator is an estimate for a time series complexity
-    (A more complex time series has more peaks, valleys etc.).
-    Batista, Gustavo EAPA, et al (2014).
-    CID: an efficient complexity-invariant distance for time series.
-    Data Mining and Knowledge Difscovery 28.3 (2014): 634-669.
+    """This function calculator is an estimate for a time series complexity.
+    A higher value represents more complexity (more peaks,valleys,etc.)
+    See: Batista, Gustavo EAPA, et al (2014). CID: an efficient complexity-invariant 
+    distance for time series. Data Mining and Knowledge Difscovery 28.3 (2014): 634-669.
+
+    rtype: float
     """
     c = ts.cid_ce(mag, True)
     return c
 
 def count_above(mag):
-    #Number of values higher than mean(mag)
+    """Number of values higher than mean(mag)
+
+    rtype: int
+    """
     num = ts.count_above_mean(mag)
     return num
 
 def count_below(mag):
-    #Number of values below the mean(mag)
+    """Number of values below the mean(mag)
+
+    rtype: int
+    """
     num = ts.count_below_mean(mag)
     return num
 
 def first_loc_max(mag):
-    #returns location of maximum mag relative to len(mag)
+    """Returns location of maximum mag relative to the 
+    lenght of mag array.
+
+    rtype: float
+    """
     loc = ts.first_location_of_maximum(mag)
     return loc
 
 def first_loc_min(mag):
-    #returns location of minimum mag relative to len(mag)
+    """Returns location of minimum mag relative to the 
+    lenght of mag array.
+
+    rtype: float
+    """
+
     loc = ts.first_location_of_minimum(mag)
     return loc
 
 def check_for_duplicate(mag):
-    #checks if any val in mag repeats
+    """Checks if any val in mag repeats.
+    1 if True, 0 if False
+
+    rtype: int
+    """
     check = str(ts.has_duplicate(mag))
     if check == 'False':
         val = 0.0
@@ -571,7 +609,11 @@ def check_for_duplicate(mag):
     return val
 
 def check_for_max_duplicate(mag):
-    #checks if any val in mag repeats
+    """Checks if the maximum value in mag repeats.
+    1 if True, 0 if False
+
+    rtype: float
+    """
     check = str(ts.has_duplicate_max(mag))
     if check == 'False':
         val = 0.0
@@ -580,7 +622,12 @@ def check_for_max_duplicate(mag):
     return val
 
 def check_for_min_duplicate(mag):
-    #checks if any val in mag repeats
+    """Checks if the minimum value in mag repeats.
+    1 if True, 0 if False
+
+    rtype: float
+    """
+    checks if any val in mag repeats
     check = str(ts.has_duplicate_min(mag))
     if check == 'False':
         val = 0.0
@@ -589,70 +636,107 @@ def check_for_min_duplicate(mag):
     return val
 
 def check_max_last_loc(mag):
-    #Returns relative position of last max(mag)
+    """Returns position of last maximum mag relative to
+    the length of mag array.
+
+    rtype: float
+    """
     val = ts.last_location_of_maximum(mag)
     return val
 
 def check_min_last_loc(mag):
-    #Returns relative position of last min(mag)
+    """Returns position of last minimum mag relative to
+    the length of mag array.
+
+    rtype: float
+    """
     val = ts.last_location_of_minimum(mag)
     return val
 
 def longest_strike_above(mag):
-    #Returns the length of the longest consecutive subsequence in mag that is bigger than mean(mag)
+    """Returns the length of the longest consecutive subsequence in 
+    mag that is bigger than the mean. 
+
+    rtype: int
+    """
     val = ts.longest_strike_above_mean(mag)
     return val
 
 def longest_strike_below(mag):
-    #Returns the length of the longest consecutive subsequence in mag that is smaller than mean(mag)
+    """Returns the length of the longest consecutive subsequence in mag 
+    that is smaller than mean
+
+    rtype: int
+    """
     val = ts.longest_strike_below_mean(mag)
     return val
 
 def mean_change(mag):
-    #Returns mean over the differences between subsequent observations
+    """Returns mean over the differences between subsequent observations/
+
+    rtype: float
+    """
     val = ts.mean_change(mag)
     return val
 
 def mean_abs_change(mag):
-    #Returns mean over the abs differences between subsequent observations
+    """Returns mean over the abs differences between subsequent observations.
+
+    rtype: float
+    """
     val = ts.mean_abs_change(mag)
     return val
 
 def mean_second_derivative(mag):
-    #Returns the mean value of a central approximation of the second derivative
+    """Returns the mean value of a central approximation of the second derivative.
+
+    rtype: float
+    """
     val = ts.mean_second_derivative_central(mag)
     return val
 
 def ratio_recurring_points(mag):
-    """
-    Returns the ratio of unique values, that are present in the time series more than once.
+    """Returns the ratio of unique values, that are present in the time 
+    series more than once, normalized to the number of data points. 
     
-    # of data points occurring more than once / # of all data points
-    This means the ratio is normalized to the number of data points in the time series
+    rtype: float
     """
     val = ts.percentage_of_reoccurring_values_to_all_values(mag)
     return val
 
 def sample_entropy(mag):
-    """Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy"""
+    """Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
+    
+    rtype: float
+    """
     entropy = ts.sample_entropy(mag)
     return entropy
 
 def sum_values(mag):
-    #Sums over all mag values
+    """Sums over all mag values.
+
+    rtype: float
+    """
     val = ts.sum_values(mag)
     return val
 
 def time_reversal_asymmetry(mag):
-    """Fulcher, B.D., Jones, N.S. (2014).
-        Highly comparative feature-based time-series classification.
+    """Derives a feature introduced by Fulcher.
+        See: Fulcher, B.D., Jones, N.S. (2014). Highly comparative 
+        feature-based time-series classification.
         Knowledge and Data Engineering, IEEE Transactions on 26, 3026–3037.
+
+    rtype: float
     """
     val = ts.time_reversal_asymmetry_statistic(mag, 1)
     return val
 
 def normalize(mag, magerr):
-    "Scale mag between 0 and 1, scaling magerr in process"
+    """Normalizes the magnitude to range from 0 to 1, scaling
+    magerr in the proccess.
+
+    rtype: array
+    """
     mag2 = (mag - np.min(mag)) / np.ptp(mag)
     magerr = magerr*(mag2/mag)
     
