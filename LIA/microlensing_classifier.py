@@ -13,7 +13,7 @@ import sys
 sys.path.append('/lib')
 from extract_features import extract_all
 
-def predict_class(mag, magerr, rf_model, pca_model):
+def predict(mag, magerr, rf_model, pca_model):
     """This function uses machine learning to classify any given lightcurve as either
         a Cataclysmic Variable (CV), a Variable source, Microlensing, or a constant star 
         displaying no variability.
