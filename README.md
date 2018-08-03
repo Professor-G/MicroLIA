@@ -15,7 +15,7 @@ The **simulate** module contains the framework necessary for simulating all indi
 from LIA import training_set
 
 time = range(0,366,1)
-training_set.create_training(time, min_base = 15, max_base=20, noise=None, q=500)
+training_set.create(time, min_base = 15, max_base=20, noise=None, q=500)
 ```
 
 This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files with labeled classes, one titled ‘all_features’ containing all 47 statistical values, and the other titled ‘pca_features’ containing only the principal components. We need the two text files to construct the required models.
