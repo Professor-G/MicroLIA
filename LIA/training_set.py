@@ -10,14 +10,12 @@ from astropy.io import fits
 from sklearn import decomposition
 import os
 
-import sys
-sys.path.append('/lib')
-import simulate
-from noise_models import add_noise, add_gaussian_noise
-from quality_check import test_microlensing, test_cv
-from extract_features import extract_all
+from LIA.lib import simulate
+from LIA.lib import noise_models
+from LIA.lib import quality_check
+from LIA.lib import extract_features
     
-def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
+def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     """Creates a training dataset using adaptive cadence.
     Simulates each class q times, adding errors from
     a noise model either defined using the create_noise
@@ -37,7 +35,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     noise : function, optional 
 		Noise model, can be created using the create_noise function.
 		If None it defaults to adding Gaussian noise. 
-    q : int, optional
+    n_class : int, optional
 		The amount of lightcurve (per class) to simulate.
         Defaults to 1000. 
 
@@ -50,8 +48,8 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     pca_stats : txt file
         A txt file containing all PCA features plus class label. 
     """
-    if q < 12:
-        raise ValueError("q must be at least 12 for principal components to be calculated.")
+    if n_class < 12:
+        raise ValueError("n_class must be at least 12 for principal components to be calculated.")
 
     times_list=[]
     mag_list=[]
@@ -61,15 +59,15 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     stats_list = []
 
     print "Now simulating variables..."
-    for i in range(1,q+1):
+    for i in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_base,max_base)
         mag, amplitude, period = simulate.variable(time,baseline)
            
         if noise is not None:
-		mag, magerr = add_noise(mag, noise)
+		mag, magerr = noise_models.add_noise(mag, noise)
         if noise is None:
-           mag, magerr = add_gaussian_noise(mag)
+           mag, magerr = noise_models.add_gaussian_noise(mag)
 
         source_class = ['VARIABLE']*len(time)
         source_class_list.append(source_class)
@@ -81,68 +79,68 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_all(mag,magerr)
+        stats = extract_features.extract_all(mag,magerr)
         stats = [i for i in stats]
-        stats = ['VARIABLE'] + stats
+        stats = ['VARIABLE'] + [i] + stats
         stats_list.append(stats)
         
     print "Variables successfully simulated"
     print "Now simulating constants..."
-    for i in range(1,q+1):
+    for i in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_base, max_base)
         mag = simulate.constant(time, baseline)
         
         if noise is not None:
-		mag, magerr = add_noise(mag, noise)
+		mag, magerr = noise_models.add_noise(mag, noise)
         if noise is None:
-           mag, magerr = add_gaussian_noise(mag)
+           mag, magerr = noise_models.add_gaussian_noise(mag)
            
         source_class = ['CONSTANT']*len(time)
         source_class_list.append(source_class)
 
-        id_num = [2*q+i]*len(time)
+        id_num = [2*n_class+i]*len(time)
         id_list.append(id_num)
 
         times_list.append(time)
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_all(mag,magerr)
+        stats = extract_features.extract_all(mag,magerr)
         stats = [i for i in stats]
-        stats = ['CONSTANT'] + stats
+        stats = ['CONSTANT'] + [2*n_class+i] + stats
         stats_list.append(stats)
         
     print "Constants successfully simulated"
     print "Now simulating CV..."
-    for i in range(1,q+1):
+    for i in range(1,n_class+1):
         for k in range(10000):
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_base, max_base)
             mag, burst_start_times, burst_end_times, end_rise_times, end_high_times= simulate.cv(time, baseline)
             
-            quality = test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times)
+            quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times)
             if quality is True:
                 try:
                     if noise is not None:
-                        mag, magerr=add_noise(mag,noise)
+                        mag, magerr = noise_models.add_noise(mag,noise)
                     if noise is None:
-                        mag, magerr=add_gaussian_noise(mag)
+                        mag, magerr = noise_models.add_gaussian_noise(mag)
                 except ValueError:
                     continue
                 
                 source_class = ['CV']*len(time)
                 source_class_list.append(source_class)
-                id_num = [3*q+i]*len(time)
+                id_num = [3*n_class+i]*len(time)
                 id_list.append(id_num)
             
                 times_list.append(time)
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_all(mag,magerr)
+                stats = extract_features.extract_all(mag,magerr)
                 stats = [i for i in stats]
-                stats = ['CV'] + stats
+                stats = ['CV'] + [3*n_class+i] + stats
                 stats_list.append(stats)
                 break
             if k == 9999:
@@ -150,34 +148,34 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     
     print "CVs successfully simulated"
     print "Now simulating microlensing..."
-    for i in range(1,q+1):
+    for i in range(1,n_class+1):
         for k in range(10000):
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_base, max_base)
             mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline)
             try:
                 if noise is not None:
-                    mag, magerr=add_noise(mag,noise)
+                    mag, magerr = noise_models.add_noise(mag,noise)
                 if noise is None:
-                    mag, magerr=add_gaussian_noise(mag)
+                    mag, magerr= noise_models.add_gaussian_noise(mag)
             except ValueError:
                 continue
                 
-            quality = test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio)
+            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio)
             if quality is True:
                 
                 source_class = ['ML']*len(time)
                 source_class_list.append(source_class)
-                id_num = [4*q+i]*len(time)
+                id_num = [4*n_class+i]*len(time)
                 id_list.append(id_num)
             
                 times_list.append(time)
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_all(mag,magerr)
+                stats = extract_features.extract_all(mag,magerr)
                 stats = [i for i in stats]
-                stats = ['ML'] + stats
+                stats = ['ML'] + [4*n_class+i] + stats
                 stats_list.append(stats)
                 break
             if k == 9999:
@@ -212,14 +210,14 @@ def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
          
     os.remove('feats.txt')
     "Computing principal components..."
-    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(1,48))
+    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
     pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     X_pca = pca.transform(coeffs) 
     
     f = open('pca_features.txt', 'w')
-    classes = ["VARIABLE"]*q+["CONSTANT"]*q+["ML"]*q+["CV"]*q
+    classes = ["VARIABLE"]*n_class+["CONSTANT"]*n_class+["ML"]*n_class+["CV"]*n_class
     np.savetxt(f,np.column_stack(
         ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
          (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
