@@ -36,7 +36,7 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 
 class, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
-We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. More examples, including how to drip-feed your lightcurves into the classifier to visualize real-time performance, are available in the **examples** directory.
+We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. More examples are available in the **examples** directory.
 
 # Test Script
 
