@@ -7,6 +7,25 @@
 
 LIA is an open source program for detecting microlensing events in wide-field surveys. The program first computes 47 statistical features from the lightcurve (mag+magerr), after which it applies a Principal Component Analysis (PCA) for feature dimensionality reduction. These PCA features are then run through a Random Forest ensemble to classify the lightcurve as either a microlensing event, a variable source, a cataclysmic variable (CV), or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created. We provide a default training set that was simulated using ideal cadence, but for optimal performance it’s imperative that a training set matching survey conditions is used.
 
+# Creating a Training Set
+
+The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The “hard” part is aggregating the necessary timestamps you expect the survey to measure. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes; in addition to limiting magnitudes of 15 and 20. As I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model. Now, let’s simulate 500 of each class:
+
+```
+from LIA import create_training
+time = np.arange(1,365,1)
+
+create_training.create_training(time, min_base = 15, max_base=20, fn=None, q=500)
+
+```
+
+This function will output a FITS file title ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. 
+
+
+
+
+
+
 
 # Algorithm Performance
 <img src="https://user-images.githubusercontent.com/19847448/37122785-bf46bf18-222f-11e8-8266-fa0bb1c48dbd.jpg" width="900" height="500">
