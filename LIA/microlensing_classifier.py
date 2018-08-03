@@ -8,10 +8,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import decomposition
 from warnings import warn
-
-import sys
-sys.path.append('/lib')
-from extract_features import extract_all
+from LIA.lib import extract_features
 
 def predict(mag, magerr, rf_model, pca_model):
     """This function uses machine learning to classify any given lightcurve as either
@@ -42,10 +39,10 @@ def predict(mag, magerr, rf_model, pca_model):
         Probability source is variable
     """
     if len(mag) < 10:
-        warn('The number of data points low -- results may be unstable')
+        warn('The number of data points is low -- results may be unstable')
 
     array=[]
-    stat_array = array.append(extract_all(mag, magerr, convert=True))
+    stat_array = array.append(extract_features.extract_all(mag, magerr, convert=True))
     array=np.array(array)
     stat_array = pca_model.transform(array)
     
