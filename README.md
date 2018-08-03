@@ -19,7 +19,26 @@ create_training.create_training(time, min_base = 15, max_base=20, fn=None, q=500
 
 ```
 
-This function will output a FITS file title ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. 
+This function will output a FITS file title ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled “all_features” containing all 47 statistical values, and the other titled “pca_features” containing only the principal components. We need the two text files to construct the required models.
+
+```
+from LIA import create_models
+rf, pea = create_models.create_models
+```
+With the RF model trained and the PCA transformation saved, we are ready to classify any light curve.
+
+```
+from LIA import microlensing_classifier
+#create imaginary light curve
+mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
+magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
+
+class, ml_pred = microlensing_classifier.predict_class(mag,magerr,rf,pca)[0:2]
+```
+We’re interested only in the predicted class and the probability it’s microlensing, but in principle you can output all predictions if you want. 
+
+
+ 
 
 
 
