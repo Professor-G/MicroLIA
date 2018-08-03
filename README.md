@@ -9,7 +9,7 @@ LIA is an open source program for detecting microlensing events in wide-field su
 
 # Creating a Training Set
 
-The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The “hard” part is aggregating the necessary timestamps you expect the survey to measure. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes; in addition to limiting magnitudes of 15 and 20. As I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model. Now, let’s simulate 500 of each class:
+The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The ``hard” part is aggregating the necessary timestamps you expect the survey to measure. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes; in addition to limiting magnitudes of 15 and 20. As I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model. Now, let’s simulate 500 of each class:
 
 ```
 from LIA import training_set
@@ -19,11 +19,11 @@ training_set.create_training(time, min_base = 15, max_base=20, noise=None, q=500
 
 ```
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled “all_features” containing all 47 statistical values, and the other titled “pca_features” containing only the principal components. We need the two text files to construct the required models.
+This function will output a FITS file titled `lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled `all_features’ containing all 47 statistical values, and the other titled `pca_features’ containing only the principal components. We need the two text files to construct the required models.
 
 ```
 from LIA import models
-rf, pca = models.create_models(‘all_features.txt’, ’pca_features.txt’)
+rf, pca = models.create_models(`all_features.txt’, `pca_features.txt’)
 ```
 With the RF model trained and the PCA transformation saved, we are ready to classify any light curve.
 
