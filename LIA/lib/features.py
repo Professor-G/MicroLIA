@@ -627,7 +627,6 @@ def check_for_min_duplicate(mag):
 
     rtype: float
     """
-    checks if any val in mag repeats
     check = str(ts.has_duplicate_min(mag))
     if check == 'False':
         val = 0.0
