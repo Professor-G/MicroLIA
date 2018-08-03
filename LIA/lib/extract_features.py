@@ -9,13 +9,12 @@ from __future__ import print_function
 from math import log 
 from features import *
 
-
 def extract_all(mag, magerr, convert=True):
     """This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the
     mag/flux is normalized by the maximum value to compute the remanining
     features. By default a conversion from mag to flux is performed. If input
-    is in flux, set convert to False.  
+    is in flux or you wish to work in mag, set convert to False.  
         
     Parameters
     ----------
@@ -44,26 +43,23 @@ def extract_all(mag, magerr, convert=True):
     MedBuffRng = median_buffer_range(flux)
     MedBuffRng2 = median_buffer_range2(flux)
     # Normalize by max flux
-    flux = flux/np.max(flux)
+    norm_flux = flux/np.max(flux)
+    norm_fluxerr = flux_err*(norm_flux/flux)
 
-    stetJ = stetsonJ(flux,flux_err)
-    stetK = stetsonK(flux,flux_err)
+    stetJ = stetsonJ(norm_flux,norm_fluxerr)
+    stetK = stetsonK(norm_flux,norm_fluxerr)
     stetL = (stetJ*stetK) / 0.798
-    shannon_entr = shannon_entropy(flux,flux_err)
+    shannon_entr = shannon_entropy(norm_flux,norm_fluxerr)
 
-    stats = np.array((above1(flux), above3(flux), above5(flux), abs_energy(flux), abs_sum_changes(flux), amp, 
-        auto_corr(flux), below1(flux), below3(flux), below5(flux), c3(flux), check_for_duplicate(flux), check_for_max_duplicate(flux), 
-        check_for_min_duplicate(flux), check_max_last_loc(flux), check_min_last_loc(flux), complexity(flux), con(flux), con2(flux), 
-        count_above(flux), count_below(flux), first_loc_max(flux), first_loc_min(flux), integrate(flux), kurtosis(flux), 
-        longest_strike_above(flux), longest_strike_below(flux), mean_abs_change(flux), mean_change(flux), mean_second_derivative(flux), 
-        medianAbsDev(flux), MedBuffRng, MedBuffRng2, peak_detection(flux), ratio_recurring_points(flux), 
-        root_mean_squared(flux), sample_entropy(flux), shannon_entr, skewness(flux), np.std(flux), std_over_mean(flux), stetJ, stetK, stetL, 
-        sum_values(flux), time_reversal_asymmetry(flux), vonNeumannRatio(flux)))
-    mag = flux 
-
-    stats = np.array((peak_detection(mag), shannon_entr, kurtosis(mag), skewness(mag), vonNeumannRatio(mag), stetJ, stetK, stetL, np.std(mag), con(mag), con2(mag), median_buffer_range(mag), median_buffer_range2(mag), std_over_mean(mag), below1(mag), below3(mag), below5(mag), above1(mag), above3(mag), above5(mag), medianAbsDev(mag), root_mean_squared(mag), amplitude(mag), abs_energy(mag), abs_sum_changes(mag), auto_corr(mag), c3(mag), complexity(mag), count_above(mag), count_below(mag), first_loc_max(mag), first_loc_min(mag), check_for_duplicate(mag), check_for_max_duplicate(mag), check_for_min_duplicate(mag), check_max_last_loc(mag), check_min_last_loc(mag), longest_strike_above(mag), longest_strike_below(mag), mean_change(mag), mean_abs_change(mag), mean_second_derivative(mag), ratio_recurring_points(mag), sample_entropy(mag), sum_values(mag), time_reversal_asymmetry(mag), integrate(mag)))
-
-
+    stats = np.array((above1(norm_flux), above3(norm_flux), above5(norm_flux), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, 
+        auto_corr(norm_flux), below1(norm_flux), below3(norm_flux), below5(norm_flux), c3(norm_flux), check_for_duplicate(norm_flux), check_for_max_duplicate(norm_flux), 
+        check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux), con2(norm_flux), 
+        count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), kurtosis(norm_flux), 
+        longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), mean_change(norm_flux), mean_second_derivative(norm_flux), 
+        medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux), 
+        root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entr, skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
+        sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
+    
     stats[np.isinf(stats)] = 0
 
     return stats
