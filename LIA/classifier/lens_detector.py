@@ -7,49 +7,82 @@
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import decomposition
-from stats_computation import compute_statistics
 from warnings import warn
 
-training_set_all = 'default_features.txt'
-training_set_pca = 'default_pca_features.txt'
+import sys
+sys.path.append('../features')
+from extract_features import extract_all
 
-coeffs = np.loadtxt(training_set_all,usecols=np.arange(1,48))
-pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
-pca.fit(coeffs)
-#feat_strengths = pca.explained_variance_ratio_
-training_set = np.loadtxt(training_set_pca, dtype = str)
-rf = RandomForestClassifier(n_estimators=1500, max_depth = 16, max_features=5, min_samples_split=16)
-rf.fit(training_set[:,np.arange(1,27)].astype(float),training_set[:,0])
+def create_models(all_feats, pca_feats):
+    """Creates the RF model and PCA tranformation used for classificaition.
+    
+    Parameters
+    ----------
+    all_feats : name of txt_file
+        Text file containing all features and class label.
+    pca_stats : name of txt_file
+        Text file containing PCA features and class label.  
 
-def predict_class(mag, magerr):
+    Returns
+    -------
+    rf_model : fn
+        Trained random forest ensemble. 
+    pca_model : fn
+        PCA transformation.
+    """
+    coeffs = np.loadtxt(all_feats,usecols=np.arange(1,48))
+    pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
+    pca.fit(coeffs)
+    #feat_strengths = pca.explained_variance_ratio_
+    training_set = np.loadtxt(pca_feats, dtype = str)
+    rf=RandomForestClassifier(n_estimators=1500, max_depth = 16, max_features=5, min_samples_split=16)
+    rf.fit(training_set[:,np.arange(1,27)].astype(float),training_set[:,0])
+
+    return rf, pca
+
+def predict_class(mag, magerr, rf_model, pca_model):
     """This function uses machine learning to classify any given lightcurve as either
         a Cataclysmic Variable (CV), a Variable source, Microlensing, or a constant star 
         displaying no variability.
         
-        Coupled with pyLIMA, this algorithm
-        :param time: the time-varying data of the lightcurve. Must be an array.
-        :param mag: the time-varying intensity of the object. Must be an array.
-        :param magerr: photometric error for the intensity. Must be an array.
-        
-        :return: the function will return the predicted class along with the probability that it's microlensing.
-        :rtype: string, float
-
+    Parameters
+    ----------
+    mag : array
+        Magnitude array.
+    magerr : array
+        Corresponing photometric errors.  
+    convert : boolean, optional 
+        If False the features are computed with the inpute magnitudes,
+        defaults to True to convert and compute in flux. 
+  
+    Returns
+    -------
+    prediction : str
+        Predicted class.
+    ml_pred : float
+        Probability source is microlensing
+    cons_pred : float
+        Probability source is constant
+    cv_pred : float
+        Probability source is CV
+    var_pred : float
+        Probability source is variable
     """
     if len(mag) < 10:
         warn('The number of data points low -- results may be unstable')
 
     array=[]
-    stat_array = array.append(compute_statistics(mag, magerr))
+    stat_array = array.append(extract_all(mag, magerr, convert=False))
     array=np.array(array)
-    stat_array = pca.transform(array)
+    stat_array = pca_model.transform(array)
     
-    prediction =rf.predict(stat_array)
-    probability_prediction = rf.predict_proba(stat_array)[:,0] #CONSTANT
-    probability_prediction2 = rf.predict_proba(stat_array)[:,1] #CV
-    probability_prediction3 = rf.predict_proba(stat_array)[:,2] #ML
-    probability_prediction4 = rf.predict_proba(stat_array)[:,3] #VARIABLE
+    prediction =rf_model.predict(stat_array)
+    cons_pred = rf_model.predict_proba(stat_array)[:,0] #CONSTANT
+    cv_pred = rf_model.predict_proba(stat_array)[:,1] #CV
+    ml_pred = rf_model.predict_proba(stat_array)[:,2] #ML
+    var_pred = rf_model.predict_proba(stat_array)[:,3] #VARIABLE
     
-    return prediction, probability_prediction3, probability_prediction, probability_prediction2, probability_prediction4,
+    return prediction, ml_pred, cons_pred, cv_pred, var_pred
 """
 def predict_and_fit(mjd, mag, magerr):
 
