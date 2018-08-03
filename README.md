@@ -19,7 +19,7 @@ create_training.create_training(time, min_base = 15, max_base=20, fn=None, q=500
 
 ```
 
-This function will output a FITS file title ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled “all_features” containing all 47 statistical values, and the other titled “pca_features” containing only the principal components. We need the two text files to construct the required models.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled “all_features” containing all 47 statistical values, and the other titled “pca_features” containing only the principal components. We need the two text files to construct the required models.
 
 ```
 from LIA import create_models
