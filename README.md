@@ -14,11 +14,12 @@ The **simulate** module contains the framework necessary for simulating all indi
 ```
 from LIA import training_set
 
-time = range(0,366,1)
+time=[]
+time.append(range(0,366,1))
 training_set.create(time, min_base = 15, max_base=20, noise=None, n_class=500)
 ```
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files with labeled classes, one titled ‘all_features’ containing all 47 statistical values, and the other titled ‘pca_features’ containing only the principal components. We need the two text files to construct the required models.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files with labeled classes as well corresponding ID. The file titled ‘all_features’ contains all 47 statistical values, and the other titled ‘pca_features’ contains only the principal components with class label. We need the two text files to construct the required models.
 
 ```
 from LIA import models
@@ -34,7 +35,7 @@ from LIA import microlensing_classifier
 mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
 magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
 
-class, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
+prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
 We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. More examples are available in the **examples** directory.
 
