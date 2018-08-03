@@ -50,25 +50,16 @@ def add_noise(mag, fn, zp=24):
         The corresponding magnitude errors.
         
     """
-    noisy_mag = []
-    magerr = []
+    flux = 10**(-(mag-zp)/2.5)
+    delta_fobs = flux*fn(mag)*(log(10)/2.5)
+    f_obs = np.random.normal(flux, delta_fobs)
 
-    for m in mag:
-        zp = 23.4
-        flux = 10**(-(m-zp)/2.5)
-        delta_f = flux*fn(m)*(log(10)/2.5)
+    mag_obs = zp - 2.5*np.log10(f_obs)
+    magerr = (2.5/log(10))*(delta_fobs/f_obs)
         
-        f_obs = np.random.normal(flux, delta_f)
-        delta_fobs = delta_f
-        mag_obs = zp - 2.5*np.log10(f_obs)
-        err_mag = (2.5/log(10))*(delta_fobs/f_obs)
-        
-        noisy_mag.append(mag_obs)
-        magerr.append(err_mag)
-        
-    return np.array(noisy_mag), np.array(magerr)
+    return np.array(mag_obs), np.array(magerr)
 
-def add_gaussian_noise(flux):
+def add_gaussian_noise(mag,zp=24):
     """Adds noise to lightcurve given the magnitudes.
 
     Parameters
@@ -86,21 +77,13 @@ def add_gaussian_noise(flux):
     magerr : array
         The corresponding magnitude errors.
     """
-    noisy_flux=[]
-    flux_err = []
+    flux = 10**((mag-zp)/-2.5)
+    
+    noisy_flux= np.random.normal(flux, np.sqrt(flux))
+    magerr = 2.5/(log(10)*np.sqrt(noisy_flux))
+    
+    noisy_mag = zp - 2.5*np.log10(noisy_flux)
+    magerr=np.array(magerr)
+    mag = np.array(mag)
 
-    for f in flux:  
-        f_obs = np.random.normal(f, np.sqrt(f))
-        noisy_flux.append(f_obs)
-            
-        flux_err.append(abs(f_obs - np.median(flux)))
-        
-    flux_err=np.array(flux_err)
-    noisy_flux=np.array(noisy_flux)
-
-    return np.array(noisy_flux), np.array(flux_err)
-
-
-
-
-
+    return np.array(noisy_mag), np.array(magerr)
