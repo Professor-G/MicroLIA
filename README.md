@@ -23,7 +23,7 @@ This function will output a FITS file titled ‘lightcurves’ that will contain
 ```
 from LIA import models
 
-rf, pca = models.create_models(`all_features.txt’, `pca_features.txt’)
+rf, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’)
 ```
 With the RF model trained and the PCA transformation saved, we are ready to classify any light curve.
 
@@ -34,7 +34,7 @@ from LIA import microlensing_classifier
 mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
 magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
 
-class, ml_pred = microlensing_classifier.predict_class(mag, magerr, rf, pca)[0:2]
+class, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
 We’re interested only in the predicted class and the probability it’s microlensing, but in principle you can output all predictions if you want.
 
