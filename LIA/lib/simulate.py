@@ -8,7 +8,6 @@ from __future__ import division
 import numpy as np
 from gatspy import datasets, periodic
 
-
 def microlensing(timestamps, baseline):
     """Simulates a microlensing event.  
     The microlensing parameter space is determined using data from an 
