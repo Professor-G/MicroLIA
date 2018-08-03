@@ -70,8 +70,6 @@ def add_noise(mag, fn, zp=24):
 
 def add_gaussian_noise(flux):
     """Adds noise to lightcurve given the magnitudes.
-    Conversion to flux is performed and Gaussian noise is added.
-    If input is in flux set convert to False. 
 
     Parameters
     ----------
