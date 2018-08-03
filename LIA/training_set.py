@@ -13,7 +13,7 @@ import os
 import sys
 sys.path.append('/lib')
 import simulate
-from noise_models import add_noise, add_gaussian_noise, create_noise
+from noise_models import add_noise, add_gaussian_noise
 from quality_check import test_microlensing, test_cv
 from extract_features import extract_all
     
