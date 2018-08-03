@@ -3,9 +3,10 @@
 <img src="https://user-images.githubusercontent.com/19847448/37119532-ae69efbc-2225-11e8-81bf-a21ae6a21978.jpg" width="900" height="500">
 
 
-# Random Forest Classifier
+# LIA
 
-This is an open source algorithm that utilizes machine learning to classify a given lightcurve as either a constant source, a cataclysmic variable (CV), an RR Lyrae variable, a microlensing event, or other. The algorithm uses photometric data (time + magnitude + error) to compute statistical metrics and through the Random Forest algorithm classify the source. This algorithm has been optimized for microlensing detection, with the algorithm being trained with simulated microlensing events from real data. Lightcurves from all other classes are from the intermediate Palomar Transient Factory (iPTF). Instructions on how to include your own ML events are available in the **microlensing_simulation** module.
+LIA is an open source program for detecting microlensing events in wide-field surveys. The program first computes 47 statistical features from the lightcurve (mag+magerr), after which it applies a Principal Component Analysis (PCA) for feature dimensionality reduction. These PCA features are then run through a Random Forest ensemble to classify the lightcurve as either a microlensing event, a variable source, a cataclysmic variable (CV), or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created. We provide a default training set that was simulated using ideal cadence, but for optimal performance it’s imperative that a training set matching survey conditions is used.
+
 
 # Algorithm Performance
 <img src="https://user-images.githubusercontent.com/19847448/37122785-bf46bf18-222f-11e8-8266-fa0bb1c48dbd.jpg" width="900" height="500">
