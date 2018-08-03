@@ -17,7 +17,7 @@ from noise_models import add_noise, add_gaussian_noise, create_noise
 from quality_check import test_microlensing, test_cv
 from extract_features import extract_all
     
-def create_training(timestamps, min_base=14, max_base=21, noise=None, q=1000):
+def create(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     """Creates a training dataset using adaptive cadence.
     Simulates each class q times, adding errors from
     a noise model either defined using the create_noise
