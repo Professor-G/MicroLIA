@@ -12,58 +12,31 @@ LIA is an open source program for detecting microlensing events in wide-field su
 The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The “hard” part is aggregating the necessary timestamps you expect the survey to measure. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes; in addition to limiting magnitudes of 15 and 20. As I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model. Now, let’s simulate 500 of each class:
 
 ```
-from LIA import create_training
-time = np.arange(1,365,1)
+from LIA import training_set
+time = range(0,366,1)
 
-create_training.create_training(time, min_base = 15, max_base=20, fn=None, q=500)
+training_set.create_training(time, min_base = 15, max_base=20, noise=None, q=500)
 
 ```
 
 This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files, one titled “all_features” containing all 47 statistical values, and the other titled “pca_features” containing only the principal components. We need the two text files to construct the required models.
 
 ```
-from LIA import create_models
-rf, pea = create_models.create_models
+from LIA import models
+rf, pca = models.create_models(‘all_features.txt’, ’pca_features.txt’)
 ```
 With the RF model trained and the PCA transformation saved, we are ready to classify any light curve.
 
 ```
 from LIA import microlensing_classifier
+
 #create imaginary light curve
 mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
 magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
 
-class, ml_pred = microlensing_classifier.predict_class(mag,magerr,rf,pca)[0:2]
+class, ml_pred = microlensing_classifier.predict_class(mag, magerr, rf, pca)[0:2]
 ```
-We’re interested only in the predicted class and the probability it’s microlensing, but in principle you can output all predictions if you want. 
-
-
- 
-
-
-
-
-
-
-
-# Algorithm Performance
-<img src="https://user-images.githubusercontent.com/19847448/37122785-bf46bf18-222f-11e8-8266-fa0bb1c48dbd.jpg" width="900" height="500">
-
-# pyLIMA
-The algorithm implements pyLIMA as an additional filter when a microlensing candidate is detected. This is an open source for modeling microlensing events, and must be installed for the algorithm to work (please see: https://github.com/ebachelet/pyLIMA). By restricitng fitted parameters, we are able to eliminate true alerts from misclassified transients and variables. Microlensing detections that don't fall within our parameter space are then classified as OTHER.
-
-# Microlensing Detection
-The main module that classifies the lightcurve is the **random_forest_classifier** using the **predict_class** function. It makes use of the module **stats_computation**, which computes the statistical metrics that were used to train the classifier. Statistics include robust and devised metrics, as well as variability indices found in the literature.  Information regarding individual metrics is available in the **stats_computation** module. Note that some of the statistics are not utilized, as they were low-performing and hence omitted to improve the efficiency of the program. 
-
-When a lightcurve is flagged by the RF as a potential microlensing candidate, a PSPL fit is attempted using the Levenberg-Marquardt algorithm. Microlensing parameters (t<sub>o</sub>, u<sub>o</sub>, t<sub>E</sub>) as well as the reduced chi-squared must fall within a reasonable parameter space otherwise the algorithm forwards the event as a false-alert. If the LM fit fails, another attempt is made using the differential evolution algorithm -- in this case the reduced chi-squared is fixed to the maximum accepted value of 3.0, as outliers and poor data are to be expected. For documentation, see: https://ebachelet.github.io/pyLIMA/pyLIMA.microlfits.html.
-
-
-# Installation + Libraries
-Clone the repository or download to a local system as a ZIP file. It's best to work off the same directory in which the package (as well as pyLIMA) is saved, so that the modules can be called directly, such as: 
-
-from **random_forest_classifier** import **predict_class**
-
-Besides pyLIMA, the code is written entirely in python, and makes use of familiar packages including sklearn and scipy.
+We’re interested only in the predicted class and the probability it’s microlensing, but in principle you can output all predictions if you want.
 
 
 # Test Script
