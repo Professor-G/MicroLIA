@@ -17,7 +17,7 @@ from noise_models import add_noise, add_gaussian_noise, create_noise
 from quality_check import test_microlensing, test_cv
 from extract_features import extract_all
     
-def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
+def create_training(timestamps, min_base=14, max_base=21, noise=None, q=1000):
     """Creates a training dataset using adaptive cadence.
     Simulates each class q times, adding errors from
     a noise model either defined using the create_noise
@@ -34,7 +34,7 @@ def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
     max_base : float, optional 
 		Maximum baseline magnitude for simulating lightcurves.
 		Defaults to 21.
-    fn : function, optional 
+    noise : function, optional 
 		Noise model, can be created using the create_noise function.
 		If None it defaults to adding Gaussian noise. 
     q : int, optional
@@ -66,9 +66,9 @@ def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
         baseline = np.random.uniform(min_base,max_base)
         mag, amplitude, period = simulate.variable(time,baseline)
            
-        if fn is not None:
-		mag, magerr = add_noise(mag, fn)
-        if fn is None:
+        if noise is not None:
+		mag, magerr = add_noise(mag, noise)
+        if noise is None:
            mag, magerr = add_gaussian_noise(mag)
 
         source_class = ['VARIABLE']*len(time)
@@ -93,9 +93,9 @@ def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
         baseline = np.random.uniform(min_base, max_base)
         mag = simulate.constant(time, baseline)
         
-        if fn is not None:
-		mag, magerr = add_noise(mag, fn)
-        if fn is None:
+        if noise is not None:
+		mag, magerr = add_noise(mag, noise)
+        if noise is None:
            mag, magerr = add_gaussian_noise(mag)
            
         source_class = ['CONSTANT']*len(time)
@@ -124,9 +124,9 @@ def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
             quality = test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times)
             if quality is True:
                 try:
-                    if fn is not None:
-                        mag, magerr=add_noise(mag,fn)
-                    if fn is None:
+                    if noise is not None:
+                        mag, magerr=add_noise(mag,noise)
+                    if noise is None:
                         mag, magerr=add_gaussian_noise(mag)
                 except ValueError:
                     continue
@@ -156,9 +156,9 @@ def create_training(timestamps, min_base=14, max_base=21, fn=None, q=1000):
             baseline = np.random.uniform(min_base, max_base)
             mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline)
             try:
-                if fn is not None:
-                    mag, magerr=add_noise(mag,fn)
-                if fn is None:
+                if noise is not None:
+                    mag, magerr=add_noise(mag,noise)
+                if noise is None:
                     mag, magerr=add_gaussian_noise(mag)
             except ValueError:
                 continue
