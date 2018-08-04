@@ -208,7 +208,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
          outfile.write(data)
          
     os.remove('feats.txt')
-    "Computing principal components..."
+    print("Computing principal components...")
     coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
     pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
