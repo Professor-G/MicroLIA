@@ -226,7 +226,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
          (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
          (np.array(X_pca[:,23])),(np.array(X_pca[:,24])), (np.array(X_pca[:,25])))), fmt='%5s')
          
-    # For unknown reasons np.savetxt does not always print the final lines, this iteration 
+    # For unknown reasons np.savetxt does not always entrily print the final lines, this iteration 
     # is to circumnavigate this bug -- embarrasing, I know.
     for i in range(100):
         try:
