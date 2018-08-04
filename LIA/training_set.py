@@ -58,14 +58,14 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     source_class_list=[]
     stats_list = []
 
-    print "Now simulating variables..."
+    print("Now simulating variables...")
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_base,max_base)
         mag, amplitude, period = simulate.variable(time,baseline)
            
         if noise is not None:
-        mag, magerr = noise_models.add_noise(mag, noise)
+            mag, magerr = noise_models.add_noise(mag, noise)
         if noise is None:
            mag, magerr = noise_models.add_gaussian_noise(mag)
 
@@ -84,15 +84,15 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
         
-    print "Variables successfully simulated"
-    print "Now simulating constants..."
+    print("Variables successfully simulated")
+    print("Now simulating constants...")
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_base, max_base)
         mag = simulate.constant(time, baseline)
         
         if noise is not None:
-        mag, magerr = noise_models.add_noise(mag, noise)
+            mag, magerr = noise_models.add_noise(mag, noise)
         if noise is None:
            mag, magerr = noise_models.add_gaussian_noise(mag)
            
@@ -111,8 +111,8 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
         stats = ['CONSTANT'] + [2*n_class+k] + stats
         stats_list.append(stats)
         
-    print "Constants successfully simulated"
-    print "Now simulating CV..."
+    print("Constants successfully simulated")
+    print("Now simulating CV...")
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
@@ -146,8 +146,8 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
             if j == 9999:
                 raise RuntimeError('Unable to simulate proper CV in 10k tries with current cadence -- inspect cadence and try again.')
     
-    print "CVs successfully simulated"
-    print "Now simulating microlensing..."
+    print("CVs successfully simulated")
+    print ("Now simulating microlensing...")
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
@@ -181,8 +181,8 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
             if j == 9999:
                 raise RuntimeError('Unable to simulate proper ML in 10k tries with current cadence -- inspect cadence and/or noise model and try again.')
                     
-    print "Microlensing events successfully simulated"
-    print "Writing files..."
+    print("Microlensing events successfully simulated")
+    print("Writing files...")
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
     col2 = fits.Column(name='time', format='E', array=np.hstack(times_list))
@@ -192,9 +192,8 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     hdu = fits.BinTableHDU.from_columns(cols)
     hdu.writeto('lightcurves.fits')
     
-    "Saving features..."
+    print("Saving features...")
     output_file = open('feats.txt','w')
-    print(output_file)
     for line in stats_list:
         print >>output_file, line
     output_file.close()
@@ -242,4 +241,4 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
              (np.array(X_pca[:,15])),(np.array(X_pca[:,16])),(np.array(X_pca[:,17])),(np.array(X_pca[:,18])),
              (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
              (np.array(X_pca[:,23])),(np.array(X_pca[:,24])), (np.array(X_pca[:,25])))), fmt='%5s')
-    print "Complete!"
+    print("Complete!")
