@@ -13,10 +13,10 @@ def create_models(all_feats, pca_feats):
     
     Parameters
     ----------
-    all_feats : name of txt_file
-        Text file containing all features and class label.
-    pca_stats : name of txt_file
-        Text file containing PCA features and class label.  
+    all_feats : str
+        Name of text file containing all features and class label.
+    pca_stats : str
+        Name of text file containing PCA features and class label.  
 
     Returns
     -------
