@@ -15,9 +15,9 @@ from LIA.lib import noise_models
 from LIA.lib import quality_check
 from LIA.lib import extract_features
     
-def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
     """Creates a training dataset using adaptive cadence.
-    Simulates each class q times, adding errors from
+    Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
     function, or Gaussian by default
 
@@ -26,10 +26,10 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     timestamps : array of arrays
         Times at which to simulate the different lightcurves.
         Must be an array containing all possible timestamps combinations.
-    min_base : float, optional
+    min_mag : float, optional
         Minimum baseline magnitude for simulating lightcurves.
         Defaults to 14. 
-    max_base : float, optional 
+    max_mag : float, optional 
         Maximum baseline magnitude for simulating lightcurves.
         Defaults to 21.
     noise : function, optional 
@@ -61,7 +61,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     print("Now simulating variables...")
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
-        baseline = np.random.uniform(min_base,max_base)
+        baseline = np.random.uniform(min_mag,max_mag)
         mag, amplitude, period = simulate.variable(time,baseline)
            
         if noise is not None:
@@ -88,7 +88,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     print("Now simulating constants...")
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
-        baseline = np.random.uniform(min_base, max_base)
+        baseline = np.random.uniform(min_mag,max_mag)
         mag = simulate.constant(time, baseline)
         
         if noise is not None:
@@ -116,7 +116,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
-            baseline = np.random.uniform(min_base, max_base)
+            baseline = np.random.uniform(min_mag,max_mag)
             mag, burst_start_times, burst_end_times, end_rise_times, end_high_times = simulate.cv(time, baseline)
             
             quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times)
@@ -151,7 +151,7 @@ def create(timestamps, min_base=14, max_base=21, noise=None, n_class=1000):
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
-            baseline = np.random.uniform(min_base, max_base)
+            baseline = np.random.uniform(min_mag,max_mag)
             mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline)
             try:
                 if noise is not None:
