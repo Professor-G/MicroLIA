@@ -51,4 +51,4 @@ If both test scripts work you are good to go!
  
 # How to Contribute?
 
-Want to contribute? Bug detections? Comments? Suggestions? Please email us : dg7541@bard.edu, etibachelet@gmail.com, rstreet@lcogt.net
+Want to contribute? Bug detections? Comments? Suggestions? Please email us : danielgodinez123@gmail.com, etibachelet@gmail.com, rstreet@lcogt.net
