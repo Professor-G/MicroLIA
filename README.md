@@ -9,14 +9,14 @@ LIA is an open source program for detecting microlensing events in wide-field su
 
 # Creating Training Data & Constructing Models 
 
-The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The ‘hard’ part is aggregating the necessary timestamps you expect the survey to measure in. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes. We will also assume the survey has limiting magnitudes of 15 and 20, and as I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model. Now, let’s simulate 500 of each class:
+The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The ‘hard’ part is aggregating the necessary timestamps you expect the survey to measure in. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes. We will also assume the survey has limiting magnitudes of 15 and 20, and as I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model — although the **noise_models** module contains a function for creating your own. Now, let’s simulate 500 of each class:
 
 ```
 from LIA import training_set
 
 time=[]
 time.append(range(0,366,1))
-training_set.create(time, min_base = 15, max_base=20, noise=None, n_class=500)
+training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 
 This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files with labeled classes as well corresponding ID. The file titled ‘all_features’ contains all 47 statistical values, and the other titled ‘pca_features’ contains only the principal components with class label. We need the two text files to construct the required models.
@@ -37,16 +37,17 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 
 prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
-We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. More examples are available in the **examples** directory.
+We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation of specific modules.
 
 # Test Script
 
 To make sure that the algorithm is working, please run the following test scripts located in the **test** folder:
 
-* test_script1
-* test_script2
+* test_features
+* test_classifier
 
-Both test scripts should classify the test lightcurve as microlensing. 
+If both test scripts work you are good to go!
+ 
 # How to Contribute?
 
 Want to contribute? Bug detections? Comments? Please email us : dg7541@bard.edu, etibachelet@gmail.com, rstreet@lcogt.net
