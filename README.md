@@ -16,10 +16,11 @@ from LIA import training_set
 
 time=[]
 time.append(range(0,366,1))
+
 training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number. It will also save two text files with labeled classes as well corresponding ID. The file titled ‘all_features’ contains all 47 statistical values, and the other titled ‘pca_features’ contains only the principal components with class label. We need the two text files to construct the required models.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the 47 statistical values computed, while the other titled ‘pca_features’ contains only the class label followed by the principal components. We need these two text files to construct the required models.
 
 ```
 from LIA import models
@@ -37,7 +38,7 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 
 prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
-We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation of specific modules.
+We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
 
 # Test Script
 
@@ -50,4 +51,4 @@ If both test scripts work you are good to go!
  
 # How to Contribute?
 
-Want to contribute? Bug detections? Comments? Please email us : dg7541@bard.edu, etibachelet@gmail.com, rstreet@lcogt.net
+Want to contribute? Bug detections? Comments? Suggestions? Please email us : dg7541@bard.edu, etibachelet@gmail.com, rstreet@lcogt.net
