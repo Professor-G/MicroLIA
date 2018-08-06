@@ -1,5 +1,5 @@
  [![DOI](https://zenodo.org/badge/78798347.svg)](https://zenodo.org/badge/latestdoi/78798347)
-# LIA : Lens Identification Algorithm
+# LIA: Lens Identification Algorithm
 <img src="https://user-images.githubusercontent.com/19847448/43731560-bc822294-9963-11e8-83a3-18aaf9fba36d.jpg" width="900" height="500">
 
 
