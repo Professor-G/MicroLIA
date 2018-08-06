@@ -12,7 +12,7 @@ from LIA.lib import extract_features
 
 def predict(mag, magerr, rf_model, pca_model):
     """This function uses machine learning to classify any given lightcurve as either
-        a Cataclysmic Variable (CV), a Variable source, Microlensing, or a constant star 
+        a cataclysmic variable (CV), a variable source, microlensing, or a constant star 
         displaying no variability.
         
     Parameters
@@ -22,7 +22,7 @@ def predict(mag, magerr, rf_model, pca_model):
     magerr : array
         Corresponing photometric errors.  
     convert : boolean, optional 
-        If False the features are computed with the inpute magnitudes,
+        If False the features are computed with the input magnitudes,
         defaults to True to convert and compute in flux. 
   
     Returns
@@ -38,7 +38,7 @@ def predict(mag, magerr, rf_model, pca_model):
     var_pred : float
         Probability source is variable
     """
-    if len(mag) < 10:
+    if len(mag) < 30:
         warn('The number of data points is low -- results may be unstable')
 
     array=[]
