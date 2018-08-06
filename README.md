@@ -40,6 +40,16 @@ prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
 We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
 
+# pyLIMA
+
+We find that in practice the algorithm flags << 1% of lightcurves as microlensing, with false-alerts being prominent when data quality is bad. This is difficult to circumnavigate as we can only train with what we expect the survey to detect, and as such simple anomalies in the photometry can yield unpredictable results. In practice, we strongly recommend fitting each microlensing candidate LIA detects with [pyLIMA](https://github.com/ebachelet/pyLIMA), an open-source program for modeling microlensing events. By restricting microlensing parameters to reasonable observables, this fitting algorithm acts as a great second filter in the search for these rare transient events. We’ve had great success by restricting our parameters to the following:
+
+* tE >= 1
+* uo < 2.0
+* Reduced Chi2 <= 10
+
+These are mere suggestions, and as pyLIMA provides more information than this, we suggest you explore a parameter space that best fits your needs. 
+
 # Test Script
 
 To make sure that the algorithm is working, please run the following test scripts located in the **test** folder:
