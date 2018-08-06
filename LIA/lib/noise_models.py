@@ -49,7 +49,7 @@ def add_noise(mag, fn, zp=24):
     magerr : array
         The corresponding magnitude errors.
         
-    """
+    """    
     flux = 10**(-(mag-zp)/2.5)
     delta_fobs = flux*fn(mag)*(log(10)/2.5)
     f_obs = np.random.normal(flux, delta_fobs)
