@@ -22,7 +22,7 @@ class Test(unittest.TestCase):
     Unittest to ensure the classifier is working correctly. 
     """
     def test_predict(value):
-        value.assertEqual( microlensing_classifier.predict(mag,magerr,rf,pca)[0], 'ML', "Classifier failed, predicted class is not corect.")
+        value.assertEqual( microlensing_classifier.predict(mag,magerr,rf,pca)[0], 'ML', "Classifier failed, predicted class is not correct.")
     def test_probability_prediction(value):
         pred = microlensing_classifier.predict(mag,magerr, rf,pca)[1]
         value.assertTrue(pred >= 0.65 and pred <= 0.8, "Classifier failed, probability prediction not within range.")
