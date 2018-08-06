@@ -9,7 +9,7 @@ from __future__ import print_function
 from math import log 
 from features import *
 
-def extract_all(mag, magerr, convert=True):
+def extract_all(mag, magerr, convert=True, zp=24):
     """This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the
     mag/flux is normalized by the maximum value to compute the remanining
@@ -25,6 +25,8 @@ def extract_all(mag, magerr, convert=True):
     convert : boolean, optional 
         If False the features are computed with the inpute magnitudes,
         defaults to True to convert and compute in flux. 
+    zp : float
+        Zeropoint of the instrument, defaults to 24.
   
     Returns
     -------
@@ -33,8 +35,8 @@ def extract_all(mag, magerr, convert=True):
         by alphabetical order. 
     """
     if convert is True:
-        flux = 10**(-(mag)/2.5)
-        flux_err = (magerr*flux)/(2.5*np.log(10))
+        flux = 10**(-(mag-zp)/2.5)
+        flux_err = (magerr*flux)/(2.5*log(10))
     elif convert is False:
         flux = mag
         flux_err = magerr
