@@ -10,8 +10,8 @@ from simulate import constant
    
 def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio):
     """Test to ensure proper microlensing signal.
-    This requires 7 measurements with a magnification of at least 1.34, inmposing
-    additoinal magnification thresholds to ensure microlensing event doesn't 
+    This requires 7 measurements with a magnification of at least 1.34, imposing
+    additional magnification thresholds to ensure the microlensing signal doesn't 
     mimic a noisy constant.
 
     Parameters
@@ -61,7 +61,8 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
 
 def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times, end_high_times):
     """Test to ensure proper CV signal.
-    This requires 7 measurements within ANY outburst, with at least one occurring within the rise or fall.
+    This requires 7 measurements within ANY outburst, with at least one 
+    occurring within the rise or fall.
 
     Parameters
     ----------
