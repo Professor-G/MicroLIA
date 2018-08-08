@@ -21,10 +21,13 @@ def predict(mag, magerr, rf_model, pca_model):
         Magnitude array.
     magerr : array
         Corresponing photometric errors.  
-    convert : boolean, optional 
-        If False the features are computed with the input magnitudes,
-        defaults to True to convert and compute in flux. 
-  
+    rf_model: fn
+        The random forest model created using the function in the
+        create_models module.
+    pca_model: fn
+        The PCA transformation devised using the function in the
+        create_models module. 
+
     Returns
     -------
     prediction : str
