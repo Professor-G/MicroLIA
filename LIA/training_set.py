@@ -15,7 +15,7 @@ from LIA.lib import noise_models
 from LIA.lib import quality_check
 from LIA.lib import extract_features
     
-def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
     """Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
@@ -37,7 +37,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
         If None it defaults to adding Gaussian noise. 
     n_class : int, optional
         The amount of lightcurve (per class) to simulate.
-        Defaults to 1000. 
+        Defaults to 500. 
 
     Outputs
     _______
@@ -68,6 +68,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
             mag, magerr = noise_models.add_noise(mag, noise)
         if noise is None:
            mag, magerr = noise_models.add_gaussian_noise(mag)
+           
 
         source_class = ['VARIABLE']*len(time)
         source_class_list.append(source_class)
@@ -79,7 +80,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(mag,magerr)
+        stats = extract_features.extract_all(mag,magerr,convert=True)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -106,7 +107,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(mag,magerr)
+        stats = extract_features.extract_all(mag,magerr,convert=True)
         stats = [i for i in stats]
         stats = ['CONSTANT'] + [2*n_class+k] + stats
         stats_list.append(stats)
@@ -138,7 +139,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(mag,magerr)
+                stats = extract_features.extract_all(mag,magerr,convert=True)
                 stats = [i for i in stats]
                 stats = ['CV'] + [3*n_class+k] + stats
                 stats_list.append(stats)
@@ -173,7 +174,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(mag,magerr)
+                stats = extract_features.extract_all(mag,magerr, convert=True)
                 stats = [i for i in stats]
                 stats = ['ML'] + [4*n_class+k] + stats
                 stats_list.append(stats)
@@ -210,21 +211,25 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
     os.remove('feats.txt')
     print("Computing principal components...")
     coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
-    pca = decomposition.PCA(n_components=int(np.ceil(min(coeffs.shape)/2.))+2, whiten=True, svd_solver='auto')
+    pca = decomposition.PCA(n_components=47, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     X_pca = pca.transform(coeffs) 
     
-    f = open('pca_features.txt', 'w')
     classes = ["VARIABLE"]*n_class+["CONSTANT"]*n_class+["ML"]*n_class+["CV"]*n_class
-    np.savetxt(f,np.column_stack(
+    np.savetxt('pca_features.txt',np.column_stack(
         ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
          (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
          (np.array(X_pca[:,7])),(np.array(X_pca[:,8])), (np.array(X_pca[:,9])), (np.array(X_pca[:,10])),
          (np.array(X_pca[:,11])),(np.array(X_pca[:,12])),(np.array(X_pca[:,13])),(np.array(X_pca[:,14])),
          (np.array(X_pca[:,15])),(np.array(X_pca[:,16])),(np.array(X_pca[:,17])),(np.array(X_pca[:,18])),
          (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
-         (np.array(X_pca[:,23])),(np.array(X_pca[:,24])), (np.array(X_pca[:,25])))), fmt='%5s')
+         (np.array(X_pca[:,23])), (np.array(X_pca[:,24])),(np.array(X_pca[:,25])),(np.array(X_pca[:,26])),
+         (np.array(X_pca[:,27])),(np.array(X_pca[:,28])),(np.array(X_pca[:,29])),(np.array(X_pca[:,30])),
+         (np.array(X_pca[:,31])),(np.array(X_pca[:,32])),(np.array(X_pca[:,33])),(np.array(X_pca[:,34])),
+         (np.array(X_pca[:,35])),(np.array(X_pca[:,36])),(np.array(X_pca[:,37])),(np.array(X_pca[:,38])),
+         (np.array(X_pca[:,39])),(np.array(X_pca[:,40])),(np.array(X_pca[:,41])),(np.array(X_pca[:,42])),
+         (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
          
     # For unknown reasons np.savetxt does not always entirely print the final lines, this iteration 
     # is to circumnavigate this bug -- embarrasing, I know.
@@ -233,12 +238,17 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=1000):
             np.loadtxt('pca_features.txt',dtype=str)
             break
         except ValueError:
-            np.savetxt(f,np.column_stack(
-            ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
-             (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
-             (np.array(X_pca[:,7])),(np.array(X_pca[:,8])), (np.array(X_pca[:,9])), (np.array(X_pca[:,10])),
-             (np.array(X_pca[:,11])),(np.array(X_pca[:,12])),(np.array(X_pca[:,13])),(np.array(X_pca[:,14])),
-             (np.array(X_pca[:,15])),(np.array(X_pca[:,16])),(np.array(X_pca[:,17])),(np.array(X_pca[:,18])),
-             (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
-             (np.array(X_pca[:,23])),(np.array(X_pca[:,24])), (np.array(X_pca[:,25])))), fmt='%5s')
+            np.savetxt('pca_features.txt',np.column_stack(
+                ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
+                 (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
+                 (np.array(X_pca[:,7])),(np.array(X_pca[:,8])), (np.array(X_pca[:,9])), (np.array(X_pca[:,10])),
+                 (np.array(X_pca[:,11])),(np.array(X_pca[:,12])),(np.array(X_pca[:,13])),(np.array(X_pca[:,14])),
+                 (np.array(X_pca[:,15])),(np.array(X_pca[:,16])),(np.array(X_pca[:,17])),(np.array(X_pca[:,18])),
+                 (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
+                 (np.array(X_pca[:,23])), (np.array(X_pca[:,24])),(np.array(X_pca[:,25])),(np.array(X_pca[:,26])),
+                 (np.array(X_pca[:,27])),(np.array(X_pca[:,28])),(np.array(X_pca[:,29])),(np.array(X_pca[:,30])),
+                 (np.array(X_pca[:,31])),(np.array(X_pca[:,32])),(np.array(X_pca[:,33])),(np.array(X_pca[:,34])),
+                 (np.array(X_pca[:,35])),(np.array(X_pca[:,36])),(np.array(X_pca[:,37])),(np.array(X_pca[:,38])),
+                 (np.array(X_pca[:,39])),(np.array(X_pca[:,40])),(np.array(X_pca[:,41])),(np.array(X_pca[:,42])),
+                 (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
     print("Complete!")
