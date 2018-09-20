@@ -40,7 +40,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
     """
     mag = constant(timestamps, baseline)
     condition = False
-    signal_indices = np.argwhere((timestamps > (t_0 - t_e)) & (timestamps < (t_0 + t_e))) 
+    signal_indices = np.argwhere((timestamps >= (t_0 - t_e)) & (timestamps <= (t_0 + t_e))) 
     if len(signal_indices) >= 7:
         mean1 = np.mean(mag[signal_indices])
         mean2 = np.mean(microlensing_mag[signal_indices])
@@ -53,7 +53,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
         signal_measurements = np.array(signal_measurements)
         if (len(np.argwhere(signal_measurements >= 3)) > 0 and 
            mean2 < (mean1 - 0.05) and 
-           len(np.argwhere(signal_measurements > 3)) >= 0.33*len(signal_measurements) and 
+           len(np.argwhere(signal_measurements > 3)) >= 0.33*len(signal_indices) and 
            (1.0/u_0) < blend_ratio):
                condition = True
                
