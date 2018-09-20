@@ -188,6 +188,7 @@ def variable(timestamps, baseline, bailey=None):
         period = np.random.lognormal(0., 0.2)
         period = 10**period
     
+    period=np.abs(period) #on rare occassions period is negative which breaks the code
     inx = np.random.randint(0, 482) #index to choose RR Lyrae lc
     rrlyrae = datasets.fetch_rrlyrae()
     lcid = rrlyrae.ids[inx]
@@ -202,6 +203,9 @@ def variable(timestamps, baseline, bailey=None):
 
     #The following fit is only done to extract amplitude.
     mag_fit_amp = model.predict(np.arange(0, period, 0.01), period = period)
+    print(period)
+    print(bailey)
+    print(mag_fit_amp)
     amplitude = np.ptp(mag_fit_amp) / 2.0
     #Bring lc down to 0 and add input baseline
     mag_fit = mag_fit - np.mean(mag_fit_amp)
