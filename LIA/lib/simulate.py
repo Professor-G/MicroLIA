@@ -203,9 +203,6 @@ def variable(timestamps, baseline, bailey=None):
 
     #The following fit is only done to extract amplitude.
     mag_fit_amp = model.predict(np.arange(0, period, 0.01), period = period)
-    print(period)
-    print(bailey)
-    print(mag_fit_amp)
     amplitude = np.ptp(mag_fit_amp) / 2.0
     #Bring lc down to 0 and add input baseline
     mag_fit = mag_fit - np.mean(mag_fit_amp)
