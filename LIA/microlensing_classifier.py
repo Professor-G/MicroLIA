@@ -52,7 +52,7 @@ def predict(mag, magerr, rf_model, pca_model):
     
     #prediction =rf_model.predict(stat_array)
     pred = rf_model.predict_proba(stat_array)
-    cons_pred, ml_pred, cv_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3]
+    cons_pred, cv_pred, ml_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3]
     prediction = classes[np.argmax(pred)]
     
     return prediction, ml_pred, cons_pred, cv_pred, var_pred
