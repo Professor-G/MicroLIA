@@ -27,7 +27,6 @@ def create_noise(median, rms, degree=3):
     fn : The kth degree spline fit. 
     """
     f = UnivariateSpline(median, rms, w=None, k=degree)
-
     return f
 
 def add_noise(mag, fn, zp=24):
@@ -48,7 +47,6 @@ def add_noise(mag, fn, zp=24):
         The noise-added magnitudes. 
     magerr : array
         The corresponding magnitude errors.
-        
     """    
     flux = 10**(-(mag-zp)/2.5)
     delta_fobs = flux*fn(mag)*(log(10)/2.5)
