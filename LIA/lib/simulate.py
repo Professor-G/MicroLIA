@@ -35,6 +35,7 @@ def microlensing(timestamps, baseline):
     blend_ratio : float
         The blending coefficient chosen between 0 and 10.     
     """   
+
     mag = constant(timestamps, baseline)
     # Set bounds to ensure enough measurements are available near t_0 
     lower_bound = np.percentile(timestamps, 10)
@@ -91,30 +92,34 @@ def cv(timestamps, baseline):
 
     period = abs(np.random.normal(100, 200))
     amplitude = np.random.uniform(0.5, 5.0)
-    # Start with flat 0-mag lightcurve 
     lc = np.zeros(len(timestamps))
     # First generate the times when outbursts start. Note that the
     # duration of outbursts can vary for a single object, so the t_end_outbursts will be added later.
-    outburst_start_times = []
-    t_start_outburst_1 = np.random.uniform( min(timestamps), min((min(timestamps)+period),max(timestamps)))
-    outburst_start_times.append(t_start_outburst_1)
-    t_start = t_start_outburst_1 + period
+    start_times = []
+
+    min_start = min(timestamps)
+    max_start = min((min(timestamps)+period),max(timestamps))
+
+    first_outburst_time = np.random.uniform(min_start, max_start)
+
+    start_times.append(first_outburst_time)
+    t_start = first_outburst_time + period
+
     for t in np.arange(t_start,max(timestamps),period):
-        outburst_start_times.append(t)
+        start_times.append(t)
 
     outburst_end_times = []
     duration_times = []
     end_rise_times = []
     end_high_times = []    
     
-    for t_start_outburst in outburst_start_times:
+    for t_start_outburst in start_times:
     # Since each outburst can be a different shape,
     # generate the lightcurve morphology parameters for each outburst:
         duration = np.random.uniform(3.0, (period/10.0))
         duration_times.append(duration)
         t_end_outburst = t_start_outburst + duration
         outburst_end_times.append(t_end_outburst)        
-        
         rise_time = np.random.uniform(0.5,1.0)
         high_state_time = np.random.normal(0.4*duration, 0.2*duration)
         drop_time = duration - rise_time - high_state_time
@@ -122,8 +127,9 @@ def cv(timestamps, baseline):
         t_end_high = t_start_outburst + rise_time + high_state_time
         end_rise_times.append(t_end_rise)
         end_high_times.append(t_end_high)  
-        # Rise and drop is modeled as a straight lines but differing gradients
+        # Rise and drop is modeled as a straight lines with differing gradients
         rise_gradient = -1.0 * amplitude / rise_time
+
         drop_gradient = (amplitude / drop_time)
 
         for i in range(0,len(timestamps),1):
@@ -135,7 +141,7 @@ def cv(timestamps, baseline):
                         lc[i] = -amplitude + ( drop_gradient * (timestamps[i] - t_end_high))
 
     lc = lc+baseline 
-    return np.array(lc), np.array(outburst_start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
+    return np.array(lc), np.array(start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
 
 def variable(timestamps, baseline, bailey=None):
     """Simulates a variable source. 
@@ -229,3 +235,7 @@ def constant(timestamps, baseline):
 
     return np.array(mag)
    
+
+def alternate_CV(timestamps, baseline):
+  
+    
