@@ -54,7 +54,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
         if (len(np.argwhere(signal_measurements >= 3)) > 0 and 
            mean2 < (mean1 - 0.05) and 
            len(np.argwhere(signal_measurements > 3)) >= 0.33*len(signal_indices) and 
-           (1.0/u_0) < blend_ratio):
+           (1.0/u_0) > blend_ratio):
                condition = True
                
     return condition  
