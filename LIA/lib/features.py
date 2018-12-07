@@ -356,7 +356,6 @@ def above1(mag):
         :rtype: float
     """
     
-    #a = meanMag(mag, magerr) - np.std(mag)
     a = np.median(mag) + np.std(mag)
     
     above1 = len(np.argwhere(mag > a) )
@@ -370,7 +369,6 @@ def above3(mag):
         :rtype: float
     """
     
-    #a = meanMag(mag, magerr) - 3*np.std(mag)
     a = np.median(mag) + 3*np.std(mag)
     
     above3 = len(np.argwhere(mag > a) )
@@ -384,7 +382,6 @@ def above5(mag):
         :rtype: float
     """
     
-    #a = meanMag(mag, magerr) - 5*np.std(mag)
     a = np.median(mag) + 5*np.std(mag)
     
     above5 = len(np.argwhere(mag > a))
@@ -398,7 +395,6 @@ def below1(mag):
         :rtype: float
         """
     
-    #a = meanMag(mag, magerr) + np.std(mag)
     a = np.median(mag) - np.std(mag)
     below1 = len(np.argwhere(mag < a))
     
@@ -411,7 +407,6 @@ def below3(mag):
         :rtype: float
         """
     
-    #a = meanMag(mag, magerr) + 3*np.std(mag)
     a = np.median(mag) - 3*np.std(mag)
     below3 = len(np.argwhere(mag < a))
     
@@ -424,7 +419,6 @@ def below5(mag):
         :rtype: float
         """
     
-    #a = meanMag(mag, magerr) + 5*np.std(mag)
     a = np.median(mag) - 5*np.std(mag)
     below5 = len(np.argwhere(mag < a))
     
@@ -437,7 +431,6 @@ def medianAbsDev(mag):
         :rtype: float
         """
     
-    #mag = remove_bad(mag, magerr)[0]
     medianAbsDev = median_absolute_deviation(mag)
     
     return medianAbsDev
@@ -736,6 +729,7 @@ def normalize(mag, magerr):
 
     rtype: array
     """
+    
     mag2 = (mag - np.min(mag)) / np.ptp(mag)
     magerr = magerr*(mag2/mag)
     
