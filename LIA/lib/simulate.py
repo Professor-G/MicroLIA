@@ -234,8 +234,5 @@ def constant(timestamps, baseline):
     mag = [baseline] * len(timestamps)
 
     return np.array(mag)
-   
-
-def alternate_CV(timestamps, baseline):
-  
+     
     
