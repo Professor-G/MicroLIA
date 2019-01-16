@@ -1,6 +1,6 @@
  [![DOI](https://zenodo.org/badge/78798347.svg)](https://zenodo.org/badge/latestdoi/78798347)
 # LIA: Lens Identification Algorithm
-<img src="https://user-images.githubusercontent.com/19847448/43731560-bc822294-9963-11e8-83a3-18aaf9fba36d.jpg" width="900" height="500">
+<img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
 
 # LIA
@@ -9,7 +9,7 @@ LIA is an open-source program for detecting microlensing events in wide-field su
 
 # Creating Training Data & Constructing Models 
 
-The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The ‘hard’ part is aggregating the necessary timestamps you expect the survey to measure in. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long survey with daily cadence, hence only one timestamp for which to simulate our classes. We will also assume the survey has limiting magnitudes of 15 and 20, and as I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model — although the **noise_models** module contains a function for creating your own. Now, let’s simulate 500 of each class:
+The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The ‘hard’ part is aggregating the necessary timestamps you expect the survey to measure in. These can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long space survey with daily cadence, hence only one timestamp for which to simulate our classes (please note that the set of timestamps must be appended to a list). We will also assume the survey has limiting magnitudes of 15 and 20, and as I don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model — although the **noise_models** module contains a function for creating your own. Now, let’s simulate 500 of each class:
 
 ```
 from LIA import training_set
@@ -38,7 +38,7 @@ magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.
 
 prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
 ```
-We’re interested only in the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
+We’re interested only in the first two outputs which are the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
 
 # pyLIMA
 
