@@ -50,6 +50,8 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
     """
     if n_class < 12:
         raise ValueError("n_class must be at least 12 for principal components to be calculated.")
+    if len(timestamps[0]) == 1:
+        raise ValueError("timestamps must be an array of arrays, re-format and try again.")
 
     times_list=[]
     mag_list=[]
