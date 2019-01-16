@@ -25,22 +25,13 @@ def create_models(all_feats, pca_feats):
     pca_model : fn
         PCA transformation.
     """
-    """
-    coeffs = np.loadtxt(all_feats,usecols=np.arange(2,12))
-    pca = decomposition.PCA(n_components=9, whiten=True, svd_solver='auto')
+    coeffs = np.loadtxt(all_feats,usecols=np.arange(2,49))
+    pca = decomposition.PCA(n_components=44, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     training_set = np.loadtxt(pca_feats, dtype = str)
-    rf=RandomForestClassifier(n_estimators=2000, max_depth = 4, max_features=1, min_samples_leaf = 1, min_samples_split=12)
-    rf.fit(training_set[:,np.arange(1,10)].astype(float),training_set[:,0])
-    """
+    rf=RandomForestClassifier(n_estimators=1000, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
+    rf.fit(training_set[:,np.arange(1,45)].astype(float),training_set[:,0])
 
-
-    training_set = np.loadtxt(all_feats, dtype = str)
-    rf=RandomForestClassifier(n_estimators=1600)#, max_depth = 28, max_features=3, min_samples_leaf = 1, min_samples_split=12)#, min_samples_split=2,n_jobs=-1)
-    rf.fit(training_set[:,np.arange(2,17)].astype(float),training_set[:,0])
-
-    pca=2
-    
     return rf, pca
 
