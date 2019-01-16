@@ -210,13 +210,30 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
          
     os.remove('feats.txt')
     print("Computing principal components...")
-    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
-    pca = decomposition.PCA(n_components=47, whiten=True, svd_solver='auto')
+    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,84))
+    pca = decomposition.PCA(n_components=9, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
-    #feat_strengths = pca.explained_variance_ratio_
+    feat_strengths = pca.explained_variance_ratio_
     X_pca = pca.transform(coeffs) 
     
     classes = ["VARIABLE"]*n_class+["CONSTANT"]*n_class+["ML"]*n_class+["CV"]*n_class
+    np.savetxt('pca_features.txt',np.column_stack(
+        ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
+         (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
+         (np.array(X_pca[:,7])),(np.array(X_pca[:,8])))), fmt='%5s')
+         
+    # For unknown reasons np.savetxt does not always entirely print the final lines, this iteration 
+    # is to circumnavigate this bug
+    for i in range(100):
+        try:
+            np.loadtxt('pca_features.txt',dtype=str)
+            break
+        except ValueError:
+            np.savetxt('pca_features.txt',np.column_stack(
+                ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
+                (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
+                (np.array(X_pca[:,7])),(np.array(X_pca[:,8])))), fmt='%5s')
+"""
     np.savetxt('pca_features.txt',np.column_stack(
         ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
          (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
@@ -229,26 +246,14 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
          (np.array(X_pca[:,31])),(np.array(X_pca[:,32])),(np.array(X_pca[:,33])),(np.array(X_pca[:,34])),
          (np.array(X_pca[:,35])),(np.array(X_pca[:,36])),(np.array(X_pca[:,37])),(np.array(X_pca[:,38])),
          (np.array(X_pca[:,39])),(np.array(X_pca[:,40])),(np.array(X_pca[:,41])),(np.array(X_pca[:,42])),
-         (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
-         
-    # For unknown reasons np.savetxt does not always entirely print the final lines, this iteration 
-    # is to circumnavigate this bug -- embarrasing, I know.
-    for i in range(100):
-        try:
-            np.loadtxt('pca_features.txt',dtype=str)
-            break
-        except ValueError:
-            np.savetxt('pca_features.txt',np.column_stack(
-                ((classes), (np.array(X_pca[:,0])), (np.array(X_pca[:,1])), (np.array(X_pca[:,2])),
-                 (np.array(X_pca[:,3])), (np.array(X_pca[:,4])), (np.array(X_pca[:,5])), (np.array(X_pca[:,6])), 
-                 (np.array(X_pca[:,7])),(np.array(X_pca[:,8])), (np.array(X_pca[:,9])), (np.array(X_pca[:,10])),
-                 (np.array(X_pca[:,11])),(np.array(X_pca[:,12])),(np.array(X_pca[:,13])),(np.array(X_pca[:,14])),
-                 (np.array(X_pca[:,15])),(np.array(X_pca[:,16])),(np.array(X_pca[:,17])),(np.array(X_pca[:,18])),
-                 (np.array(X_pca[:,19])),(np.array(X_pca[:,20])),(np.array(X_pca[:,21])),(np.array(X_pca[:,22])),
-                 (np.array(X_pca[:,23])), (np.array(X_pca[:,24])),(np.array(X_pca[:,25])),(np.array(X_pca[:,26])),
-                 (np.array(X_pca[:,27])),(np.array(X_pca[:,28])),(np.array(X_pca[:,29])),(np.array(X_pca[:,30])),
-                 (np.array(X_pca[:,31])),(np.array(X_pca[:,32])),(np.array(X_pca[:,33])),(np.array(X_pca[:,34])),
-                 (np.array(X_pca[:,35])),(np.array(X_pca[:,36])),(np.array(X_pca[:,37])),(np.array(X_pca[:,38])),
-                 (np.array(X_pca[:,39])),(np.array(X_pca[:,40])),(np.array(X_pca[:,41])),(np.array(X_pca[:,42])),
-                 (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
-    print("Complete!")
+         (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])),
+         (np.array(X_pca[:,47])), (np.array(X_pca[:,48])), (np.array(X_pca[:,49])), (np.array(X_pca[:,50])), 
+         (np.array(X_pca[:,51])),(np.array(X_pca[:,52])), (np.array(X_pca[:,53])), (np.array(X_pca[:,54])),
+         (np.array(X_pca[:,55])),(np.array(X_pca[:,56])),(np.array(X_pca[:,57])),(np.array(X_pca[:,58])),
+         (np.array(X_pca[:,59])),(np.array(X_pca[:,60])),(np.array(X_pca[:,61])),(np.array(X_pca[:,62])),
+         (np.array(X_pca[:,63])),(np.array(X_pca[:,64])),(np.array(X_pca[:,65])),(np.array(X_pca[:,66])),
+         (np.array(X_pca[:,67])), (np.array(X_pca[:,68])),(np.array(X_pca[:,69])),(np.array(X_pca[:,70])),
+         (np.array(X_pca[:,71])),(np.array(X_pca[:,72])),(np.array(X_pca[:,73])),(np.array(X_pca[:,74])),
+         (np.array(X_pca[:,75])),(np.array(X_pca[:,76])),(np.array(X_pca[:,77])),(np.array(X_pca[:,78])),
+         (np.array(X_pca[:,79])),(np.array(X_pca[:,80])))), fmt='%5s')
+"""
