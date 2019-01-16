@@ -1,8 +1,9 @@
 numpy==1.14.5
-scikit-learn==0.19.1
-astropy==1.2.1
+scikit-learn==0.18
+astropy==2.0.9
 mpmath==0.19
-scipy==1.1.0
+scipy==1.2.0
 PeakUtils==1.1.1
 tsfresh==0.11.0
 gatspy==0.3
+AstroML==0.3
