@@ -49,9 +49,14 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
         A txt file containing all PCA features plus class label. 
     """
     if n_class < 12:
-        raise ValueError("n_class must be at least 12 for principal components to be calculated.")
-    if len(timestamps[0]) == 1:
-        raise ValueError("timestamps must be an array of arrays, re-format and try again.")
+        raise ValueError("Parameter n_class must be at least 12 for principal components to be computed.")
+    
+    while True:
+        try:
+            x=len(timestamps[0])
+            break
+        except TypeError:
+            raise ValueError("Incorrect format -- append the timestamps to a list and try again.")
 
     times_list=[]
     mag_list=[]
@@ -234,7 +239,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
          (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
          
     # For unknown reasons np.savetxt does not always entirely print the final lines, this iteration 
-    # is to circumnavigate this bug
+    # is to circumnavigate this bug.
     for i in range(100):
         try:
             np.loadtxt('pca_features.txt',dtype=str)
