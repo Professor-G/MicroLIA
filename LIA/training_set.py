@@ -232,7 +232,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
          (np.array(X_pca[:,43])),(np.array(X_pca[:,44])),(np.array(X_pca[:,45])),(np.array(X_pca[:,46])))), fmt='%5s')
          
     # For unknown reasons np.savetxt does not always entirely print the final lines, this iteration 
-    # is to circumnavigate this bug -- embarrasing, I know.
+    # is to circumnavigate this bug
     for i in range(100):
         try:
             np.loadtxt('pca_features.txt',dtype=str)
