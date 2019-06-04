@@ -8,7 +8,7 @@ from __future__ import division
 import numpy as np
 from gatspy import datasets, periodic
 import os
-
+from math import pi
 
 def microlensing(timestamps, baseline):
     """Simulates a microlensing event.  
@@ -37,7 +37,7 @@ def microlensing(timestamps, baseline):
     blend_ratio : float
         The blending coefficient chosen between 0 and 10.     
     """   
-
+ 
     mag = constant(timestamps, baseline)
     # Set bounds to ensure enough measurements are available near t_0 
     lower_bound = np.percentile(timestamps, 10)
@@ -145,105 +145,6 @@ def cv(timestamps, baseline):
     lc = lc+baseline 
     return np.array(lc), np.array(start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
 
-def variable(timestamps, baseline, bailey=None):
-    """Simulates a variable source. 
-    This simulation is done using the gatspy module provided by AstroML. 
-    This module implements a template-based model using RR Lyrae
-    lightcurves from Sesar et al. 2010, which contains observations of
-    483 RR Lyrae in Stripe 82 (from SDSS) measured approximately over a 
-    decade. For the purpose of simulating variable stars we apply a 
-    single band ('r') template model and modify only the period. We 
-    currently only provide simulated RR Lyrae (periods < 1 day) or 
-    Cepheid Variables which have an average period of 10 days.
-    
-    See:
-    Template-based Period Fitting: https://www.astroml.org/gatspy/periodic/template.html
-    Period distribution for RR Lyrae from Sesar et al. 2010 (https://arxiv.org/abs/0910.4611).
-    Period distribution for Cepheids from Becker et al. 1977 (http://adsabs.harvard.edu/abs/1977ApJ...218..633B)
-
-    Parameters
-    ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline at which to simulate the lightcurve.
-    bailey : int, optional 
-        The type of variable to simulate. A bailey
-        value of 1 simulaes RR Lyrae type ab, a value
-        of 2 simulates RR Lyrae type c, and a value of 
-        3 simulates a Cepheid variable. If not provided
-        it defaults to a random choice between the three. 
-
-    Returns
-    -------
-    mag : array
-        Simulated magnitudes given the timestamps.
-    amplitude : float
-        Amplitude of the signal in mag. 
-    period : float
-        Period of the signal in days.
-    """
-    if bailey is None:
-        bailey = np.random.randint(1,4)
-    if bailey < 0 or bailey > 3:
-        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
-
-    if bailey == 1:
-        period = np.random.normal(0.6, 0.15)
-    elif bailey == 2:
-        period = np.random.normal(0.33, 0.1)
-    elif bailey == 3:
-        period = np.random.lognormal(0., 0.2)
-        period = 10**period
-    
-    period=np.abs(period) #on rare occassions period is negative which breaks the code
-    inx = np.random.randint(0, 482) #index to choose RR Lyrae lc
-
-	
-
-    #DIRE = '/tmp/mozilla_ebachelet0/J_ApJ_708_717/phot/'
-    #rr_lyrae_templates = [ i for i in os.listdir(DIRE) if '.dat' in i]
-
-    #lightcurve = np.loadtxt(DIRE+rr_lyrae_templates[inx],dtype=str,delimiter='|')
-   
-    #t_r = lightcurve[:,2].astype(float)+2450000.5 
-    #mag_r = lightcurve[:,3].astype(float)
-    #dmag_r = lightcurve[:,4].astype(float)
-
-    #mask = mag_r != -99.99
-    #t_r = t_r[mask]
-    #mag_r = mag_r[mask]
-    #dmag_r = dmag_r[mask]
-
-
-
-    
-    rrlyrae = datasets.fetch_rrlyrae()
-    lcid = rrlyrae.ids[inx]
-    t, mag, dmag, filts = rrlyrae.get_lightcurve(lcid)
-    mask = (filts == 'r')
-    t_r, mag_r, dmag_r = t[mask], mag[mask], dmag[mask]
-
-    model = periodic.RRLyraeTemplateModeler('r')
-    model.fit(t_r, mag_r, dmag_r)
-    mag_fit = model.predict(timestamps, period = period)
-    amplitude = datasets.fetch_rrlyrae_lc_params()[inx][3]
-
-    #The following fit is only done to extract amplitude.
-    mag_fit_amp = model.predict(np.arange(0, period, 0.01), period = period)
-    amplitude = np.ptp(mag_fit_amp) / 2.0
-    #Bring lc down to 0 and add input baseline
-    mag_fit = mag_fit - np.mean(mag_fit_amp)
-    mag_fit = mag_fit+baseline
-  
-    #mag_fit = mag_r
-    #mag_fit_amp = np.max(mag_r)-np.min(mag_r)
-    #amplitude = np.ptp(mag_fit) / 2.0 
-    #mag_fit = mag_fit - np.mean(mag_fit)
-    #mag_fit = mag_fit+baseline
-
-    import pdb; pdb.set_trace()
-    return np.array(mag_fit), amplitude, period
 
 def constant(timestamps, baseline):
     """Simulates a constant source displaying no variability.  
@@ -264,4 +165,65 @@ def constant(timestamps, baseline):
 
     return np.array(mag)
      
+
+def parametersRR0():            #McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events
+    a1=  0.31932222222222223
+    ratio12 = 0.4231184105222867 
+    ratio13 = 0.3079439089738683 
+    ratio14 = 0.19454399944326523
+    f1 =  3.9621766666666667
+    f2 =  8.201326666666667
+    f3 =  6.259693777777778
+    return a1, ratio12, ratio13, ratio14, f1, f2, f3
+
+def parametersRR1():            #McGill et al. (2018)
+    a1 =  0.24711999999999998
+    ratio12 = 0.1740045322110716 
+    ratio13 = 0.08066256609474477 
+    ratio14 = 0.033964605589727
+    f1 =  4.597792666666666
+    f2 =  2.881016
+    f3 =  1.9828297333333336
+    return a1, ratio12, ratio13, ratio14, f1, f2, f3
+
+
+def uncertainties(time, curve, uncertain_factor):       #optional, add random uncertainties, controlled by the uncertain_factor
+    N = len(time)
+    uncertainty = np.random.normal(0, uncertain_factor/100, N)
+    realcurve = []                                      #curve with uncertainties
+    for idx in range(N):
+        realcurve.append(curve[idx]+uncertainty[idx])
+    return realcurve
+
+
+def setup_parameters(timestamps, bailey=None):          #setup of random parameters based on physical parameters
+    time = np.array(timestamps)   #np.arange(0,300,0.01)    #np.loadtxt('Gbul2000_45.dat')[:,0] 
+    if bailey is None:
+        bailey = np.random.randint(1,4)
+    if bailey < 0 or bailey > 3:
+        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
+    a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR1()
+    if bailey == 1:
+        period = np.random.normal(0.6, 0.15)
+        a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR0()
+    elif bailey == 2:
+        period = np.random.normal(0.33, 0.1)
+    elif bailey == 3:
+        period = np.random.lognormal(0., 0.2)
+        period = 10**period
+    s = 20
+    period=np.abs(period)  
+    n1 = np.random.normal(a1, 2*a1/s)
+    ampl_k = [n1, np.random.normal(n1*ratio12, n1*ratio12/s), np.random.normal(n1*ratio13, n1*ratio13/s), np.random.normal(n1*ratio14, n1*ratio14/s)]
+    phase_k = [0, np.random.normal(f1, f1/s), np.random.normal(f2, f2/s), np.random.normal(f3, f3/s)]
+    return time, ampl_k, phase_k, period
+
+def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2018)
+    time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
+    lightcurve = np.array(baseline)
+    for idx in range(len(ampl_k)):
+        lightcurve = lightcurve + ampl_k[idx] * np.cos(((2*pi*(idx+1))/period)*time+phase_k[idx])
+    amplitude = np.ptp(lightcurve) / 2.0
+    return np.array(lightcurve), amplitude, period 
+
     
