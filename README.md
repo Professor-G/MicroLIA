@@ -5,7 +5,7 @@
 
 # Installation
 
-Requires Python3.7; to install all dependencies run
+Requires Python3.7 -- to install all dependencies run
 
 ```
 python setup.py install
