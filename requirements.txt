@@ -2,6 +2,6 @@ numpy
 scipy
 scikit-learn
 mpmath
-AstroML==0.3
+AstroML
 PeakUtils==1.1.1
 tsfresh==0.11.0
