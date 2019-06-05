@@ -116,7 +116,7 @@ class Test(unittest.TestCase):
     def test_sum_values(value):
         value.assertEqual( sum_values(norm_flux), 54.22954557484559, "Sum values function failed")
     def test_time_reversal_asymmetry(value):
-        value.assertEqual( time_reversal_asymmetry(norm_flux), -0.000377481662001788, "Time reversal symmetry function failed")
+        value.assertEqual( time_reversal_asymmetry(norm_flux), -0.0003774816620017878, "Time reversal symmetry function failed")
     def test_vonNeumannRatio(value):
         value.assertEqual( vonNeumannRatio(norm_flux), 0.061476216308545044, "von Neumann Ratio function failed")
     def test_extract_all(value):
