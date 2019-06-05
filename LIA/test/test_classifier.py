@@ -7,7 +7,7 @@ import numpy as np
 import unittest
 
 import sys
-sys.path.append('../../')
+sys.path.append('../')
 from LIA import microlensing_classifier
 from LIA import models
 
