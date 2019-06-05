@@ -6,7 +6,6 @@ Created on Thu Jun 28 20:30:11 2018
 """
 from __future__ import division
 import numpy as np
-from gatspy import datasets, periodic
 import os
 from math import pi
 
