@@ -3,6 +3,15 @@
 # LIA: Lens Identification Algorithm
 <img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
+# Installation
+
+Requires Python3.7; to install all dependencies run
+
+```
+python setup.py install
+```
+
+from the LIA directory.
 
 # LIA
 
