@@ -8,7 +8,7 @@ from math import log
 import unittest
 
 import sys
-sys.path.append('../lib')
+sys.path.append('../')
 from features import *
 from extract_features import extract_all
 
