@@ -34,7 +34,7 @@ class Test(unittest.TestCase):
     def test_above5(value):
         value.assertEqual( above5(norm_flux), 0, "Above 5 function failed")
     def test_abs_energy(value):
-        value.assertEqual( abs_energy(norm_flux), 27.956794796425804, "Absolute Energy function failed")
+        value.assertEqual( abs_energy(norm_flux), 27.956794796425797, "Absolute Energy function failed")
     def test_abs_sum_changes(value):
         value.assertEqual( abs_sum_changes(norm_flux), 2.5587282410138945, "Absolute Sum Changes function failed")
     def test_amplitude(value):
@@ -116,7 +116,7 @@ class Test(unittest.TestCase):
     def test_sum_values(value):
         value.assertEqual( sum_values(norm_flux), 54.22954557484559, "Sum values function failed")
     def test_time_reversal_asymmetry(value):
-        value.assertEqual( time_reversal_asymmetry(norm_flux), -0.0003774816620017878, "Time reversal symmetry function failed")
+        value.assertEqual( time_reversal_asymmetry(norm_flux), -0.0003774816620017788, "Time reversal symmetry function failed")
     def test_vonNeumannRatio(value):
         value.assertEqual( vonNeumannRatio(norm_flux), 0.061476216308545044, "von Neumann Ratio function failed")
     def test_extract_all(value):
