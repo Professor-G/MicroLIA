@@ -198,10 +198,11 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
     col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
     cols = fits.ColDefs([col0, col1, col2, col3, col4])
     hdu = fits.BinTableHDU.from_columns(cols)
-    hdu.writeto('lightcurves.fits')
-    
+    hdu.writeto('lightcurves.fits',overwrite=True)
+
     print("Saving features...")
-    np.savetxt('feats.txt',stats_list)
+    np.savetxt('feats.txt',np.array(stats_list).astype(str),fmt='%s')
+
     #output_file = open('feats.txt','w')
     #for line in stats_list:
     #    print >>output_file, line
