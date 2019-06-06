@@ -9,8 +9,8 @@ import unittest
 
 import sys
 sys.path.append('../')
-from features import *
-from extract_features import extract_all
+from LIA.features import *
+from LIA.extract_features import extract_all
 
 data=np.loadtxt('ml_event.txt')
 mag=data[:,1]

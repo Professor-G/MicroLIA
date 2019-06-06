@@ -201,10 +201,11 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
     hdu.writeto('lightcurves.fits')
     
     print("Saving features...")
-    output_file = open('feats.txt','w')
-    for line in stats_list:
-        print >>output_file, line
-    output_file.close()
+    np.savetxt('feats.txt',stats_list)
+    #output_file = open('feats.txt','w')
+    #for line in stats_list:
+    #    print >>output_file, line
+    #output_file.close()
     
     with open(r'feats.txt', 'r') as infile, open(r'all_features.txt', 'w') as outfile:
          

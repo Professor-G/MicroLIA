@@ -8,7 +8,7 @@
 from __future__ import print_function
 from math import log 
 import numpy as np
-from features import *
+from LIA.features import *
 
 def extract_all(mag, magerr, convert=True, zp=24):
     """This function will compute the statistics used to train the RF.

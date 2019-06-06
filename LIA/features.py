@@ -99,7 +99,7 @@ def con(mag):
     if len(a) < 3:
         return 0
     else:
-        for i in xrange(len(mag)-2):
+        for i in range(len(mag)-2):
             first = mag[i]
             second = mag[i+1]
             third = mag[i+2]
@@ -140,7 +140,7 @@ def con2(mag):
     if len(a) < 3:
         return 0
     else:
-        for i in xrange(len(mag)-2):
+        for i in range(len(mag)-2):
             first = mag[i]
             second = mag[i+1]
             third = mag[i+2]
