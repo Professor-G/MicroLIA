@@ -8,7 +8,7 @@ from __future__ import division
 import numpy as np
 from LIA import simulate
    
-def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio):
+def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7):
     """Test to ensure proper microlensing signal.
     This requires 7 measurements with a magnification of at least 1.34, imposing
     additional magnification thresholds to ensure the microlensing signal doesn't 
@@ -32,7 +32,9 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
         The timescale of the event in days.
     blend_ratio : float
         The blending coefficient.
-        
+    n : 
+        The mininum number of measurements that should be within the 
+        microlensing signal when simulating the lightcurves. 
     Returns
     -------
     condition : boolean
@@ -41,7 +43,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
     mag = simulate.constant(timestamps, baseline)
     condition = False
     signal_indices = np.argwhere((timestamps >= (t_0 - t_e)) & (timestamps <= (t_0 + t_e))) 
-    if len(signal_indices) >= 7:
+    if len(signal_indices) >= n:
         mean1 = np.mean(mag[signal_indices])
         mean2 = np.mean(microlensing_mag[signal_indices])
                 
