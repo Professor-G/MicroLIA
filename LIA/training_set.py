@@ -15,7 +15,7 @@ from LIA import noise_models
 from LIA import quality_check
 from LIA import extract_features
     
-def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1):
     """Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
@@ -38,6 +38,15 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
     n_class : int, optional
         The amount of lightcurve (per class) to simulate.
         Defaults to 500. 
+    ml_n1 : int, optional
+        The mininum number of measurements that should be within the 
+        microlensing signal when simulating the lightcurves. 
+    cv_n1 : int, optional
+        The mininum number of measurements that should be within 
+        at least one CV outburst when simulating the lightcurves.
+    cv_n2 : int, optional
+        The mininum number of measurements that should be within the 
+        rise or drop of at least one CV outburst when simulating the lightcurves.
 
     Outputs
     _______
@@ -127,7 +136,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
             baseline = np.random.uniform(min_mag,max_mag)
             mag, burst_start_times, burst_end_times, end_rise_times, end_high_times = simulate.cv(time, baseline)
             
-            quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times, n1=7, n2=1)
+            quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times, n1=cv_n1, n2=cv_n2)
             if quality is True:
                 try:
                     if noise is not None:
@@ -169,7 +178,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
             except ValueError:
                 continue
                 
-            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7)
+            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, ml_n1=7)
             if quality is True:
                 
                 source_class = ['ML']*len(time)
