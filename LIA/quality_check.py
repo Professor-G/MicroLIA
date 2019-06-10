@@ -61,7 +61,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
                
     return condition  
 
-def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times, end_high_times):
+def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times, end_high_times, n1=7, n2=1):
     """Test to ensure proper CV signal.
     This requires 7 measurements within ANY outburst, with at least one 
     occurring within the rise or fall.
@@ -78,6 +78,12 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
         The end time of each rise (start time of max amplitude).
     end_high_times : array
         The end time of each peak (end time of max amplitude).
+    n1 : 
+        The mininum number of measurements that should be within 
+        at least one outburst, defaults to 7.
+    n2 : 
+        The mininum number of measurements that should be within the 
+        rise or drop of at least one outburst, defaults to 1.
         
     Returns
     -------
@@ -99,8 +105,8 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
         fall_measurements.append(inx) 
 
     for k in range(len(signal_measurements)):
-        if signal_measurements[k] >= 7:
-            if rise_measurements[k] or fall_measurements[k] >= 1:
+        if signal_measurements[k] >= n1:
+            if rise_measurements[k] or fall_measurements[k] >= n2:
                 condition = True
                 break 
 
