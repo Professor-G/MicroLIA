@@ -127,7 +127,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
             baseline = np.random.uniform(min_mag,max_mag)
             mag, burst_start_times, burst_end_times, end_rise_times, end_high_times = simulate.cv(time, baseline)
             
-            quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times)
+            quality = quality_check.test_cv(time, burst_start_times, burst_end_times, end_rise_times, end_high_times, n1=7, n2=1)
             if quality is True:
                 try:
                     if noise is not None:
@@ -169,7 +169,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500):
             except ValueError:
                 continue
                 
-            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio)
+            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7)
             if quality is True:
                 
                 source_class = ['ML']*len(time)
