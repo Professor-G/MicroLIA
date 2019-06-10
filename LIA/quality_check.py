@@ -32,7 +32,7 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
         The timescale of the event in days.
     blend_ratio : float
         The blending coefficient.
-    n : 
+    n : int, optional
         The mininum number of measurements that should be within the 
         microlensing signal when simulating the lightcurves. 
     Returns
@@ -78,10 +78,10 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
         The end time of each rise (start time of max amplitude).
     end_high_times : array
         The end time of each peak (end time of max amplitude).
-    n1 : 
+    n1 : int, optional
         The mininum number of measurements that should be within 
         at least one outburst, defaults to 7.
-    n2 : 
+    n2 : int, optional
         The mininum number of measurements that should be within the 
         rise or drop of at least one outburst, defaults to 1.
         
