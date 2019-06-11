@@ -178,7 +178,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
             except ValueError:
                 continue
                 
-            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, ml_n1=7)
+            quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, ml_n1=ml_n1)
             if quality is True:
                 
                 source_class = ['ML']*len(time)
