@@ -26,7 +26,7 @@ The **simulate** module contains the framework necessary for simulating all indi
 from LIA import training_set
 
 time=[]
-time.append(range(0,366,1))
+time.append(np.arange(0,366,1))
 
 training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
