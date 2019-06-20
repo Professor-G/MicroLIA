@@ -24,6 +24,7 @@ The **simulate** module contains the framework necessary for simulating all indi
 
 ```
 from LIA import training_set
+import numpy as np 
 
 time=[]
 time.append(np.arange(0,366,1))
