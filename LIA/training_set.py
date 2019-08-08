@@ -202,7 +202,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     print("Writing files...")
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
-    col2 = fits.Column(name='time', format='E', array=np.hstack(times_list))
+    col2 = fits.Column(name='time', format='D', array=np.hstack(times_list))
     col3 = fits.Column(name='mag', format='E', array=np.hstack(mag_list))
     col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
     cols = fits.ColDefs([col0, col1, col2, col3, col4])
