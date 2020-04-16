@@ -77,7 +77,7 @@ def add_gaussian_noise(mag,zp=24):
     """
     flux = 10**((mag-zp)/-2.5)
     
-    noisy_flux= np.random.normal(flux, np.sqrt(flux))
+    noisy_flux= np.random.poisson(flux)#, np.sqrt(flux))
     magerr = 2.5/(log(10)*np.sqrt(noisy_flux))
     
     noisy_mag = zp - 2.5*np.log10(noisy_flux)

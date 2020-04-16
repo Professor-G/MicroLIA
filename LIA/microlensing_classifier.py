@@ -49,7 +49,7 @@ def predict(mag, magerr, rf_model, pca_model):
     stat_array = array.append(extract_features.extract_all(mag, magerr, convert=True))
     array=np.array([i for i in array])
     stat_array = pca_model.transform(array)
-    
+
     #prediction =rf_model.predict(stat_array)
     pred = rf_model.predict_proba(stat_array)
     cons_pred, cv_pred, ml_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3]
