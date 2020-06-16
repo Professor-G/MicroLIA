@@ -169,7 +169,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         for j in range(10000):
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_mag,max_mag)
-            mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline)
+            mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline,t0_dist,u0_dist,tE_dist)
             try:
                 if noise is not None:
                     mag, magerr = noise_models.add_noise(mag,noise)
@@ -189,7 +189,10 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 times_list.append(time)
                 mag_list.append(mag)
                 magerr_list.append(magerr)
-                
+                import matplotlib.pyplot as plt
+                plt.errorbar(time-2450000,mag,magerr,fmt='.k')
+                plt.show()  
+                import pdb; pdb.set_trace()
                 stats = extract_features.extract_all(mag,magerr, convert=True)
                 stats = [i for i in stats]
                 stats = ['ML'] + [3*n_class+k] + stats

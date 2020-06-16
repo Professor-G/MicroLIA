@@ -8,7 +8,7 @@ from setuptools import find_packages, setup
 
 setup(
 	name = "LIA",
-	version = 1.1,
+	version = 1.2,
 	description = "Microlensing detection algorithm",
 	author = "Daniel Godinez",
 	author_email = "danielgodinez123@gmail.com",

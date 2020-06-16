@@ -79,7 +79,7 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
     
     flux_obs = f_s*magnification + f_b+flux_noise
     microlensing_mag = -2.5*np.log10(flux_obs)
-    
+
     return np.array(microlensing_mag), baseline, u_0, t_0, t_e, blend_ratio
     
 def cv(timestamps, baseline):
