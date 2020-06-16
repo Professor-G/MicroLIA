@@ -15,7 +15,7 @@ from LIA import noise_models
 from LIA import quality_check
 from LIA import extract_features
     
-def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1,t0_dist=None,u0_dist=None,tE_dist = None):
     """Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
