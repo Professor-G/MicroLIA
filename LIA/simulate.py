@@ -55,7 +55,7 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
        u_0 = np.random.uniform(lower_bound, upper_bound) 
     else:
              
-       u_0 = np.random.uniform(0, 1.5)
+       u_0 = np.random.uniform(0, 1.0)
 
     if tE_dist:
        lower_bound = tE_dist[0]
@@ -65,7 +65,7 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
 
         t_e = np.random.normal(30, 10.0)
     
-    blend_ratio = np.random.uniform(0,10)
+    blend_ratio = np.random.uniform(0,1)
 
     u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))

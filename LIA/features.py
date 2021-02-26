@@ -71,7 +71,7 @@ def shannon_entropy(mag, magerr):
     total_entropy = np.nan_to_num(entropy1 + entropy2)
     return total_entropy
 
-def con(mag):
+def con(mag,magerr):
     """Con is defined as the number of clusters containing three or more
         consecutive observations with magnitudes brighter than the reference
         magnitude plus 3 standard deviations. For a microlensing event Con = 1,
@@ -94,7 +94,7 @@ def con(mag):
     deviatingThreshold = mean - 3*std
     con = 0
     deviating = False
-    
+    #import pdb; pdb.set_trace()
     a = np.argwhere(mag < deviatingThreshold)
     if len(a) < 3:
         return 0
@@ -114,7 +114,45 @@ def con(mag):
 
     return con
 
-def con2(mag):
+#def con(mag,magerr):
+#    """Con is defined as the number of clusters containing three or more
+#        consecutive observations with magnitudes brighter than the reference
+#        magnitude plus 3 standard deviations. For a microlensing event Con = 1,
+#        assuming a  flat lightcurve prior to the event. The magnitude measurements
+#        are split into bins such that the reference  magnitude is defined as the mean
+#        of the measurements in the largest bin.
+#        
+#        
+#        #The following code was done to exclude outliers -- not currently employed#
+#        
+#        mag, magerr = remove_bad(mag, magerr)
+#        diff = mag - meanMag(mag, magerr)
+#        hist, edges = np.histogram(diff, bins = 10)
+#        val = np.where(hist == max(hist))
+#        bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
+#        mean = meanMag(mag[bin_range], magerr[bin_range])
+#    """
+#    con = 0
+#    deviating = False
+#    MEAN = np.mean(mag)
+#    a = np.argwhere(np.abs(mag-MEAN) > 3*magerr)
+#    if len(a) < 3:
+#        return 0
+#    else:
+#        for i in range(len(mag)-2):
+#            first = np.abs(mag[i]-MEAN)>3*magerr[i]
+#            second =  np.abs(mag[i+1]-MEAN)>3*magerr[i+1]
+#            third =  np.abs(mag[i+2]-MEAN)>3*magerr[i+2]
+#            if (first & second & third):
+#                if (not deviating):
+#                    con += 1
+#                    deviating = True
+#                elif deviating:
+#                    deviating = False
+
+#    return con
+    
+def con2(mag,magerr):
     """Con is defined as the number of clusters containing three or more
         consecutive observations with magnitudes brighter than the mean plus
         2 standard deviations. For a microlensing event Con = 1, assuming a
@@ -154,6 +192,45 @@ def con2(mag):
                     deviating = False
 
     return con
+
+
+#def con2(mag,magerr):
+#    """Con is defined as the number of clusters containing three or more
+#        consecutive observations with magnitudes brighter than the reference
+#        magnitude plus 3 standard deviations. For a microlensing event Con = 1,
+#        assuming a  flat lightcurve prior to the event. The magnitude measurements
+#        are split into bins such that the reference  magnitude is defined as the mean
+#        of the measurements in the largest bin.
+#        
+#        
+#        #The following code was done to exclude outliers -- not currently employed#
+#        
+#        mag, magerr = remove_bad(mag, magerr)
+#        diff = mag - meanMag(mag, magerr)
+#        hist, edges = np.histogram(diff, bins = 10)
+#        val = np.where(hist == max(hist))
+#        bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
+#        mean = meanMag(mag[bin_range], magerr[bin_range])
+#    """
+#    con = 0
+#    deviating = False
+#    MEAN = np.mean(mag)
+#    a = np.argwhere(np.abs(mag-MEAN) > 2*magerr)
+#    if len(a) < 3:
+#        return 0
+#    else:
+#        for i in range(len(mag)-2):
+#            first = np.abs(mag[i]-MEAN)>2*magerr[i]
+#            second =  np.abs(mag[i+1]-MEAN)>2*magerr[i+1]
+#            third =  np.abs(mag[i+2]-MEAN)>2*magerr[i+2]
+#            if (first & second & third):
+#                if (not deviating):
+#                    con += 1
+#                    deviating = True
+#                elif deviating:
+#                    deviating = False
+
+#    return con
 
 def kurtosis(mag):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve.
@@ -348,76 +425,79 @@ def median_distance(mjd, mag):
     distance = np.median(np.sqrt(delta_mag + delta_t))
     return distance
 
-def above1(mag):
+def above1(mag,magerr):
     """This function measures the ratio of data points that are above 1 standard deviation
         from the median magnitude.
         
         :rtype: float
     """
     
+    #a = np.median(mag) + magerr
     a = np.median(mag) + np.std(mag)
-    
     above1 = len(np.argwhere(mag > a) )
     
     return above1
 
-def above3(mag):
+def above3(mag,magerr):
     """This function measures the ratio of data points that are above 3 standard deviations
         from the median magnitude.
         
         :rtype: float
     """
     
+    #a = np.median(mag) + 3*magerr
     a = np.median(mag) + 3*np.std(mag)
-    
     above3 = len(np.argwhere(mag > a) )
     
     return above3
 
-def above5(mag):
+def above5(mag,magerr):
     """This function measures the ratio of data points that are above 5 standard deviations
         from the median magnitude.
         
         :rtype: float
     """
     
+    #a = np.median(mag) + 5*magerr
     a = np.median(mag) + 5*np.std(mag)
-    
     above5 = len(np.argwhere(mag > a))
     
     return above5
 
-def below1(mag):
+def below1(mag,magerr):
     """This function measures the ratio of data points that are below 1 standard deviations
         from the median magnitude.
         
         :rtype: float
         """
     
+    #a = np.median(mag) - magerr
     a = np.median(mag) - np.std(mag)
     below1 = len(np.argwhere(mag < a))
     
     return below1
 
-def below3(mag):
+def below3(mag,magerr):
     """This function measures the ratio of data points that are below 3 standard deviations
         from the median magnitude.
         
         :rtype: float
         """
     
+    #a = np.median(mag) - 3*magerr
     a = np.median(mag) - 3*np.std(mag)
     below3 = len(np.argwhere(mag < a))
     
     return below3
 
-def below5(mag):
+def below5(mag,magerr):
     """This function measures the ratio of data points that are below 5 standard deviations
         from the median magnitude.
         
         :rtype: float
         """
     
+    #a = np.median(mag) - 5*magerr
     a = np.median(mag) - 5*np.std(mag)
     below5 = len(np.argwhere(mag < a))
     
@@ -569,6 +649,7 @@ def count_below(mag):
     rtype: int
     """
     num = ts.count_below_mean(mag)
+    #import pdb; pdb.set_trace()
     return num
 
 def first_loc_max(mag):

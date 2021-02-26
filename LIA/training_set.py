@@ -174,6 +174,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 if noise is not None:
                     mag, magerr = noise_models.add_noise(mag,noise)
                 if noise is None:
+                   
                     mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
             except ValueError:
                 continue

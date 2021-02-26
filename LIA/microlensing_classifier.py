@@ -43,17 +43,18 @@ def predict(mag, magerr, rf_model, pca_model):
     """
     if len(mag) < 30:
         warn('The number of data points is low -- results may be unstable')
-
+    #import pdb; pdb.set_trace()
     classes = ['CONSTANT', 'CV', 'ML', 'VARIABLE']
     array=[]
-    stat_array = array.append(extract_features.extract_all(mag, magerr, convert=True))
-    array=np.array([i for i in array])
-    stat_array = pca_model.transform(array)
-
-    #prediction =rf_model.predict(stat_array)
-    pred = rf_model.predict_proba(stat_array)
+    #stat_array = array.append(extract_features.extract_all(mag, magerr, convert=True))
+    #array=np.array([i for i in array])
+    #stat_array = pca_model.transform(array)
+    
+    #pred =rf_model.predict_proba(stat_array)
+    stat_array = extract_features.extract_all(mag, magerr, convert=True)
+    pred = rf_model.predict_proba([stat_array])
     cons_pred, cv_pred, ml_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3]
     prediction = classes[np.argmax(pred)]
-    
-    return prediction, ml_pred, cons_pred, cv_pred, var_pred
+    #import pdb; pdb.set_trace()
+    return prediction, cons_pred, cv_pred, ml_pred, var_pred
 
