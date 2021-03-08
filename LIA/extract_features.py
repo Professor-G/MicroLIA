@@ -64,7 +64,8 @@ def extract_all(mag, magerr, convert=True, zp=24):
         sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
     
     stats[np.isinf(stats)] = 0
-    #import pdb; pdb.set_trace()
+    if True in np.isnan(stats):
+        import pdb; pdb.set_trace()
     return stats
 
 

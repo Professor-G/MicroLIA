@@ -226,7 +226,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
          data = data.replace("[", "")
          data = data.replace("]", "")
          outfile.write(data)
-         
+
     os.remove('feats.txt')
     print("Computing principal components...")
     coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))

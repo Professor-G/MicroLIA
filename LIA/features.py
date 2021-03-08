@@ -610,7 +610,11 @@ def auto_corr(mag):
 
     rtype:float
     """
-    auto_corr = ts.autocorrelation(mag, 1)
+
+    #auto_corr = ts.autocorrelation(mag, 1)
+    #print(auto_corr,np.corrcoef(mag[:-1],mag[1:])[1,0])
+
+    auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
     return auto_corr
 
 def c3(mag):
