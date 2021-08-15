@@ -37,7 +37,7 @@ def extract_all(mag, magerr, convert=True, zp=24):
     """
     if convert is True:
         flux = 10**(-(mag-zp)/2.5)
-        flux_err = (magerr*flux)/(2.5*log(10))
+        flux_err = (magerr*flux)/(2.5)*np.log(10)
     elif convert is False:
         flux = mag
         flux_err = magerr
@@ -54,9 +54,9 @@ def extract_all(mag, magerr, convert=True, zp=24):
     stetK = stetsonK(norm_flux,norm_fluxerr)
     stetL = (stetJ*stetK) / 0.798
 
-    stats = np.array((above1(norm_flux), above3(norm_flux), above5(norm_flux), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, 
-        auto_corr(norm_flux), below1(norm_flux), below3(norm_flux), below5(norm_flux), c3(norm_flux), check_for_duplicate(norm_flux), check_for_max_duplicate(norm_flux), 
-        check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux), con2(norm_flux), 
+    stats = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, 
+        auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), check_for_max_duplicate(norm_flux), 
+        check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
         count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), kurtosis(norm_flux), 
         longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), mean_change(norm_flux), mean_second_derivative(norm_flux), 
         medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux), 
@@ -64,7 +64,8 @@ def extract_all(mag, magerr, convert=True, zp=24):
         sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
     
     stats[np.isinf(stats)] = 0
-
+    if True in np.isnan(stats):
+        import pdb; pdb.set_trace()
     return stats
 
 

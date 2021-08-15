@@ -57,6 +57,8 @@ def add_noise(mag, fn, zp=24):
         
     return np.array(mag_obs), np.array(magerr)
 
+
+    
 def add_gaussian_noise(mag,zp=24):
     """Adds noise to lightcurve given the magnitudes.
 
@@ -75,13 +77,13 @@ def add_gaussian_noise(mag,zp=24):
     magerr : array
         The corresponding magnitude errors.
     """
-    flux = 10**((mag-zp)/-2.5)
+    flux = 10**((zp-mag)/2.5)*60
     
     noisy_flux= np.random.poisson(flux)#, np.sqrt(flux))
-    magerr = 2.5/(log(10)*np.sqrt(noisy_flux))
-    
-    noisy_mag = zp - 2.5*np.log10(noisy_flux)
+    magerr = 2.5/log(10)*np.sqrt(noisy_flux)/noisy_flux
+    #import pdb; pdb.set_trace()
+    noisy_mag = zp - 2.5*np.log10(noisy_flux/60)
     magerr=np.array(magerr)
-    mag = np.array(mag)
+    mag = np.array(noisy_mag)
 
-    return np.array(noisy_mag), np.array(magerr)
+    return mag,magerr

@@ -9,7 +9,7 @@ import numpy as np
 import os
 from math import pi
 
-def microlensing(timestamps, baseline):
+def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist = None):
     """Simulates a microlensing event.  
     The microlensing parameter space is determined using data from an 
     analysis of the OGLE III microlensing survey from Y. Tsapras et al (2016).
@@ -38,14 +38,34 @@ def microlensing(timestamps, baseline):
     """   
  
     mag = constant(timestamps, baseline)
-    # Set bounds to ensure enough measurements are available near t_0 
-    lower_bound = np.percentile(timestamps, 10)
-    upper_bound = np.percentile(timestamps, 90)
+    if t0_dist:
+        lower_bound = t0_dist[0]
+        upper_bound = t0_dist[1]
+    else:
+
+        # Set bounds to ensure enough measurements are available near t_0 
+        lower_bound = np.percentile(timestamps, 10)
+        upper_bound = np.percentile(timestamps, 90)
     
-    t_0 = np.random.uniform(lower_bound, upper_bound)        
-    u_0 = np.random.uniform(0, 1.5)
-    t_e = np.random.normal(30, 10.0)
-    blend_ratio = np.random.uniform(0,10)
+    t_0 = np.random.uniform(lower_bound, upper_bound)  
+
+    if u0_dist:
+       lower_bound = u0_dist[0]
+       upper_bound = u0_dist[1]
+       u_0 = np.random.uniform(lower_bound, upper_bound) 
+    else:
+             
+       u_0 = np.random.uniform(0, 1.0)
+
+    if tE_dist:
+       lower_bound = tE_dist[0]
+       upper_bound = tE_dist[1]
+       t_e = np.random.normal(lower_bound, upper_bound) 
+    else:
+
+        t_e = np.random.normal(30, 10.0)
+    
+    blend_ratio = np.random.uniform(0,1)
 
     u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
@@ -59,7 +79,7 @@ def microlensing(timestamps, baseline):
     
     flux_obs = f_s*magnification + f_b+flux_noise
     microlensing_mag = -2.5*np.log10(flux_obs)
-    
+
     return np.array(microlensing_mag), baseline, u_0, t_0, t_e, blend_ratio
     
 def cv(timestamps, baseline):

@@ -15,7 +15,7 @@ from LIA import noise_models
 from LIA import quality_check
 from LIA import extract_features
     
-def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1,t0_dist=None,u0_dist=None,tE_dist = None):
     """Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
@@ -169,11 +169,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         for j in range(10000):
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_mag,max_mag)
-            mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline)
+            mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline,t0_dist,u0_dist,tE_dist)
             try:
                 if noise is not None:
                     mag, magerr = noise_models.add_noise(mag,noise)
                 if noise is None:
+                   
                     mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
             except ValueError:
                 continue
@@ -189,7 +190,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 times_list.append(time)
                 mag_list.append(mag)
                 magerr_list.append(magerr)
-                
+               
                 stats = extract_features.extract_all(mag,magerr, convert=True)
                 stats = [i for i in stats]
                 stats = ['ML'] + [3*n_class+k] + stats
@@ -225,7 +226,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
          data = data.replace("[", "")
          data = data.replace("]", "")
          outfile.write(data)
-         
+
     os.remove('feats.txt')
     print("Computing principal components...")
     coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
