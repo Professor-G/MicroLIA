@@ -29,7 +29,7 @@ def create_models(all_feats, pca_feats):
     pca = decomposition.PCA(n_components=44, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
-    training_set = np.loadtxt(pca_feats, dtype = str,usecols=np.arange(0,49))
+    training_set = np.loadtxt(pca_feats, dtype = str,usecols=np.arange(0,48))
     rf=RandomForestClassifier(n_estimators=1000, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
     #rf.fit(training_set[:,np.arange(2,46)].astype(float),training_set[:,0])
     rf.fit(coeffs,training_set[:,0])
