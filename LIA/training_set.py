@@ -173,8 +173,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
             try:
                 if noise is not None:
                     mag, magerr = noise_models.add_noise(mag,noise)
-                if noise is None:
-                   
+                if noise is None:             
                     mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
             except ValueError:
                 continue
@@ -198,8 +197,47 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 break
             if j == 9999:
                 raise RuntimeError('Unable to simulate proper ML in 10k tries with current cadence -- inspect cadence and/or noise model and try again.')
-                    
-    print("Microlensing events successfully simulated")
+   
+    print("Microlensing successfully simulated")
+    print ("Now simulating LPV...")
+
+    mira_table = parse_single_table('Miras_vo.xml')
+    primary_period = mira_table.array['col4'].data
+    amplitude_pp = mira_table.array['col5'].data
+    secondary_period = mira_table.array['col6'].data
+    amplitude_sp = mira_table.array['col7'].data
+    tertiary_period = mira_table.array['col8'].data
+    amplitude_tp = mira_table.array['col9'].data
+
+    for k in range(1,n_class+1):
+        for j in range(10000):
+            time = random.choice(timestamps)
+            baseline = np.random.uniform(min_mag,max_mag)
+            mag = simulate.simulate_mira_lightcurve(time, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
+            try:
+                if noise is not None:
+                    mag, magerr = noise_models.add_noise(mag,noise)
+                if noise is None:             
+                    mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+            except ValueError:
+                continue
+                
+            source_class = ['LPV']*len(time)
+            source_class_list.append(source_class)
+
+            id_num = [1*n_class+k]*len(time)
+            id_list.append(id_num)
+
+            times_list.append(time)
+            mag_list.append(mag)
+            magerr_list.append(magerr)
+        
+            stats = extract_features.extract_all(mag,magerr,convert=True)
+            stats = [i for i in stats]
+            stats = ['LPV'] + [4*n_class+k] + stats
+            stats_list.append(stats)
+            print("LPV events successfully simulated")
+
     print("Writing files...")
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
@@ -235,6 +273,6 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     #feat_strengths = pca.explained_variance_ratio_
     X_pca = pca.transform(coeffs) 
 
-    classes = ["VARIABLE"]*n_class+["CONSTANT"]*n_class+["CV"]*n_class+["ML"]*n_class
-    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*4+1),X_pca[:,:47]],fmt='%s')
+    classes = ["VARIABLE"]*n_class+['LPV']*n_class+["CONSTANT"]*n_class+["CV"]*n_class+["ML"]*n_class
+    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:47]],fmt='%s')
     print("Complete!")
