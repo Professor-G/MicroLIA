@@ -184,6 +184,7 @@ def constant(timestamps, baseline):
 
     return np.array(mag)
      
+#Simulate RR Lyrae Variable
 
 def parametersRR0():            #McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events
     a1=  0.31932222222222223
@@ -245,4 +246,19 @@ def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2
     amplitude = np.ptp(lightcurve) / 2.0
     return np.array(lightcurve), amplitude, period 
 
-    
+#Simulate LPV - Miras
+#Miras.dat: OGLE III http://www.astrouw.edu.pl/ogle/ogle3/OIII-CVS/blg/lpv/pap.pdf
+
+def random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
+    len_miras = len(primary_period)
+    rand_idx = np.random.randint(0,len_miras,1)
+    amplitudes = [amplitude_pp[rand_idx], amplitude_sp[rand_idx], amplitude_tp[rand_idx]]
+    periods = [primary_period[rand_idx], secondary_period[rand_idx], tertiary_period[rand_idx]]
+    return amplitudes, periods
+
+def simulate_mira_lightcurve(times, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
+    amplitudes, periods = random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
+    lc = np.array(baseline)
+    for idx in range(len(amplitudes)):
+        lc = lc + amplitudes[idx]* np.cos((2*np.pi*(idx+1))/periods[idx]*times)
+    return np.array(lc)
