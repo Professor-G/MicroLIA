@@ -59,7 +59,7 @@ def add_noise(mag, fn, zp=24):
 
 
     
-def add_gaussian_noise(mag,zp=24):
+def add_gaussian_noise_etienne(mag,zp=24):
     """Adds noise to lightcurve given the magnitudes.
 
     Parameters
@@ -87,3 +87,32 @@ def add_gaussian_noise(mag,zp=24):
     mag = np.array(noisy_mag)
 
     return mag,magerr
+
+def add_gaussian_noise(mag,zp=24):
+    """Adds noise to lightcurve given the magnitudes.
+
+    Parameters
+    ----------
+    mag : array
+        Mag array to add noise to. 
+    zp : zeropoint
+        Zeropoint of the instrument, default is 24.
+    convert : boolean, optional 
+    
+    Returns
+    -------
+    noisy_mag : array
+        The noise-added magnitude. 
+    magerr : array
+        The corresponding magnitude errors.
+    """
+    flux = 10**((mag-zp)/-2.5)
+    
+    noisy_flux= np.random.poisson(flux)
+    magerr = 2.5/(log(10)*np.sqrt(noisy_flux))
+    
+    noisy_mag = zp - 2.5*np.log10(noisy_flux)
+    magerr=np.array(magerr)
+    mag = np.array(mag)
+
+    return np.array(noisy_mag), np.array(magerr)
