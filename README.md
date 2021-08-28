@@ -6,6 +6,8 @@
 
 # LIA
 
+Please download the official Version 1.0 release, this GitHub rep is under development.
+
 LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 47 statistical features from the lightcurve (mag+magerr), after which it applies a Principal Component Analysis (PCA) for feature dimensionality reduction. These PCA features are then run through a Random Forest ensemble to classify the lightcurve as either a microlensing event, a variable source, a cataclysmic variable (CV), or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created; although reasonable results can be expected if the training data available in the test folder is applied. This training set was used to identify the microlensing lightcurve displayed above.
 
 # Installation
