@@ -1,6 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2541465.svg)](https://doi.org/10.5281/zenodo.2541465)
 [![arXiv](https://img.shields.io/badge/arXiv-2004.14347-b31b1b.svg)](https://arxiv.org/abs/2004.14347)
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
 
 # LIA: Lens Identification Algorithm
