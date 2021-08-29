@@ -61,7 +61,7 @@ We’re interested only in the first two outputs which are the predicted class a
 We find that in practice the algorithm flags << 1% of lightcurves as microlensing, with false-alerts being prominent when data quality is bad. This is difficult to circumnavigate as we can only train with what we expect the survey to detect, and as such simple anomalies in the photometry can yield unpredictable results. We strongly recommend fitting each microlensing candidate LIA detects with [pyLIMA](https://github.com/ebachelet/pyLIMA), an open-source program for modeling microlensing events. By restricting microlensing parameters to reasonable observables, this fitting algorithm acts as a great additional filter in the search for these rare transient events. We’ve had great success by restricting our PSPL parameters to the following:
 
 * 0 &le; t<sub>E</sub> &le; 1000
-* u<sub>0</sub>  < 2.0
+* u<sub>0</sub> &le; 2.0
 * Reduced &chi;<sup>2</sup> &le; 10
 
 As pyLIMA provides more information than this, we suggest you explore a parameter space that best fits your needs. 
