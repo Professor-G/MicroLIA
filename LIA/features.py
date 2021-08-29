@@ -10,6 +10,7 @@ import numpy as np
 from scipy.integrate import quad
 import peakutils
 import tsfresh.feature_extraction.feature_calculators as ts
+from scipy.stats import shapiro, linregress, anderson
 
 def shannon_entropy(mag, magerr):
     """Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
@@ -384,14 +385,12 @@ def median_buffer_range2(mag):
     return median_buffer_range
 
 def std_over_mean(mag):
-    """A measure of the ratio of standard deviation and mean, both weighted by the errors.
+    """A measure of the ratio of standard deviation and mean.
         
         :rtype: float
     """
-    
-    #mean = meanMag(mag, magerr)
-    mean = np.median(mag)
     std = np.std(mag)
+    mean = np.median(mag)
     
     std_over_mean = std/mean
     return std_over_mean
@@ -547,6 +546,17 @@ def integrate(mag):
     integral = np.trapz(mag)
     return integral
 
+def auto_corr(mag):
+    """Similarity between observations as a function of a time lag between them.
+
+    rtype:float
+    """
+
+    #auto_corr = ts.autocorrelation(mag, 1)
+    #print(auto_corr,np.corrcoef(mag[:-1],mag[1:])[1,0])
+
+    auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
+    return auto_corr
 
 def remove_allbad(mjd, mag, magerr):
     """Function to remove bad photometric points.
@@ -585,6 +595,310 @@ def peak_detection(mag):
     
     return len(indices)
 
+
+def normalize(mag, magerr):
+    """Normalizes the magnitude to range from 0 to 1, scaling
+    magerr in the proccess.
+
+    rtype: array
+    """
+    
+    mag2 = (mag - np.min(mag)) / np.ptp(mag)
+    magerr = magerr*(mag2/mag)
+    
+    return np.array(mag2), np.array(magerr)
+
+
+#Below stats from Richards et al (2011)
+
+def MaxSlope(time, mag):
+    """
+    Examining successive (time-sorted) magnitudes, the maximal first difference
+    (value of delta magnitude over delta time)
+
+    rtype: float
+    """
+
+    slope = np.abs(magnitude[1:] - magnitude[:-1]) / (time[1:] - time[:-1])
+
+    return np.max(slope)
+
+def LinearTrend(time, mag):
+    """
+    Slope of a linear fit to the light-curve.
+    """
+
+    regression_slope = stats.linregress(time, mag)[0]
+
+        return regression_slope
+
+def PairSlopeTrend(mag):
+    """
+    Considering the last 30 (time-sorted) measurements of source magnitude,
+    the fraction of increasing first differences minus the fraction of
+    decreasing first differences.
+    Percentage of all pairs of consecutive flux measurements that have positive slope
+    """
+
+    data_last = mag[-30:]
+
+    PST = (len(np.where(np.diff(data_last) > 0)[0]) - len(np.where(np.diff(data_last) <= 0)[0])) / 30.0
+
+    return PST
+
+def FluxPercentileRatioMid20(mag):
+    """
+    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (60th - 40th) over (95th - 5th)
+    """
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
+    F_60_index = int(math.ceil(0.60 * lc_length))
+    F_40_index = int(math.ceil(0.40 * lc_length))
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+
+    F_40_60 = sorted_data[F_60_index] - sorted_data[F_40_index]
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    F_mid20 = F_40_60 / F_5_95
+
+    return F_mid20
+
+def FluxPercentileRatioMid35(mag):
+    """
+    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (67.5th - 32.5th) over (95th - 5th)
+    """
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
+    F_325_index = int(math.ceil(0.325 * lc_length))
+    F_675_index = int(math.ceil(0.675 * lc_length))
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+
+    F_325_675 = sorted_data[F_675_index] - sorted_data[F_325_index]
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    F_mid35 = F_325_675 / F_5_95
+
+    return F_mid35
+
+def FluxPercentileRatioMid50(mag):
+    """
+    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (75th - 25th) over (95th - 5th)
+    """
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
+    F_25_index = int(math.ceil(0.25 * lc_length))
+    F_75_index = int(math.ceil(0.75 * lc_length))
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+
+    F_25_75 = sorted_data[F_75_index] - sorted_data[F_25_index]
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    F_mid50 = F_25_75 / F_5_95
+
+    return F_mid50
+
+def FluxPercentileRatioMid65(mag):
+    """
+    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
+    """
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
+    F_175_index = int(math.ceil(0.175 * lc_length))
+    F_825_index = int(math.ceil(0.825 * lc_length))
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+
+    F_175_825 = sorted_data[F_825_index] - sorted_data[F_175_index]
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    F_mid65 = F_175_825 / F_5_95
+
+    return F_mid65
+
+def FluxPercentileRatioMid80(mag):
+    """
+    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (90th - 10th) over (95th - 5th)
+    """
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
+    F_10_index = int(math.ceil(0.10 * lc_length))
+    F_90_index = int(math.ceil(0.90 * lc_length))
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+
+    F_10_90 = sorted_data[F_90_index] - sorted_data[F_10_index]
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    F_mid80 = F_10_90 / F_5_95
+
+    return F_mid80
+
+def PercentAmplitude(mag):
+    """
+    The largest absolute departure from the median flux, divided by the median flux
+    Largest percentage difference between either the max or min magnitude and the median
+    """
+
+    median = np.median(mag)
+    distance_median = np.abs(mag - median)
+    max_distance = np.max(distance_median)
+
+    percent_amplitude = max_distance / median
+
+    return percent_amplitude
+
+def PercentDifferenceFluxPercentile(mag):
+    """
+    Ratio of F5,95 over the median flux.
+    Diff. between the 2nd & 98th flux percentiles
+    """
+
+    median = np.median(mag)
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+    F_5_index = int(math.ceil(0.05 * lc_length))
+    F_95_index = int(math.ceil(0.95 * lc_length))
+    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+
+    percent_difference = F_5_95 / median
+
+    return percent_difference
+
+
+#Below stats from Kim (2015), used in Upsilon
+#https://arxiv.org/pdf/1512.01611.pdf
+
+def half_mag_amplitude_ratio(mag):
+    """
+    The ratio of the squared sum of residuals of magnitudes
+    that are either brighter than or fainter than the mean
+    magnitude. For EB-like variability, having sharp flux gradients around its eclipses, A is larger
+    than 1
+
+    Parameters
+    ----------
+    mag : array_like
+        An array of magnitudes.
+
+    Returns
+    -------
+    rtype : float
+        Ratio of amplitude of higher and lower magnitudes than average.
+    """
+
+    # For fainter magnitude than average.
+    avg = np.median(mag)
+
+    index = np.argwhere(mag > avg)
+    lower_mag = mag[index]
+    lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
+
+    # For brighter magnitude than average.
+    index = np.argwhere(mag <= avg)
+    higher_mag = mag[index]
+    higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
+
+    # Return ratio.
+    try:
+        ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
+    except ZeroDivisionError:
+        ratio = 0
+            
+    return ratio
+
+
+def cusum(mag):
+    """
+    Range of cumulative sum
+
+    Parameters
+    ----------
+    mag : array
+        An array of magnitudes.
+    Returns
+    -------
+    rtype : float
+        Max - min of cumulative sum.
+    """
+
+    c = np.cumsum(mag - np.median(mag)) * 1./(len(mag)*np.std(mag))
+
+    return np.max(c) - np.min(c)
+
+def shapiro_wilk(mag):
+    """
+    Normalization-test.
+    The Shapiro-Wilk test tests the null hypothesis that the 
+    data was drawn from a normal distribution.
+    
+    Returns
+    -------
+    rtype : float
+    """
+    shapiro_w = shapiro(mag)[0]
+
+    return shapiro_w
+
+
+#following stats pulled from FEETS
+#https://feets.readthedocs.io/en/latest/tutorial.html
+
+def AndersonDarling(mag):
+    """
+    The Anderson-Darling test is a statistical test of whether a given 
+    sample of data is drawn from a given probability distribution. 
+    When applied to testing if a normal distribution adequately describes a set of data, 
+    it is one of the most powerful statistical tools for detecting most departures from normality.
+    
+    From Kim et al. 2009: "To test normality, we use the Anderson–Darling test (Anderson & Darling 1952; Stephens 1974) 
+    which tests the null hypothesis that a data set comes from the normal distribution."
+    (Doi:10.1111/j.1365-2966.2009.14967.x.)
+
+    """
+
+    ander = stats.anderson(mag)[0]
+    return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
+
+
+
+def Gskew(mag):
+    """
+    Median-based measure of the skew
+    Gskew=mq3+mq97−2m
+    mq3  is the median of magnitudes lesser or equal than the quantile 3.
+    mq97 is the median of magnitudes greater or equal than the quantile 97.
+    m is the median of magnitudes.
+    """
+
+    mag = np.array(data[0])
+    median_mag = np.median(mag)
+    F_3_value = np.percentile(mag, 3)
+    F_97_value = np.percentile(mag, 97)
+
+    gs = (np.median(mag[mag <= F_3_value]) + np.median(mag[mag >= F_97_value]) - 2*median_mag)
+
+    return gs
+
+
 # The following features are derived using the Python package tsfresh.
 # Please see: http://tsfresh.readthedocs.io/en/latest/
 
@@ -605,20 +919,19 @@ def abs_sum_changes(mag):
     val = ts.absolute_sum_of_changes(mag)
     return val
 
-def auto_corr(mag):
-    """Similarity between observations as a function of a time lag between them.
-
-    rtype:float
+def benford_correlation(mag):
+    """
+    Useful for anomaly detection applications. Returns the 
+    correlation from first digit distribution when compared to 
+    the Newcomb-Benford’s Law distribution
     """
 
-    #auto_corr = ts.autocorrelation(mag, 1)
-    #print(auto_corr,np.corrcoef(mag[:-1],mag[1:])[1,0])
-
-    auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
-    return auto_corr
+    bc = ts.benford_correlation(mag)
+    return bc
 
 def c3(mag):
-    """A measure of non-linearity.
+    """
+    A measure of non-linearity.
     See: Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
     Discrimination power of measures for nonlinearity in a time series
     PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
@@ -766,13 +1079,50 @@ def mean_abs_change(mag):
     val = ts.mean_abs_change(mag)
     return val
 
+def mean_n_abs_max(mag):
+    """
+    Calculates the arithmetic mean of the n absolute maximum values of the time series, n = 1.
+    """
+    mam = ts.mean_n_absolute_max(mag,1)
+
+    return mam 
+
 def mean_second_derivative(mag):
     """Returns the mean value of a central approximation of the second derivative.
 
     rtype: float
     """
+
     val = ts.mean_second_derivative_central(mag)
     return val
+
+def number_of_crossings(mag):
+    """
+    Calculates the number of crossings of x on m. A crossing is defined as two 
+    sequential values where the first value is lower than m and the next is greater, 
+    or vice-versa. If you set m to zero, you will get the number of zero crossings.
+    m = median 
+
+    rtype : int
+    """
+    m = np.median(mag)
+    num = ts.number_crossing_m(mag, m)
+
+    return num
+
+def number_of_peaks(mag):
+    """
+    Calculates the number of peaks of at least support n in the time series x. 
+    A peak of support n is defined as a subsequence of x where a value occurs, 
+    which is bigger than its n neighbours to the left and to the right.
+    n = 7
+
+    rtype : float
+    """
+
+    num = ts.number_peaks(mag, 7)
+
+    return num
 
 def ratio_recurring_points(mag):
     """Returns the ratio of unique values, that are present in the time 
@@ -810,17 +1160,45 @@ def time_reversal_asymmetry(mag):
     val = ts.time_reversal_asymmetry_statistic(mag, 1)
     return val
 
-def normalize(mag, magerr):
-    """Normalizes the magnitude to range from 0 to 1, scaling
-    magerr in the proccess.
-
-    rtype: array
+def variance(mag):
     """
-    
-    mag2 = (mag - np.min(mag)) / np.ptp(mag)
-    magerr = magerr*(mag2/mag)
-    
-    return np.array(mag2), np.array(magerr)
+    Returns the variance
+
+    rtype : float
+    """
+
+    var = ts.variance(mag)
+
+    return var
+
+def variance_larger_than_standard_deviation(mag):
+    """
+    Is variance higher than the standard deviation?
+
+    Boolean variable denoting if the variance of x is greater than its standard deviation. 
+    Is equal to variance of x being larger than 1
+    """
+
+    var = ts.variance_larger_than_standard_deviation(mag)
+
+    if var == True:
+        val = 1
+    elif var == False:
+        val = 0
+
+    return val
+
+def variation_coefficient(mag):
+    """
+    Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
+
+    rtype : float
+    """
+
+    var_coeff = ts.variation_coefficient(mag)
+
+    return var_coeff
+
 
 
 
