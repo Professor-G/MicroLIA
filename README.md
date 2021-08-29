@@ -62,7 +62,7 @@ We find that in practice the algorithm flags << 1% of lightcurves as microlensin
 
 * 0 < t<sub>E</sub> < 1000
 * u<sub>0</sub>  < 2.0
-* &chi<sup>2</sup> <= 10
+* Reduced &#967<sup>2</sup> <= 10
 
 As pyLIMA provides more information than this, we suggest you explore a parameter space that best fits your needs. 
 
