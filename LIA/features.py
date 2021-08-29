@@ -115,43 +115,6 @@ def con(mag,magerr):
 
     return con
 
-#def con(mag,magerr):
-#    """Con is defined as the number of clusters containing three or more
-#        consecutive observations with magnitudes brighter than the reference
-#        magnitude plus 3 standard deviations. For a microlensing event Con = 1,
-#        assuming a  flat lightcurve prior to the event. The magnitude measurements
-#        are split into bins such that the reference  magnitude is defined as the mean
-#        of the measurements in the largest bin.
-#        
-#        
-#        #The following code was done to exclude outliers -- not currently employed#
-#        
-#        mag, magerr = remove_bad(mag, magerr)
-#        diff = mag - meanMag(mag, magerr)
-#        hist, edges = np.histogram(diff, bins = 10)
-#        val = np.where(hist == max(hist))
-#        bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
-#        mean = meanMag(mag[bin_range], magerr[bin_range])
-#    """
-#    con = 0
-#    deviating = False
-#    MEAN = np.mean(mag)
-#    a = np.argwhere(np.abs(mag-MEAN) > 3*magerr)
-#    if len(a) < 3:
-#        return 0
-#    else:
-#        for i in range(len(mag)-2):
-#            first = np.abs(mag[i]-MEAN)>3*magerr[i]
-#            second =  np.abs(mag[i+1]-MEAN)>3*magerr[i+1]
-#            third =  np.abs(mag[i+2]-MEAN)>3*magerr[i+2]
-#            if (first & second & third):
-#                if (not deviating):
-#                    con += 1
-#                    deviating = True
-#                elif deviating:
-#                    deviating = False
-
-#    return con
     
 def con2(mag,magerr):
     """Con is defined as the number of clusters containing three or more
@@ -193,45 +156,6 @@ def con2(mag,magerr):
                     deviating = False
 
     return con
-
-
-#def con2(mag,magerr):
-#    """Con is defined as the number of clusters containing three or more
-#        consecutive observations with magnitudes brighter than the reference
-#        magnitude plus 3 standard deviations. For a microlensing event Con = 1,
-#        assuming a  flat lightcurve prior to the event. The magnitude measurements
-#        are split into bins such that the reference  magnitude is defined as the mean
-#        of the measurements in the largest bin.
-#        
-#        
-#        #The following code was done to exclude outliers -- not currently employed#
-#        
-#        mag, magerr = remove_bad(mag, magerr)
-#        diff = mag - meanMag(mag, magerr)
-#        hist, edges = np.histogram(diff, bins = 10)
-#        val = np.where(hist == max(hist))
-#        bin_range = np.where((diff > edges[val[0][0]]) & (diff < edges[val[0][0]+1]))
-#        mean = meanMag(mag[bin_range], magerr[bin_range])
-#    """
-#    con = 0
-#    deviating = False
-#    MEAN = np.mean(mag)
-#    a = np.argwhere(np.abs(mag-MEAN) > 2*magerr)
-#    if len(a) < 3:
-#        return 0
-#    else:
-#        for i in range(len(mag)-2):
-#            first = np.abs(mag[i]-MEAN)>2*magerr[i]
-#            second =  np.abs(mag[i+1]-MEAN)>2*magerr[i+1]
-#            third =  np.abs(mag[i+2]-MEAN)>2*magerr[i+2]
-#            if (first & second & third):
-#                if (not deviating):
-#                    con += 1
-#                    deviating = True
-#                elif deviating:
-#                    deviating = False
-
-#    return con
 
 def kurtosis(mag):
     """"Kurtosis function returns the calculated kurtosis of the lightcurve.
