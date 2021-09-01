@@ -9,6 +9,8 @@ import random
 from astropy.io import fits
 from sklearn import decomposition
 import os
+from astropy.io.votable import parse_single_table
+import pkg_resources
 
 from LIA import simulate
 from LIA import noise_models
@@ -200,8 +202,10 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
    
     print("Microlensing successfully simulated")
     print ("Now simulating LPV...")
-
-    mira_table = parse_single_table('Miras_vo.xml')
+    resource_package = __name__
+    resource_path = '/'.join(('data', 'Miras_vo.xml'))
+    template = pkg_resources.resource_filename(resource_package, resource_path)
+    mira_table = parse_single_table(template)
     primary_period = mira_table.array['col4'].data
     amplitude_pp = mira_table.array['col5'].data
     secondary_period = mira_table.array['col6'].data
@@ -210,7 +214,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     amplitude_tp = mira_table.array['col9'].data
 
     for k in range(1,n_class+1):
-        for j in range(10000):
+
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_mag,max_mag)
             mag = simulate.simulate_mira_lightcurve(time, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)

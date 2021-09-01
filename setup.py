@@ -4,7 +4,7 @@ Created on Fri Aug 3 13:30:11 2018
 
 @author: danielgodinez
 """
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup, Extension
 
 setup(
 	name = "LIA",
@@ -14,6 +14,11 @@ setup(
 	author_email = "danielgodinez123@gmail.com",
 	license = 'GPL-3.0',
 	url = "https://github.com/dgodinez77/LIA",
+	packages = find_packages('.'),
+	include_package_data=True,
 	install_requires = ['numpy','scikit-learn','astropy','mpmath','scipy','PeakUtils','tsfresh','AstroML'],
-	packages = find_packages(),
+	test_suite="nose.collector",
+	package_data={
+    '': ['Miras_vo.xml'],
+    },
 	)

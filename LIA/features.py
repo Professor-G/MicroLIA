@@ -554,7 +554,7 @@ def LinearTrend(time, mag):
 
     regression_slope = stats.linregress(time, mag)[0]
 
-        return regression_slope
+    return regression_slope
 
 def PairSlopeTrend(mag):
     """
