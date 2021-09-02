@@ -16,6 +16,8 @@ from LIA import simulate
 from LIA import noise_models
 from LIA import quality_check
 from LIA import extract_features
+
+
     
 def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1,t0_dist=None,u0_dist=None,tE_dist = None):
     """Creates a training dataset using adaptive cadence.
@@ -98,7 +100,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(mag,magerr,convert=True)
+        stats = extract_features.extract_all(time, mag,magerr,convert=True)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -125,7 +127,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(mag,magerr,convert=True)
+        stats = extract_features.extract_all(time, mag,magerr,convert=True)
         stats = [i for i in stats]
         stats = ['CONSTANT'] + [1*n_class+k] + stats
         stats_list.append(stats)
@@ -157,7 +159,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(mag,magerr,convert=True)
+                stats = extract_features.extract_all(time,mag,magerr,convert=True)
                 stats = [i for i in stats]
                 stats = ['CV'] + [2*n_class+k] + stats
                 stats_list.append(stats)
@@ -192,7 +194,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                
-                stats = extract_features.extract_all(mag,magerr, convert=True)
+                stats = extract_features.extract_all(time, mag,magerr, convert=True)
                 stats = [i for i in stats]
                 stats = ['ML'] + [3*n_class+k] + stats
                 stats_list.append(stats)
@@ -236,12 +238,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
             mag_list.append(mag)
             magerr_list.append(magerr)
         
-            stats = extract_features.extract_all(mag,magerr,convert=True)
+            stats = extract_features.extract_all(time,mag,magerr,convert=True)
             stats = [i for i in stats]
             stats = ['LPV'] + [4*n_class+k] + stats
             stats_list.append(stats)
-            print("LPV events successfully simulated")
 
+    print("LPV events successfully simulated")
     print("Writing files...")
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
@@ -271,12 +273,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
 
     os.remove('feats.txt')
     print("Computing principal components...")
-    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,49))
-    pca = decomposition.PCA(n_components=47, whiten=True, svd_solver='auto')
+    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,96))
+    pca = decomposition.PCA(n_components=94, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     X_pca = pca.transform(coeffs) 
 
-    classes = ["VARIABLE"]*n_class+['LPV']*n_class+["CONSTANT"]*n_class+["CV"]*n_class+["ML"]*n_class
-    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:47]],fmt='%s')
+    classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*n_class
+    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:94]],fmt='%s')
     print("Complete!")
