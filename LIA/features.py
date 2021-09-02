@@ -12,6 +12,8 @@ import peakutils
 import tsfresh.feature_extraction.feature_calculators as ts
 from scipy.stats import shapiro, linregress, anderson
 
+np.seterr(divide='ignore', invalid='ignore')
+
 def shannon_entropy(mag, magerr):
     """Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
         information carried by a signal. The procedure employed here follows that outlined by
