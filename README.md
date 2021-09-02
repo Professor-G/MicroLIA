@@ -17,7 +17,7 @@ LIA is an open-source program for detecting microlensing events in wide-field su
 Requires Python3.7 -- to install all dependencies run
 
 ```
-python setup.py install
+python setup.py install --old-and-unmanageable
 ```
 
 from the LIA directory.
@@ -36,7 +36,7 @@ time.append(np.arange(0,366,1))
 training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the 47 statistical values computed, while the other titled ‘pca_features’ contains only the class label followed by the principal components. We need these two text files to construct the required models.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the 47 statistical values computed, while the other titled ‘pca_features’ contains the class label, the ID, and the principal components. We need these two text files to construct the required models.
 
 ```
 from LIA import models
