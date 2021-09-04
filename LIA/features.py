@@ -4,14 +4,12 @@
     
     @author: danielgodinez
 """
-
 from __future__ import print_function
 import numpy as np
 from scipy.integrate import quad
 import peakutils
 import tsfresh.feature_extraction.feature_calculators as ts
 from scipy.stats import shapiro, linregress, anderson
-
 np.seterr(divide='ignore', invalid='ignore')
 
 def shannon_entropy(mag, magerr):
