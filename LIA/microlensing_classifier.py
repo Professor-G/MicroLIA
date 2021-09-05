@@ -17,6 +17,8 @@ def predict(time, mag, magerr, rf_model, pca_model):
         
     Parameters
     ----------
+    time : array
+        Time of observations.
     mag : array
         Magnitude array.
     magerr : array
@@ -47,9 +49,8 @@ def predict(time, mag, magerr, rf_model, pca_model):
     classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
     array=[]
     array.append(extract_features.extract_all(time, mag, magerr, convert=True))
-    
     stat_array = pca_model.transform(array)
-
+    stat_array = array #checking to see if using only stats works
     pred = rf_model.predict_proba(stat_array)
     cons_pred, cv_pred, lpv_pred, ml_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3],pred[:,4]
     prediction = classes[np.argmax(pred)]
