@@ -37,9 +37,11 @@ def predict(time, mag, magerr, rf_model, pca_model):
     cons_pred : float
         Probability source is constant
     cv_pred : float
-        Probability source is CV
+        Probability source is cataclysmic variable
     var_pred : float
         Probability source is variable
+    lpv_pred : float
+        Probabily source is a long period variable
     """
     if len(mag) < 30:
         warn('The number of data points is low -- results may be unstable')
