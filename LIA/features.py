@@ -12,7 +12,8 @@ import peakutils
 from scipy.integrate import quad
 from scipy.signal import find_peaks_cwt, ricker
 from scipy.stats import shapiro, linregress, anderson
-np.seterr(divide='ignore', invalid='ignore')
+import warnings
+warnings.filterwarnings("ignore")
 
 def shannon_entropy(mag, magerr):
     """
@@ -993,12 +994,19 @@ def half_mag_amplitude_ratio(mag):
 
     index = np.argwhere(mag > avg)
     lower_mag = mag[index]
-    lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
+
+    try:
+        lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
+    except ZeroDivisionError:
+        lower_weighted_std = 0
 
     # For brighter magnitude than average.
     index = np.argwhere(mag <= avg)
     higher_mag = mag[index]
-    higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
+    try:
+        higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
+    except ZeroDivisionError:
+        higher_weighted_std = 0
 
     # Return ratio.
     try:
