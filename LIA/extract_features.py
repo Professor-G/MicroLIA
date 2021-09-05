@@ -19,12 +19,14 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
         
     Parameters
     ----------
+    time : array
+        Time of observations
     mag : array
         Magnitude array.
     magerr : array
         Corresponing photometric errors.  
     convert : boolean, optional 
-        If False the features are computed with the inpute magnitudes,
+        If False the features are computed with the input magnitudes,
         defaults to True to convert and compute in flux. 
     zp : float
         Zeropoint of the instrument, defaults to 24.
@@ -35,7 +37,6 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
         The 47 features to input into the RF, sorted 
         by alphabetical order. 
     """
-
 
     if convert is True:
         flux = 10**(-(mag-zp)/2.5)
@@ -56,14 +57,27 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     stetK = stetsonK(norm_flux,norm_fluxerr)
     stetL = (stetJ*stetK) / 0.798
 
-    stats = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, 
-        auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), check_for_max_duplicate(norm_flux), 
-        check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
-        count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), kurtosis(norm_flux), 
-        longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), mean_change(norm_flux), mean_second_derivative(norm_flux), 
-        medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux), 
-        root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
-        sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
+    stats = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), 
+        abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), 
+        below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), 
+        check_for_max_duplicate(norm_flux), check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), 
+        check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
+        count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), 
+        kurtosis(norm_flux), longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), 
+        mean_change(norm_flux), mean_second_derivative(norm_flux), medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, 
+        peak_detection(norm_flux), ratio_recurring_points(norm_flux), root_mean_squared(norm_flux), sample_entropy(norm_flux), 
+        shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
+        sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux), amplitude2(norm_flux), 
+        median_distance(time,norm_flux), meanMag(norm_flux,norm_fluxerr), MaxSlope(time,norm_flux), LinearTrend(time,norm_flux), 
+        PairSlopeTrend(norm_flux), FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux), FluxPercentileRatioMid50(norm_flux), 
+        FluxPercentileRatioMid65(norm_flux), FluxPercentileRatioMid80(norm_flux), PercentAmplitude(norm_flux), PercentDifferenceFluxPercentile(norm_flux), 
+        half_mag_amplitude_ratio(norm_flux), cusum(norm_flux), shapiro_wilk(norm_flux), AndersonDarling(norm_flux), Gskew(norm_flux), 
+        benford_correlation(norm_flux), mean_n_abs_max(norm_flux), number_of_crossings(norm_flux), number_of_peaks(norm_flux), variance(norm_flux), 
+        variance_larger_than_standard_deviation(norm_flux), variation_coefficient(norm_flux), large_standard_deviation(norm_flux), 
+        symmetry_looking(norm_flux), index_mass_quantile(norm_flux), number_cwt_peaks(norm_flux), permutation_entropy(norm_flux), quantile(norm_flux))) #78 features
+
+
+    #The following re-computes the metrics in derivative space
 
     flux = np.gradient(flux, time) #derivative
     flux_err = np.gradient(flux_err, time) #derivative 
@@ -80,22 +94,31 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     stetK = stetsonK(norm_flux,norm_fluxerr)
     stetL = (stetJ*stetK) / 0.798
 
-    stats2 = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, 
-        auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), check_for_max_duplicate(norm_flux), 
-        check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
-        count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), kurtosis(norm_flux), 
-        longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), mean_change(norm_flux), mean_second_derivative(norm_flux), 
-        medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux), 
-        root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
-        sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
+    derivative_stats = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), 
+        abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), 
+        below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), 
+        check_for_max_duplicate(norm_flux), check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), 
+        check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
+        count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), 
+        kurtosis(norm_flux), longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), 
+        mean_change(norm_flux), mean_second_derivative(norm_flux), medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, 
+        peak_detection(norm_flux), ratio_recurring_points(norm_flux), root_mean_squared(norm_flux), sample_entropy(norm_flux), 
+        shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
+        sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux), amplitude2(norm_flux), 
+        median_distance(time,norm_flux), meanMag(norm_flux,norm_fluxerr), MaxSlope(time,norm_flux), LinearTrend(time,norm_flux), 
+        PairSlopeTrend(norm_flux), FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux), FluxPercentileRatioMid50(norm_flux), 
+        FluxPercentileRatioMid65(norm_flux), FluxPercentileRatioMid80(norm_flux), PercentAmplitude(norm_flux), PercentDifferenceFluxPercentile(norm_flux), 
+        half_mag_amplitude_ratio(norm_flux), cusum(norm_flux), shapiro_wilk(norm_flux), AndersonDarling(norm_flux), Gskew(norm_flux), 
+        benford_correlation(norm_flux), mean_n_abs_max(norm_flux), number_of_crossings(norm_flux), number_of_peaks(norm_flux), variance(norm_flux), 
+        variance_larger_than_standard_deviation(norm_flux), variation_coefficient(norm_flux), large_standard_deviation(norm_flux), 
+        symmetry_looking(norm_flux), index_mass_quantile(norm_flux), number_cwt_peaks(norm_flux), permutation_entropy(norm_flux), quantile(norm_flux))) #78 features
 
-    stats = np.r_[stats, stats2]
+
+    stats = np.r_[stats, derivative_stats]
     
     stats[np.isinf(stats)] = 0
     stats[np.isnan(stats)] = 0
-
-    #    if True in np.isnan(stats):
-     #   import pdb; pdb.set_trace()
+    
     return stats
 
 
