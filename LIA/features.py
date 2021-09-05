@@ -13,6 +13,7 @@ from scipy.integrate import quad
 from scipy.signal import find_peaks_cwt, ricker
 from scipy.stats import shapiro, linregress, anderson
 import warnings
+
 warnings.filterwarnings("ignore")
 
 def shannon_entropy(mag, magerr):
