@@ -30,7 +30,7 @@ def create_models(all_feats, pca_feats):
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     training_set = np.loadtxt(pca_feats, dtype = str)
-    #training_set = np.loadtxt(all_feats, dtype = str) #testing to see if using only feats works
+    training_set = np.loadtxt(all_feats, dtype = str) #testing to see if using only feats works
 
     rf=RandomForestClassifier(n_estimators=1000)#, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
     rf.fit(training_set[:,np.arange(2,158)].astype(float),training_set[:,0])
