@@ -5,8 +5,6 @@
     @author: danielgodinez
 """
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import decomposition
 from warnings import warn
 from LIA import extract_features
 
