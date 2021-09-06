@@ -278,12 +278,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     progress_bar = spinner.MoonSpinner('Computing principal components...')
     progress_bar.next()
 
-    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,158))
-    pca = decomposition.PCA(n_components=154, whiten=True, svd_solver='auto')
+    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,84))
+    pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     X_pca = pca.transform(coeffs) 
 
     classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*n_class
-    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:154]],fmt='%s')
+    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:82]],fmt='%s')
     print(" --- Complete!")
     progess_bar.finish()
