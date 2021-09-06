@@ -49,6 +49,7 @@ def predict(time, mag, magerr, rf_model, pca_model):
     classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
     array=[]
     array.append(extract_features.extract_all(time, mag, magerr, convert=True))
+
     stat_array = pca_model.transform(array)
     stat_array = array #checking to see if using only stats works
     pred = rf_model.predict_proba(stat_array)
