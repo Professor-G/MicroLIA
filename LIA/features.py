@@ -465,7 +465,7 @@ def median_distance(time, mag):
     distance = np.median(np.sqrt(delta_mag + delta_t))
     return distance
 
-def above1(mag,magerr):
+def above1(mag):
     """
     This function measures the ratio of data points that are above 1 standard deviation
     from the median magnitude.
@@ -485,7 +485,7 @@ def above1(mag,magerr):
     
     return above1
 
-def above3(mag,magerr):
+def above3(mag):
     """
     This function measures the ratio of data points that are above 3 standard deviations
     from the median magnitude.
@@ -505,7 +505,7 @@ def above3(mag,magerr):
     
     return above3
 
-def above5(mag,magerr):
+def above5(mag):
     """
     This function measures the ratio of data points that are above 5 standard deviations
     from the median magnitude.
@@ -520,13 +520,12 @@ def above5(mag,magerr):
     rtype: float   
     """
     
-    #a = np.median(mag) + 5*magerr
     a = np.median(mag) + 5*np.std(mag)
     above5 = len(np.argwhere(mag > a))
     
     return above5
 
-def below1(mag,magerr):
+def below1(mag):
     """
     This function measures the ratio of data points that are below 1 standard deviations
     from the median magnitude.
@@ -541,13 +540,12 @@ def below1(mag,magerr):
     rtype: float
     """
     
-    #a = np.median(mag) - magerr
     a = np.median(mag) - np.std(mag)
     below1 = len(np.argwhere(mag < a))
     
     return below1
 
-def below3(mag,magerr):
+def below3(mag):
     """
     This function measures the ratio of data points that are below 3 standard deviations
     from the median magnitude.
@@ -567,7 +565,7 @@ def below3(mag,magerr):
     
     return below3
 
-def below5(mag,magerr):
+def below5(mag):
     """
     This function measures the ratio of data points that are below 5 standard deviations
     from the median magnitude.
