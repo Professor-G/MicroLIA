@@ -81,7 +81,7 @@ def shannon_entropy(mag, magerr):
     total_entropy = np.nan_to_num(entropy1 + entropy2)
     return total_entropy
 
-def con(mag,magerr):
+def con(mag):
     """
     Con is defined as the number of clusters containing three or more
     consecutive observations with magnitudes brighter than the reference
@@ -93,7 +93,6 @@ def con(mag,magerr):
     Parameters
     ----------
     mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
    
     Returns
     -------  
@@ -126,7 +125,7 @@ def con(mag,magerr):
     return con
 
     
-def con2(mag,magerr):
+def con2(mag):
     """
     Con is defined as the number of clusters containing three or more
     consecutive observations with magnitudes brighter than the mean plus
@@ -136,7 +135,6 @@ def con2(mag,magerr):
     Parameters
     ----------
     mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
 
     Returns
     -------  
