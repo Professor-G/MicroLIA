@@ -16,7 +16,7 @@ setup(
 	url = "https://github.com/dgodinez77/LIA",
 	packages = find_packages('.'),
 	include_package_data=True,
-	install_requires = ['numpy','scikit-learn','astropy','mpmath','scipy','PeakUtils','AstroML', 'progress', 'math'],
+	install_requires = ['numpy','scikit-learn','astropy','math','scipy','PeakUtils', 'progress'],
 	test_suite="nose.collector",
 	package_data={
     '': ['Miras_vo.xml'],
