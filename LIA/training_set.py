@@ -5,13 +5,18 @@ Created on Thu Jun 28 20:30:11 2018
 @author: danielgodinez
 """
 import os
-import numpy as np
 import random
-from astropy.io import fits
-from sklearn import decomposition
-from astropy.io.votable import parse_single_table
 import pkg_resources
-from progress import bar, spinner
+import numpy as np
+from astropy.io import fits
+from progress import bar
+from astropy.io.votable import parse_single_table
+
+from sklearn import decomposition
+from sklearn.neural_network import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.metrics import confusion_matrix, classification_report
 
 from LIA import simulate
 from LIA import noise_models
@@ -104,10 +109,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
         progess_bar.next()
+    progess_bar.finish()
 
-    print(" --- Variables successfully simulated!")    
     progess_bar = bar.FillingSquaresBar('Simulating constants...', max=n_class)
-
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
@@ -133,10 +137,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         stats = ['CONSTANT'] + [1*n_class+k] + stats
         stats_list.append(stats) 
         progess_bar.next()  
+    progess_bar.finish()
 
-    print(" --- Constants successfully simulated!")    
     progess_bar = bar.FillingSquaresBar('Simulating CV...', max=n_class)   
-
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
@@ -171,10 +174,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
 
             if j == 9999:
                 raise RuntimeError('Unable to simulate proper CV in 10k tries with current cadence -- inspect cadence and try again.')
-        
-    print(" --- CV successfully simulated!")    
-    progess_bar = bar.FillingSquaresBar('Simulating microlensing...', max=n_class)  
+    progess_bar.finish()
 
+    progess_bar = bar.FillingSquaresBar('Simulating microlensing...', max=n_class)  
     for k in range(1,n_class+1):
         for j in range(10000):
             time = random.choice(timestamps)
@@ -208,10 +210,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
 
             if j == 9999:
                 raise RuntimeError('Unable to simulate proper ML in 10k tries with current cadence -- inspect cadence and/or noise model and try again.')
+    progess_bar.finish()
     
-    print(" --- Microlensing successfully simulated!")    
     progess_bar = bar.FillingSquaresBar('Simulating LPV...', max=n_class)  
-
     resource_package = __name__
     resource_path = '/'.join(('data', 'Miras_vo.xml'))
     template = pkg_resources.resource_filename(resource_package, resource_path)
@@ -227,6 +228,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
         mag = simulate.simulate_mira_lightcurve(time, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
+    
         try:
             if noise is not None:
                 mag, magerr = noise_models.add_noise(mag,noise)
@@ -238,7 +240,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         source_class = ['LPV']*len(time)
         source_class_list.append(source_class)
 
-        id_num = [1*n_class+k]*len(time)
+        id_num = [4*n_class+k]*len(time)
         id_list.append(id_num)
 
         times_list.append(time)
@@ -250,11 +252,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         stats = ['LPV'] + [4*n_class+k] + stats
         stats_list.append(stats)
         progess_bar.next()
+    progess_bar.finish()
 
-    print(" --- LPV successfully simulated!")    
-    progress_bar = spinner.MoonSpinner('Writing files...')
-    progress_bar.next()
-
+    print('Writing files...')
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
     col2 = fits.Column(name='time', format='D', array=np.hstack(times_list))
@@ -274,16 +274,31 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
          outfile.write(data)
     os.remove('feats.txt')
 
-    print(" --- Files created successfully!")
-    progress_bar = spinner.MoonSpinner('Computing principal components...')
-    progress_bar.next()
-
-    coeffs = np.loadtxt('all_features.txt',usecols=np.arange(2,84))
+    coeffs = np.loadtxt('all_features.txt', dtype=str)
     pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
-    pca.fit(coeffs)
-    X_pca = pca.transform(coeffs) 
+    pca.fit(coeffs[:,np.arange(2,84)].astype(float))
+    X_pca = pca.transform(coeffs[:,np.arange(2,84)].astype(float))
 
-    classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*n_class
-    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,n_class*5+1),X_pca[:,:82]],fmt='%s')
-    print(" --- Complete!")
-    progess_bar.finish()
+    classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*len(np.where(coeffs[:,0] == 'LPV')[0])
+    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,len(classes)+1),X_pca[:,:82]],fmt='%s')
+
+    print('Testing classifier...')
+    train_data = np.loadtxt('pca_features.txt', dtype=str)
+    X_train, X_test, y_train, y_test = train_test_split(train_data[:,np.arange(2,84)].astype(float),train_data[:,0])
+
+    RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
+    RF_pred_test = RF.predict(X_test)
+    RF_cross_validation = cross_validate(RF, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
+    NN_pred_test = NN.predict(X_test)
+    NN_cross_validation = cross_validate(NN, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    print("Complete!")
+    print(" --- Random Forest Classification Report ---")
+    print(classification_report(y_test, RF_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(RF_cross_validation['test_score'])*100, 2))+'%')
+    print("")
+    print(" --- Neural Network Classification Report ---")
+    print(classification_report(y_test, NN_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
