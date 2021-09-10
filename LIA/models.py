@@ -31,7 +31,7 @@ def create_models(all_feats, pca_feats, model='rf'):
         PCA transformation.
     """
     coeffs = np.loadtxt(all_feats,usecols=np.arange(2,84))
-    pca = decomposition.PCA(n_components=70, whiten=True, svd_solver='auto')
+    pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
     pca.fit(coeffs)
     #feat_strengths = pca.explained_variance_ratio_
     training_set = np.loadtxt(pca_feats, dtype = str)
@@ -39,8 +39,8 @@ def create_models(all_feats, pca_feats, model='rf'):
     if model == 'rf':
         model = RandomForestClassifier(n_estimators=100)#, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
     elif model == 'nn':
-        model = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', verbose=10, tol=1e-4, learning_rate_init=.0001)
+        model = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001)
 
-    model.fit(training_set[:,np.arange(2,72)].astype(float),training_set[:,0])
+    model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
 
     return model, pca
