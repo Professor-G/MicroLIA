@@ -66,8 +66,8 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         A txt file containing all PCA features plus class label. 
     """
 
-    if n_class < 12:
-        raise ValueError("Parameter n_class must be at least 12 for principal components to be computed.")
+    if n_class < 17:
+        raise ValueError("Parameter n_class must be at least 17 for principal components to be computed. Recommended size is 500.")
     
     while True:
         try:
@@ -282,7 +282,36 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*len(np.where(coeffs[:,0] == 'LPV')[0])
     np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,len(classes)+1),X_pca[:,:82]],fmt='%s')
 
-    print('Testing classifier...')
+    print("")
+    print("------------------------------")
+    print("Testing classifier without PCA...")
+    print("------------------------------")
+    train_data = np.loadtxt('all_features.txt', dtype=str)
+    X_train, X_test, y_train, y_test = train_test_split(train_data[:,np.arange(2,84)].astype(float),train_data[:,0])
+
+    RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
+    RF_pred_test = RF.predict(X_test)
+    RF_cross_validation = cross_validate(RF, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
+    NN_pred_test = NN.predict(X_test)
+    NN_cross_validation = cross_validate(NN, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    print(" --- Random Forest Classification Report ---")
+    print(classification_report(y_test, RF_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(RF_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+    print("")
+    print(" --- Neural Network Classification Report ---")
+    print(classification_report(y_test, NN_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+    
+    
+    print("")
+    print("------------------------------")
+    print("Testing classifier with PCA...")
+    print("------------------------------")
     train_data = np.loadtxt('pca_features.txt', dtype=str)
     X_train, X_test, y_train, y_test = train_test_split(train_data[:,np.arange(2,84)].astype(float),train_data[:,0])
 
@@ -294,11 +323,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     NN_pred_test = NN.predict(X_test)
     NN_cross_validation = cross_validate(NN, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
 
-    print("Complete!")
     print(" --- Random Forest Classification Report ---")
     print(classification_report(y_test, RF_pred_test))
     print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(RF_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
     print("")
     print(" --- Neural Network Classification Report ---")
     print(classification_report(y_test, NN_pred_test))
     print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
