@@ -34,8 +34,7 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     Returns
     -------
     stats : array
-        The 47 features to input into the RF, sorted 
-        by alphabetical order. 
+        The 82 features to input into the RF
     """
 
     if convert is True:
@@ -70,9 +69,9 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
         number_cwt_peaks(norm_flux), permutation_entropy(norm_flux), quantile(norm_flux)))
 
 
-    #The following re-computes the metrics in derivative space
-    flux = np.gradient(flux, time) #derivative
-    flux_err = np.gradient(flux_err, time) #derivative 
+    #The following re-computes important metrics in derivative space
+    flux = np.gradient(flux, time)
+    flux_err = np.gradient(flux_err, time) 
 
     amp = amplitude(flux)
     MedBuffRng = median_buffer_range(flux)
@@ -88,7 +87,7 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
 
     stats_derivative = np.array((amp, longest_strike_above(norm_flux), longest_strike_below(norm_flux), medianAbsDev(norm_flux), MedBuffRng, root_mean_squared(norm_flux),
         sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), stetJ, stetK, stetL, FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux),
-        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), shapiro_wilk(norm_flux), quantile(norm_flux)))
+        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), shapiro_wilk(norm_flux), quantile(norm_flux))) #17
 
     stats = np.r_[stats_normal, stats_derivative]
     
@@ -106,14 +105,12 @@ stats = np.array((above1(norm_flux), above3(norm_flux), above5(norm_flux), abs_e
         medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux), 
         root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux), stetJ, stetK, stetL, 
         sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux)))
-"""
 
-"""
-derivative_stats = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), 
-        abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux), below1(norm_flux,norm_fluxerr), 
-        below3(norm_flux,norm_fluxerr), below5(norm_flux,norm_fluxerr), c3(norm_flux), check_for_duplicate(norm_flux), 
+derivative_stats = np.array((above1(norm_flux), above3(norm_flux), above5(norm_flux), 
+        abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux), below1(norm_flux), 
+        below3(norm_flux), below5(norm_flux), c3(norm_flux), check_for_duplicate(norm_flux), 
         check_for_max_duplicate(norm_flux), check_for_min_duplicate(norm_flux), check_max_last_loc(norm_flux), 
-        check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux,norm_fluxerr), con2(norm_flux,norm_fluxerr), 
+        check_min_last_loc(norm_flux), complexity(norm_flux), con(norm_flux), con2(norm_flux), 
         count_above(norm_flux), count_below(norm_flux), first_loc_max(norm_flux), first_loc_min(norm_flux), integrate(norm_flux), 
         kurtosis(norm_flux), longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux), 
         mean_change(norm_flux), mean_second_derivative(norm_flux), medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, 
@@ -151,4 +148,4 @@ stat_names = ['above1', 'above3', 'above5', 'abs_energy', 'abs_sum_changes', 'am
         'benford_correlation_df', 'mean_n_abs_max_df', 'number_of_crossings_df', 'number_of_peaks_df', 'variance_df', 'variance_larger_than_standard_deviation_df',
         'variation_coefficient_df', 'large_standard_deviation_df', 'symmetry_looking_df', 'index_mass_quantile_df', 'number_cwt_peaks_df', 'permutation_entropy_df', 'quantile_df']
 
-    """
+"""
