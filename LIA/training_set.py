@@ -16,7 +16,7 @@ from sklearn import decomposition
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import classification_report
 
 from LIA import simulate
 from LIA import noise_models
@@ -55,15 +55,30 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     cv_n2 : int, optional
         The mininum number of measurements that should be within the 
         rise or drop of at least one CV outburst when simulating the lightcurves.
+    t0_dist: array, optional
+        An array containing the minumum and maximum t0 value to be 
+        considered during the microlensing simulations. The indivial
+        t0 per simulation will be selected from a uniform distribution
+        between these two values.
+    u0_dist: array, optional
+        An array containing the minumum and maximum u0 value to be 
+        considered during the microlensing simulations. The indivial
+        u0 per simulation will be selected from a uniform distribution
+        between these two values.
+    te_dist: array, optional
+        An array containing the minumum and maximum tE value to be 
+        considered during the microlensing simulations. The indivial
+        tE per simulation will be selected from a uniform distribution
+        between these two values.
 
     Outputs
     _______
     dataset : FITS
         All simulated lightcurves in a FITS file, sorted by class and ID
     all_features : txt file
-        A txt file containing all the features plus class label.
+        A txt file containing all the features plus class label and ID.
     pca_stats : txt file
-        A txt file containing all PCA features plus class label. 
+        A txt file containing all PCA features plus class label and ID. 
     """
 
     if n_class < 17:
@@ -307,7 +322,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
     print("---------------------------------------------")
     
-    
+
     print("")
     print("------------------------------")
     print("Testing classifier with PCA...")
