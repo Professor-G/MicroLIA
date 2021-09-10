@@ -183,10 +183,69 @@ def constant(timestamps, baseline):
     mag = [baseline] * len(timestamps)
 
     return np.array(mag)
-     
-#Simulate RR Lyrae Variable
 
-def parametersRR0():            #McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events
+def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2018)
+    """Simulates a variable star.  
+
+    Parameters
+    ----------
+    timestamps : array
+        Times at which to simulate the lightcurve.
+    baseline : float
+        Baseline magnitude at which to simulate the lightcurve.
+    bailey : int, optional 
+        The type of variable to simulate. A bailey
+        value of 1 simulaes RR Lyrae type ab, a value
+        of 2 simulates RR Lyrae type c, and a value of 
+        3 simulates a Cepheid variable. If not provided
+        it defaults to a random choice between the three. 
+
+    Returns
+    -------
+    mag : array
+        Simulated magnitudes given the timestamps.
+    amplitude : float
+        Amplitude of the signal in mag. 
+    period : float
+        Period of the signal in days.   
+    """
+    time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
+    lightcurve = np.array(baseline)
+
+    for idx in range(len(ampl_k)):
+        lightcurve = lightcurve + ampl_k[idx] * np.cos(((2*pi*(idx+1))/period)*time+phase_k[idx])
+    amplitude = np.ptp(lightcurve) / 2.0
+
+    return np.array(lightcurve), amplitude, period 
+
+def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
+    """Simulates LPV - Miras  
+    Miras data from OGLE III: http://www.astrouw.edu.pl/ogle/ogle3/OIII-CVS/blg/lpv/pap.pdf
+
+    Parameters
+    ----------
+    timestamps : array
+        Times at which to simulate the lightcurve.
+    baseline : float
+        Baseline magnitude at which to simulate the lightcurve.
+
+    Returns
+    -------
+    mag : array
+        Simulated magnitudes given the timestamps.
+    """
+    amplitudes, periods = random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
+    lc = np.array(baseline)
+
+    for idx in range(len(amplitudes)):
+        lc = lc + amplitudes[idx]* np.cos((2*np.pi*(idx+1))/periods[idx]*timestamps)
+
+    return np.array(lc)
+
+def parametersRR0():            
+    """
+    McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events.
+    """
     a1=  0.31932222222222223
     ratio12 = 0.4231184105222867 
     ratio13 = 0.3079439089738683 
@@ -196,7 +255,7 @@ def parametersRR0():            #McGill et al. (2018): Microlens mass determinat
     f3 =  6.259693777777778
     return a1, ratio12, ratio13, ratio14, f1, f2, f3
 
-def parametersRR1():            #McGill et al. (2018)
+def parametersRR1():
     a1 =  0.24711999999999998
     ratio12 = 0.1740045322110716 
     ratio13 = 0.08066256609474477 
@@ -206,23 +265,31 @@ def parametersRR1():            #McGill et al. (2018)
     f3 =  1.9828297333333336
     return a1, ratio12, ratio13, ratio14, f1, f2, f3
 
-
-def uncertainties(time, curve, uncertain_factor):       #optional, add random uncertainties, controlled by the uncertain_factor
+def uncertainties(time, curve, uncertain_factor):       
+    """
+    optional, add random uncertainties, controlled by the uncertain_factor
+    """
     N = len(time)
     uncertainty = np.random.normal(0, uncertain_factor/100, N)
-    realcurve = []                                      #curve with uncertainties
+    realcurve = []   
+                                       #curve with uncertainties
     for idx in range(N):
         realcurve.append(curve[idx]+uncertainty[idx])
+
     return realcurve
 
-
-def setup_parameters(timestamps, bailey=None):          #setup of random parameters based on physical parameters
-    time = np.array(timestamps)   #np.arange(0,300,0.01)    #np.loadtxt('Gbul2000_45.dat')[:,0] 
+def setup_parameters(timestamps, bailey=None):   
+    """
+    Setup of random physical parameters
+    """
+    time = np.array(timestamps) 
     if bailey is None:
         bailey = np.random.randint(1,4)
     if bailey < 0 or bailey > 3:
         raise RuntimeError("Bailey out of range, must be between 1 and 3.")
+
     a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR1()
+
     if bailey == 1:
         period = np.random.normal(0.6, 0.15)
         a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR0()
@@ -231,34 +298,22 @@ def setup_parameters(timestamps, bailey=None):          #setup of random paramet
     elif bailey == 3:
         period = np.random.lognormal(0., 0.2)
         period = 10**period
+
     s = 20
     period=np.abs(period)  
     n1 = np.random.normal(a1, 2*a1/s)
     ampl_k = [n1, np.random.normal(n1*ratio12, n1*ratio12/s), np.random.normal(n1*ratio13, n1*ratio13/s), np.random.normal(n1*ratio14, n1*ratio14/s)]
     phase_k = [0, np.random.normal(f1, f1/s), np.random.normal(f2, f2/s), np.random.normal(f3, f3/s)]
+    
     return time, ampl_k, phase_k, period
 
-def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2018)
-    time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
-    lightcurve = np.array(baseline)
-    for idx in range(len(ampl_k)):
-        lightcurve = lightcurve + ampl_k[idx] * np.cos(((2*pi*(idx+1))/period)*time+phase_k[idx])
-    amplitude = np.ptp(lightcurve) / 2.0
-    return np.array(lightcurve), amplitude, period 
-
-#Simulate LPV - Miras
-#Miras.dat: OGLE III http://www.astrouw.edu.pl/ogle/ogle3/OIII-CVS/blg/lpv/pap.pdf
-
 def random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
+    """
+    Setup of random physical parameters
+    """
     len_miras = len(primary_period)
     rand_idx = np.random.randint(0,len_miras,1)
     amplitudes = [amplitude_pp[rand_idx], amplitude_sp[rand_idx], amplitude_tp[rand_idx]]
     periods = [primary_period[rand_idx], secondary_period[rand_idx], tertiary_period[rand_idx]]
-    return amplitudes, periods
 
-def simulate_mira_lightcurve(times, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
-    amplitudes, periods = random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
-    lc = np.array(baseline)
-    for idx in range(len(amplitudes)):
-        lc = lc + amplitudes[idx]* np.cos((2*np.pi*(idx+1))/periods[idx]*times)
-    return np.array(lc)
+    return amplitudes, periods
