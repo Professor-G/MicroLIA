@@ -6,7 +6,6 @@
 """
 
 from __future__ import print_function
-from math import log 
 import numpy as np
 from LIA.features import *
 
@@ -34,7 +33,7 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     Returns
     -------
     stats : array
-        The 82 features to input into the RF
+        The 82 features to use for classification
     """
 
     if convert is True:
