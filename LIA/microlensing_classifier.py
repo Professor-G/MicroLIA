@@ -22,11 +22,10 @@ def predict(time, mag, magerr, model, pca):
     magerr : array
         Corresponing photometric errors.  
     model: fn
-        The machine learning model created using the function in the
-        create_models module.
+        The machine learning model returned from the create_models
+        function.
     pca: fn
-        The PCA transformation created using the function in the
-        create_models module. This will be None if
+        The PCA output returned from the create_models function.
 
     Returns
     -------
