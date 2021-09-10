@@ -22,7 +22,6 @@ def create_models(all_feats, pca_feats=None, model='rf'):
         you wish to apply PCA transformation. Default is None, which means
         the original features are used for classification. We recommend
         PCA transformation if using a Neural Network! 
-
     model : str
         Model to use for classification. 
         'rf': Random Forest 
@@ -50,9 +49,9 @@ def create_models(all_feats, pca_feats=None, model='rf'):
         training_set = np.loadtxt(pca_feats, dtype = str)
         pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
         pca.fit(coeffs)
-
     else:
-        training_set = np.loadtxt(all_feats, dtype = str) #testing to see if using only feats works
+        training_set = np.loadtxt(all_feats, dtype = str)
+        pca = None
 
     model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
 
