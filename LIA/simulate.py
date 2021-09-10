@@ -19,9 +19,24 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
     Parameters
     ----------
     timestamps : array
-        Times at which to simulate the lightcurve.
+        Timestamps of the lightcurve.
     baseline : float
-        Baseline magnitude at which to simulate the lightcurve.
+        Baseline magnitude of the lightcurve.
+    t0_dist: array, optional
+        An array containing the minumum and maximum t0 value to be 
+        considered during the microlensing simulations. The indivial
+        t0 per simulation will be selected from a uniform distribution
+        between these two values.
+    u0_dist: array, optional
+        An array containing the minumum and maximum u0 value to be 
+        considered during the microlensing simulations. The indivial
+        u0 per simulation will be selected from a uniform distribution
+        between these two values.
+    te_dist: array, optional
+        An array containing the minumum and maximum tE value to be 
+        considered during the microlensing simulations. The indivial
+        tE per simulation will be selected from a uniform distribution
+        between these two values.
 
     Returns
     -------
