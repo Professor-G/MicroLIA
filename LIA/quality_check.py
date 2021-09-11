@@ -131,7 +131,7 @@ def test_classifier(all_feats, pca_feats):
     all_feats : str
         Name of text file containing all features 
         This is output after running training_set.create()
-    pca_feats : optional, str
+    pca_feats : str
         Name of text file containing PCA features 
         This is output after running training_set.create()
 
