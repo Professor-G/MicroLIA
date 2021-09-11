@@ -11,12 +11,7 @@ import numpy as np
 from astropy.io import fits
 from progress import bar
 from astropy.io.votable import parse_single_table
-
 from sklearn import decomposition
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.metrics import classification_report
 
 from LIA import simulate
 from LIA import noise_models
@@ -71,7 +66,8 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         tE per simulation will be selected from a uniform distribution
         between these two values.
     test: bool, optional
-        If False the 
+        If False there will be no classification reports after training.
+        Defaults to True.
 
     Outputs
     _______
