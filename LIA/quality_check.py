@@ -111,3 +111,85 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
                 break 
 
     return condition 
+
+def test_classifier(all_feats, pca_feats):
+    """This function will test the Random Forest
+    and Neural Network classifier, both with PCA
+    and non-PCA transformation.
+
+    Can only run this if a training set has already
+    been created, as this function requires the two
+    output files 'all_features' and 'pca_features'.
+
+    Parameters
+    ----------
+    all_feats : str
+        Name of text file containing all features 
+        This is output after running training_set.create()
+    pca_feats : optional, str
+        Name of text file containing PCA features 
+        This is output after running training_set.create()
+
+    Returns
+    -------
+    Classification reports and mean accuracy
+    after 10-fold cross-validation for both
+    RF and NN classifiers, tested with PCA transformation
+    and without.
+    """
+    try:
+        train_data = np.loadtxt(all_feats, dtype=str)
+    except IOError:
+        raise ValueError("Could not find features file, please check directory and try again.")
+
+    print("")
+    print("------------------------------")
+    print("Testing classifier without PCA...")
+    print("------------------------------")
+
+    X_train, X_test, y_train, y_test = train_test_split(train_data[:,np.arange(2,84)].astype(float),train_data[:,0])
+
+    RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
+    RF_pred_test = RF.predict(X_test)
+    RF_cross_validation = cross_validate(RF, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
+    NN_pred_test = NN.predict(X_test)
+    NN_cross_validation = cross_validate(NN, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    print(" --- Random Forest Classification Report ---")
+    print(classification_report(y_test, RF_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(RF_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+    print("")
+    print(" --- Neural Network Classification Report ---")
+    print(classification_report(y_test, NN_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+
+
+    print("")
+    print("------------------------------")
+    print("Testing classifier with PCA...")
+    print("------------------------------")
+    train_data = np.loadtxt(pca_feats, dtype=str)
+    X_train, X_test, y_train, y_test = train_test_split(train_data[:,np.arange(2,84)].astype(float),train_data[:,0])
+
+    RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
+    RF_pred_test = RF.predict(X_test)
+    RF_cross_validation = cross_validate(RF, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
+    NN_pred_test = NN.predict(X_test)
+    NN_cross_validation = cross_validate(NN, train_data[:,np.arange(2,84)].astype(float), train_data[:,0], cv=10)
+
+    print(" --- Random Forest Classification Report ---")
+    print(classification_report(y_test, RF_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(RF_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+    print("")
+    print(" --- Neural Network Classification Report ---")
+    print(classification_report(y_test, NN_pred_test))
+    print("Mean Accuracy After 10-fold Cross-Validation: "+ str(round(np.mean(NN_cross_validation['test_score'])*100, 2))+'%')
+    print("---------------------------------------------")
+
