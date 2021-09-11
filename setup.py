@@ -14,7 +14,7 @@ setup(
 	author_email = "danielgodinez123@gmail.com",
 	license = 'GPL-3.0',
 	url = "https://github.com/dgodinez77/LIA",
-	packages = find_packages(include=['numpy','scikit-learn','astropy','math','scipy','PeakUtils', 'progress'])
+	packages = find_packages(include=['numpy','scikit-learn','astropy','math','scipy','PeakUtils', 'progress']),
 	include_package_data=True,
 	install_requires = ['numpy','scikit-learn','astropy','math','scipy','PeakUtils', 'progress'],
 	test_suite="nose.collector",
