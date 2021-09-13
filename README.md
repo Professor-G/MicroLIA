@@ -36,7 +36,7 @@ training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 <img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png">
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA. This will allow you to determine what kind of model would perform best given your survey conditions. 
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA -- this will allow you to determine what kind of model would perform best given your survey conditions. 
 
 <img src="https://user-images.githubusercontent.com/19847448/133038459-aa422912-9a01-4e05-af92-fd2abb418fb7.png">
 
@@ -45,7 +45,7 @@ We can see that the higest performance occurs when we use a Random Forest withou
 ```python
 from LIA import models
 
-model, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’, model='rf')
+model, pca = models.create_models('all_features.txt', 'pca_features.txt', model='rf')
 ```
 
 Or instead we could create a Neural Network model without PCA, we will do this by simply omitting the pca_features file from the input.
@@ -53,7 +53,7 @@ Or instead we could create a Neural Network model without PCA, we will do this b
 ```python
 from LIA import models
 
-model, pca = models.create_models(‘all_features.txt’, model='nn')
+model, pca = models.create_models('all_features.txt', model='nn')
 ```
 
 With our machine learning model trained and the PCA transformation saved, we are ready to classify any light curve.
