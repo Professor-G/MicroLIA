@@ -5,28 +5,29 @@
 # LIA: Lens Identification Algorithm
 <img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
-
 # LIA
 
 Please download the official Version 1.0 release from Zenodo, this GitHub rep is under development.
 
-LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 47 statistical features from the lightcurve (mag+magerr), after which it applies a Principal Component Analysis (PCA) for feature dimensionality reduction. These PCA features are then run through a Random Forest ensemble to classify the lightcurve as either a microlensing event, a variable source, a cataclysmic variable (CV), or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
+LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 82 statistical features from the lightcurve (time,mag,magerr), 17 of which are computed in derivative space as such we recommend sigma clipping the lightcurves to avoid exploding fradients. Using these features, you can create either a Random Forest of Neural Netowrk classifier, with the option of applying Principal Component Analysis (PCA) for feature dimensionality reduction. Once trained, LIA will classify new lightcurves as either a microlensing event, a variable source, a cataclysmic variable (CV), a long period variable, or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
 
 # Installation
 
 Requires Python3.7 -- to install all dependencies run
 
 ```
-python setup.py install --old-and-unmanageable
+
+    $ python setup.py install --old-and-unmanageable
+
 ```
 
 from the LIA directory.
 
 # Creating Training Data & Constructing Models 
 
-The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all necessary steps within the **create_training** module. The "hard" part is aggregating the necessary survey timestamps; these can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long space survey with daily cadence, hence only one timestamp from which to simulate our classes (please note that the set of timestamps must be appended to a list, as in practice survey cadence may be irregular across different tiles). We will also assume the survey has limiting magnitudes of 15 and 20, and as we don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model — although the **noise_models** module contains a function for creating your own. Now, let’s simulate 500 of each class:
+The **simulate** module contains the framework necessary for simulating all individual classes. For simulating a complete training set, we’ve simplified the process by including all the necessary steps within the **create_training** module. The "hard" part is aggregating the necessary survey timestamps; these can be simulated, or be derived from real lightcurves if the survey is already underway. In this example we will assume a year-long space survey with daily cadence, hence only one timestamp from which to simulate our classes (please note that the set of timestamps must be appended to a list, as in practice survey cadence may be irregular across different tiles). We will also assume the survey has limiting magnitudes of 15 and 20, and as we don’t know the noise model of this imaginary survey, we will default to applying a Gaussian model — although the **noise_models** module contains a function for creating your own. Now, let’s simulate 500 of each class:
 
-```
+```python
 from LIA import training_set
 import numpy as np 
 
@@ -35,17 +36,18 @@ time.append(np.arange(0,366,1))
 
 training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
+<img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png" width="900" height="500">
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the 47 statistical values computed, while the other titled ‘pca_features’ contains the class label, the ID, and the principal components. We need these two text files to construct the required models.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA. This will allow you to determine what scenario best fits the survey.
 
-```
+```python
 from LIA import models
 
-rf, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’)
+model, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’)
 ```
-With the RF model trained and the PCA transformation saved, we are ready to classify any light curve.
+With the machine learning model trained and the PCA transformation saved, we are ready to classify any light curve.
 
-```
+```python
 from LIA import microlensing_classifier
 
 #create imaginary light curve
