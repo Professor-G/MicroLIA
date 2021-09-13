@@ -9,7 +9,7 @@
 
 Please download the official Version 1.0 release from Zenodo, this GitHub rep is under development.
 
-LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 82 statistical features from the lightcurve (time, mag, magerr), 17 of which are computed in derivative space therefore we recommend sigma clipping the lightcurves to avoid exploding gradients. Using these features, you can create either a Random Forest of Neural Network classifier, with the option of applying a Principal Component Analysis (PCA) for feature dimensionality reduction. Once trained, LIA will classify new lightcurves as either a microlensing event, a variable source, a cataclysmic variable (CV), a long period variable, or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
+LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 82 statistical features from the lightcurve (time, mag, magerr), 17 of which are computed in derivative space therefore we recommend sigma clipping the lightcurves to avoid exploding gradients. Using these features, you can create either a Random Forest of Neural Network classifier, with the option of applying a Principal Component Analysis (PCA) for feature dimensionality reduction. Once trained, LIA will classify new lightcurves as either a microlensing event, a variable source, a cataclysmic variable, a long period variable, or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
 
 # Installation
 
@@ -19,7 +19,7 @@ Requires Python3.7 -- to install all dependencies run
     $ python setup.py install --old-and-unmanageable
 ```
 
-from the LIA directory. After installing, you will be able to call LIA from any directory.
+from the LIA directory. After installing, you will be able to call LIA directly from any directory.
 
 # Creating Training Data & Constructing Models 
 
@@ -36,7 +36,7 @@ training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 <img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png">
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA -- this will allow you to determine what kind of model would perform best given your survey conditions. 
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each lightcurve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the corresponding principal components. When a training set is created both the Random Forest and Neural Network classifiers will be tested, including with and without PCA -- this will allow you to determine what kind of model would perform best given your survey conditions. The output will be as follows:
 
 <img src="https://user-images.githubusercontent.com/19847448/133038459-aa422912-9a01-4e05-af92-fd2abb418fb7.png">
 
