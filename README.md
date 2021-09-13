@@ -19,7 +19,7 @@ Requires Python3.7 -- to install all dependencies run
     $ python setup.py install --old-and-unmanageable
 ```
 
-from the LIA directory. After installing, you will be able to call LIA directly from any directory.
+from the LIA directory. After installing, you will be able to load LIA as a general module.
 
 # Creating Training Data & Constructing Models 
 
