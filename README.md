@@ -56,7 +56,7 @@ from LIA import microlensing_classifier
 prediction, ml_pred = microlensing_classifier.predict(time, mag, magerr, model, pca)[0:2]
 ```
 
-Or instead we could create a Random Forest model without PCA, we will do this by simply omitting the the PCA option from the inputs:
+Or instead we could create a Random Forest model without PCA, we will do this by simply omitting the PCA option altogether:
 
 ```python
 from LIA import models
