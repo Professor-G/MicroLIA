@@ -38,15 +38,25 @@ training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
 <img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png">
 
-This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA. This will allow you to determine what scenario best fits the survey.
+This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA. This will allow you to determine what kind of model would perform best given your survey conditions. 
+<img src="https://user-images.githubusercontent.com/19847448/133038459-aa422912-9a01-4e05-af92-fd2abb418fb7.png">
+
+We can see that the higest performance occurs when we use a Random Forest without PCA, or a Neural Network with PCA. To train a Neural Network without PCA we will run the following:
 
 ```python
 from LIA import models
 
-model, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’)
+model, pca = models.create_models(‘all_features.txt’, ‘pca_features.txt’, model='rf')
 ```
-With the machine learning model trained and the PCA transformation saved, we are ready to classify any light curve.
 
+Or instead we could create a Random Forest model without PCA, we will do this by simply omitting the pca_features file from the input.
+```python
+from LIA import models
+
+model, pca = models.create_models(‘all_features.txt’, model='nn')
+```
+
+With our machine learning model trained and the PCA transformation saved, we are ready to classify any light curve.
 ```python
 from LIA import microlensing_classifier
 
@@ -54,7 +64,7 @@ from LIA import microlensing_classifier
 mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
 magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
 
-prediction, ml_pred = microlensing_classifier.predict(mag, magerr, rf, pca)[0:2]
+prediction, ml_pred = microlensing_classifier.predict(mag, magerr, model, pca)[0:2]
 ```
 We’re interested only in the first two outputs which are the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
 
