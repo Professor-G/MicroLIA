@@ -91,7 +91,7 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     stats[np.isinf(stats)] = 0
     stats[np.isnan(stats)] = 0
     stats[stats<10**-6] = 10**-6
-    stats[stats>10**6] = 10**-6
+    stats[stats>10**6] = 10**6
     
     return stats
 
