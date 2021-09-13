@@ -40,32 +40,30 @@ This function will output a FITS file titled ‘lightcurves’ that will contain
 
 <img src="https://user-images.githubusercontent.com/19847448/133038459-aa422912-9a01-4e05-af92-fd2abb418fb7.png">
 
-We can see that the higest performance occurs when we use a Random Forest without PCA, or a Neural Network with PCA. To train a Random Forest with PCA we will run the following:
+We can see that the higest performance occurs when we use a Random Forest without PCA, or a Neural Network with PCA. To train a Neural Network with PCA we will run the following:
 
 ```python
 from LIA import models
 
-model, pca = models.create_models('all_features.txt', 'pca_features.txt', model='rf')
+model, pca = models.create_models('all_features.txt', 'pca_features.txt', model='nn')
 ```
 
-Or instead we could create a Neural Network model without PCA, we will do this by simply omitting the pca_features file from the input.
-
-```python
-from LIA import models
-
-model, pca = models.create_models('all_features.txt', model='nn')
-```
-
-With our machine learning model trained and the PCA transformation saved, we are ready to classify any light curve.
+Then we can begin classifying any lightcurve:
 
 ```python
 from LIA import microlensing_classifier
 
-#create imaginary light curve
-mag = np.array([18, 18.3, 18.1, 18, 18.4, 18.9, 19.2, 19.3, 19.5, 19.2, 18.8, 18.3, 18.6])
-magerr = np.array([0.01, 0.01, 0.03, 0.09, 0.04, 0.1, 0.03, 0.13, 0.04, 0.06, 0.09, 0.1, 0.35])
+prediction, ml_pred = microlensing_classifier.predict(time, mag, magerr, model, pca)[0:2]
+```
 
-prediction, ml_pred = microlensing_classifier.predict(mag, magerr, model, pca)[0:2]
+Or instead we could create a Random Forest model without PCA, we will do this by simply omitting the the PCA option from the inputs:
+
+```python
+from LIA import models
+from LIA import microlensing_classifier
+
+model = models.create_models('all_features.txt', model='rf')
+prediction, ml_pred = microlensing_classifier.predict(time, mag, magerr, model)[0:2]
 ```
 
 We’re interested only in the first two outputs which are the predicted class and the probability it’s microlensing, but by default the **predict** function will output the probability predictions for all classes. For more information please refer to the documentation available in the specific modules.
