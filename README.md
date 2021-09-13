@@ -36,7 +36,7 @@ time.append(np.arange(0,366,1))
 
 training_set.create(time, min_mag=15, max_mag=20, noise=None, n_class=500)
 ```
-<img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png" width="900" height="500">
+<img src="https://user-images.githubusercontent.com/19847448/133037904-dced6505-af02-49bf-a6be-44c907716a21.png">
 
 This function will output a FITS file titled ‘lightcurves’ that will contain the photometry for your simulated classes, sorted by ID number and class. It will also save two text files with labeled classes. The file titled ‘all_features’ contains the class label and the ID number corresponding to each light curve in the FITS file, followed by the statistical metrics that were computed, while the other titled ‘pca_features’ contains the class label, the ID, and the correspoinding principal components. When a training set is created both the Random Forest and Neural Network classifier will be tested, including with and without PCA. This will allow you to determine what scenario best fits the survey.
 
