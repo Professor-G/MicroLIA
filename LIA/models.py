@@ -41,7 +41,7 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     elif model == 'nn':
         model = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001)
         if pca_feats is None:
-            warn('Neural network classifier works best with PCA transformation!')
+            warn('Neural network classifier may works best with PCA transformation!')
     else:
         raise ValueError("Model must be 'rf' or 'nn'")
 
