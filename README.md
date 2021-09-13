@@ -89,7 +89,7 @@ If both test scripts work you are good to go!
 
 # Citation
 
-If you use LIA in publication, we would appreciate citations to the paper [Godines et al. 2019.](https://arxiv.org/abs/2004.14347)
+If you use LIA in publication, we would appreciate citations to the paper, [Godines et al. 2019.](https://arxiv.org/abs/2004.14347)
 
  
 # How to Contribute?
