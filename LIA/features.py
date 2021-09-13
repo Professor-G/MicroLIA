@@ -272,14 +272,7 @@ def stetsonJ(mag, magerr):
     
     stetj = sum(np.sign(delta_list)*np.sqrt(np.abs(delta_list)))
 
-    #stetj blows up in derivative space!
-    if stetj > 10**6:
-        stetj = 10**6
-    elif stetj < 10**-6:
-        stetj =  10**-6
-
     return stetj
-
 
 def stetsonK(mag, magerr):
     """
