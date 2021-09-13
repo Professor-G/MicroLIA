@@ -4,7 +4,6 @@
     
     @author: danielgodinez
 """
-
 from __future__ import print_function
 import numpy as np
 from LIA.features import *
