@@ -32,7 +32,7 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     model : fn
         Trained random forest ensemble. 
     pca_model : fn
-        PCA transformation.
+        PCA transformation if pca_feats is not None.
     """
     coeffs = np.loadtxt(all_feats,usecols=np.arange(2,84))
     
@@ -45,14 +45,17 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     else:
         raise ValueError("Model must be 'rf' or 'nn'")
 
-    if pca:
+    if pca_feats:
         training_set = np.loadtxt(pca_feats, dtype = str)
         pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
         pca.fit(coeffs)
+        model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
+
+        return model, pca
     else:
         training_set = np.loadtxt(all_feats, dtype = str)
-        pca = None
+        model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
 
-    model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
+        return model 
 
-    return model, pca
+    
