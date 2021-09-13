@@ -73,7 +73,6 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
 
     amp = amplitude(flux)
     MedBuffRng = median_buffer_range(flux)
-    MedBuffRng2 = median_buffer_range2(flux)
 
     # Normalize by max flux
     norm_flux = flux/np.max(flux)
@@ -91,6 +90,8 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     
     stats[np.isinf(stats)] = 0
     stats[np.isnan(stats)] = 0
+    stats[stats<10**-6] = 10**-6
+    stats[stats>10**6] = 10**-6
     
     return stats
 
