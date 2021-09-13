@@ -9,16 +9,14 @@
 
 Please download the official Version 1.0 release from Zenodo, this GitHub rep is under development.
 
-LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 82 statistical features from the lightcurve (time,mag,magerr), 17 of which are computed in derivative space as such we recommend sigma clipping the lightcurves to avoid exploding gradients. Using these features, you can create either a Random Forest of Neural Netowrk classifier, with the option of applying a Principal Component Analysis (PCA) for feature dimensionality reduction. Once trained, LIA will classify new lightcurves as either a microlensing event, a variable source, a cataclysmic variable (CV), a long period variable, or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
+LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. The program first computes 82 statistical features from the lightcurve (time, mag, magerr), 17 of which are computed in derivative space therefore we recommend sigma clipping the lightcurves to avoid exploding gradients. Using these features, you can create either a Random Forest of Neural Network classifier, with the option of applying a Principal Component Analysis (PCA) for feature dimensionality reduction. Once trained, LIA will classify new lightcurves as either a microlensing event, a variable source, a cataclysmic variable (CV), a long period variable, or a constant source displaying no variability. We’ve adapted the code for use across any wide-field survey, and as such, a training set with adaptive cadence must first be created.
 
 # Installation
 
 Requires Python3.7 -- to install all dependencies run
 
 ```
-
     $ python setup.py install --old-and-unmanageable
-
 ```
 
 from the LIA directory. After installing, you will be able to call LIA from any directory.
