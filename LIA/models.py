@@ -30,7 +30,7 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     Returns
     -------
     model : fn
-        Trained random forest ensemble. 
+        Trained classifier
     pca_model : fn
         PCA transformation if pca_feats is not None.
     """
