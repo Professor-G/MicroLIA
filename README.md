@@ -40,7 +40,7 @@ This function will output a FITS file titled ‘lightcurves’ that will contain
 
 <img src="https://user-images.githubusercontent.com/19847448/133038459-aa422912-9a01-4e05-af92-fd2abb418fb7.png">
 
-We can see that the higest performance occurs when we use a Random Forest without PCA, or a Neural Network with PCA. To train a Neural Network with PCA we will run the following:
+We can see that the highest performance occurs when we use a Random Forest without PCA, or a Neural Network with PCA. To train a Neural Network with PCA we will run the following:
 
 ```python
 from LIA import models
