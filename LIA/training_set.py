@@ -7,6 +7,8 @@ Created on Thu Jun 28 20:30:11 2018
 import os
 import random
 import pkg_resources
+from warnings import warn
+
 import numpy as np
 from astropy.io import fits
 from progress import bar
@@ -154,7 +156,11 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
 
     progess_bar = bar.FillingSquaresBar('Simulating CV...', max=n_class)   
     for k in range(1,n_class+1):
-        for j in range(10000):
+        for j in range(100):
+            if j > 20:
+                warn('Taking longer than usual to simulate CV... this happens if the timestamps are too sparse \
+                as it takes longer to simulate lightcurves that pass the quality check. The process will break after \
+                one hundred attempts, if this happens you can try setting the outburst parameter cv_n1 to a value between 2 and 6.')
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_mag,max_mag)
             mag, burst_start_times, burst_end_times, end_rise_times, end_high_times = simulate.cv(time, baseline)
@@ -185,13 +191,17 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 progess_bar.next()
                 break
 
-            if j == 9999:
-                raise RuntimeError('Unable to simulate proper CV in 10k tries with current cadence -- inspect cadence and try again.')
+            if j == 99:
+                raise RuntimeError('Unable to simulate proper CV in 100 tries with current cadence -- inspect cadence and try again.')
     progess_bar.finish()
 
     progess_bar = bar.FillingSquaresBar('Simulating microlensing...', max=n_class)  
     for k in range(1,n_class+1):
-        for j in range(10000):
+        for j in range(100):
+            if j > 20:
+                warn('Taking longer than usual to simulate ML... this happens if the timestamps are too sparse \
+                as it takes longer to simulate lightcurves that pass the quality check. The process will break after \
+                one hundred attempts, if this happens you can try setting the event parameter ml_n1 to a value between 2 and 6.')
             time = random.choice(timestamps)
             baseline = np.random.uniform(min_mag,max_mag)
             mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline, t0_dist, u0_dist, tE_dist)
@@ -222,8 +232,8 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
                 progess_bar.next()
                 break
 
-            if j == 9999:
-                raise RuntimeError('Unable to simulate proper ML in 10k tries with current cadence -- inspect cadence and/or noise model and try again.')
+            if j == 99:
+                raise RuntimeError('Unable to simulate proper ML in 100 tries with current cadence -- inspect cadence and/or noise model and try again.')
     progess_bar.finish()
     
     progess_bar = bar.FillingSquaresBar('Simulating LPV...', max=n_class)  
