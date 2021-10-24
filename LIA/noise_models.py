@@ -5,8 +5,8 @@ Created on Thu July 28 20:30:11 2018
 @author: danielgodinez
 """
 import numpy as np
-from scipy.interpolate import UnivariateSpline
 from math import log
+from scipy.interpolate import UnivariateSpline
 
 def create_noise(median, rms, degree=3):
     """Creates a noise model by fitting a one-dimensional smoothing 
@@ -26,10 +26,24 @@ def create_noise(median, rms, degree=3):
     -------
     fn : The kth degree spline fit. 
     """
-    f = UnivariateSpline(median, rms, w=None, k=degree)
-    return f
 
-def add_noise(mag, fn, zp=24):
+    if type(median) is not np.ndarray:
+        median = np.array(median)
+    if type(rms) is not np.ndarray:
+        rms = np.array(rms)
+
+    order = np.array(median).argsort()
+    median, rms = median[order], rms[order]
+
+    if len(np.unique(median)) != len(median):
+        indices = np.unique(median, return_index=True)[1]
+        median, rms = median[indices], rms[indices]
+        
+    fn = UnivariateSpline(median, rms, k=degree)
+
+    return fn
+
+def add_noise(mag, fn, zp=24, exptime=60):
     """Adds noise to magnitudes given a noise function. 
 
     Parameters
@@ -47,17 +61,21 @@ def add_noise(mag, fn, zp=24):
         The noise-added magnitudes. 
     magerr : array
         The corresponding magnitude errors.
-    """    
-    flux = 10**(-(mag-zp)/2.5)
-    delta_fobs = flux*fn(mag)*(log(10)/2.5)
+    """  
+
+    flux = 10**(-(mag-zp)/2.5)*exptime
+
+    interp = fn(mag)
+    interp[(interp<0)]=0.00001
+
+    delta_fobs = flux*interp*(log(10)/2.5)
+
     f_obs = np.random.normal(flux, delta_fobs)
 
-    mag_obs = zp - 2.5*np.log10(f_obs)
+    mag_obs = zp - 2.5*np.log10(f_obs/exptime)
     magerr = (2.5/log(10))*(delta_fobs/f_obs)
         
     return np.array(mag_obs), np.array(magerr)
-
-
     
 def add_gaussian_noise_etienne(mag,zp=24):
     """Adds noise to lightcurve given the magnitudes.
@@ -82,13 +100,13 @@ def add_gaussian_noise_etienne(mag,zp=24):
     noisy_flux= np.random.poisson(flux)#, np.sqrt(flux))
     magerr = 2.5/log(10)*np.sqrt(noisy_flux)/noisy_flux
     #import pdb; pdb.set_trace()
-    noisy_mag = zp - 2.5*np.log10(noisy_flux/60)
+    noisy_mag = zp - 2.5*np.log10(noisy_flux/exptime)
     magerr=np.array(magerr)
     mag = np.array(noisy_mag)
 
     return mag,magerr
 
-def add_gaussian_noise(mag,zp=24):
+def add_gaussian_noise(mag, zp=24, exptime=60):
     """Adds noise to lightcurve given the magnitudes.
 
     Parameters
@@ -106,12 +124,12 @@ def add_gaussian_noise(mag,zp=24):
     magerr : array
         The corresponding magnitude errors.
     """
-    flux = 10**((mag-zp)/-2.5)
+    flux = 10**((mag-zp)/-2.5)*exptime
     
     noisy_flux= np.random.poisson(flux)
-    magerr = 2.5/(log(10)*np.sqrt(noisy_flux))
+    magerr = 2.5/(log(10)*np.sqrt(noisy_flux))/noisy_flux
     
-    noisy_mag = zp - 2.5*np.log10(noisy_flux)
+    noisy_mag = zp - 2.5*np.log10(noisy_flux/exptime)
     magerr=np.array(magerr)
     mag = np.array(mag)
 
