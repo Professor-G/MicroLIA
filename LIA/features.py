@@ -9,14 +9,15 @@ import numpy as np
 import itertools
 import math
 import peakutils
-from scipy.integrate import quad
-from scipy.signal import find_peaks_cwt, ricker
-from scipy.stats import shapiro, linregress, anderson
+import scipy.integrate as sintegrate
+import scipy.signal as ssignal
+import scipy.stats as sstats
+
 import warnings
 
 warnings.filterwarnings("ignore")
 
-def shannon_entropy(mag, magerr):
+def shannon_entropy(time,mag,magerr):
     """
     Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
     information carried by a signal. The procedure employed here follows that outlined by
@@ -36,7 +37,7 @@ def shannon_entropy(mag, magerr):
     """
     
     mean = np.median(mag)
-    RMS = root_mean_squared(mag)
+    RMS = root_mean_squared(time,mag,magerr)
     
     p_list1 = []
     p_list2 = []
@@ -51,7 +52,7 @@ def shannon_entropy(mag, magerr):
         def integral(t):
             integrand =  (2./np.sqrt(np.pi))*np.e**(-t**2)
             return integrand
-        integ, err = quad(integral, 0, x)
+        integ, err = sintegrate.quad(integral, 0, x)
         return integ
     
     """The Gaussian CDF: http://mathworld.wolfram.com/NormalDistribution.html"""
@@ -81,7 +82,7 @@ def shannon_entropy(mag, magerr):
     total_entropy = np.nan_to_num(entropy1 + entropy2)
     return total_entropy
 
-def con(mag):
+def con(time,mag,magerr):
     """
     Con is defined as the number of clusters containing three or more
     consecutive observations with magnitudes brighter than the reference
@@ -100,12 +101,11 @@ def con(mag):
     """
 
     mean = np.median(mag)
-    std = np.std(mag)
-    deviatingThreshold = mean - 3*std
+    
     con = 0
     deviating = False
 
-    a = np.argwhere(mag < deviatingThreshold)
+    a = np.argwhere(mag < mean+3*magerr)
     if len(a) < 3:
         return 0
     else:
@@ -113,40 +113,42 @@ def con(mag):
             first = mag[i]
             second = mag[i+1]
             third = mag[i+2]
-            if (first <= deviatingThreshold and
-                second <= deviatingThreshold and
-                third <= deviatingThreshold):
+            if (first <= mean+3*magerr[i] and
+                second <= mean+3*magerr[i+1] and
+                third <= mean+3*magerr[i+2]):
                 if (not deviating):
                     con += 1
                     deviating = True
                 elif deviating:
                     deviating = False
 
-    return con
+    return con/len(mag)
 
     
-def con2(mag):
+def con2(time,mag,magerr):
     """
     Con is defined as the number of clusters containing three or more
-    consecutive observations with magnitudes brighter than the mean plus
-    2 standard deviations. For a microlensing event Con = 1, assuming a
-    flat lightcurve prior to the event.
+    consecutive observations with magnitudes brighter than the reference
+    magnitude plus 3 standard deviations. For a microlensing event Con = 1,
+    assuming a  flat lightcurve prior to the event. The magnitude measurements
+    are split into bins such that the reference  magnitude is defined as the mean
+    of the measurements in the largest bin.
     
     Parameters
     ----------
     mag: the time-varying intensity of the lightcurve. Must be an array.
-
+   
     Returns
     -------  
-    :rtype: float
+    rtype: float       
     """
+
     mean = np.median(mag)
-    std = np.std(mag)
-    deviatingThreshold = mean - 2*std
+    
     con = 0
     deviating = False
-    
-    a = np.argwhere(mag < deviatingThreshold)
+
+    a = np.argwhere(mag < mean+3*magerr)
     if len(a) < 3:
         return 0
     else:
@@ -154,18 +156,18 @@ def con2(mag):
             first = mag[i]
             second = mag[i+1]
             third = mag[i+2]
-            if (first <= deviatingThreshold and
-                second <= deviatingThreshold and
-                third <= deviatingThreshold):
+            if (first <= mean+2*magerr[i] and
+                second <= mean+2*magerr[i+1] and
+                third <= mean+2*magerr[i+2]):
                 if (not deviating):
                     con += 1
                     deviating = True
                 elif deviating:
                     deviating = False
 
-    return con
-
-def kurtosis(mag):
+    return con/len(mag)
+    
+def kurtosis(time,mag,magerr):
     """"
     Kurtosis function returns the calculated kurtosis of the lightcurve.
     It's a measure of the peakedness (or flatness) of the lightcurve relative
@@ -180,19 +182,11 @@ def kurtosis(mag):
     rtype: float
     """
 
-    mean = np.median(mag)
-    std = np.std(mag)
-    n = np.float(len(mag))
-    
-    try:
-        kurtosis = (n*(n+1.)/((n-1.)*(n-2.)*(n-3.))*sum(((mag - mean)/std)**4)) - \
-            (3.*((n-1.)**2)/((n-2.)*(n-3.)))
-    except ZeroDivisionError:
-        kurtosis = 0.0
-
+    kurtosis = sstats.kurtosis(mag)
+   
     return kurtosis
 
-def skewness(mag):
+def skewness(time,mag,magerr):
     """
     Skewness measures the assymetry of a lightcurve, with a positive skewness
     indicating a skew to the right, and a negative skewness indicating a skew to the left.
@@ -206,16 +200,10 @@ def skewness(mag):
     :rtype: float
     """
     
-    mean = np.median(mag)
-    std = np.std(mag)
-    n = np.float(len(mag))
-    try:
-        skewness = (1./n)*sum((mag - mean)**3/std**3)
-    except ZeroDivisionError:
-        skewness = 0.0
+    skewness =  sstats.skew(mag)
     return skewness
 
-def vonNeumannRatio(mag):
+def vonNeumannRatio(time,mag,magerr):
     """
     The von Neumann ratio η was defined in 1941 by John von Neumann and serves as the
     mean square successive difference divided by the sample variance. When this ratio is small,
@@ -242,7 +230,7 @@ def vonNeumannRatio(mag):
     return vonNeumannRatio
 
 
-def stetsonJ(mag, magerr):
+def stetsonJ(time,mag,magerr):
     """
     The variability index J was first suggested by Peter B. Stetson and serves as a
     measure of the correlation between the data points, tending to 0 for variable stars
@@ -274,7 +262,7 @@ def stetsonJ(mag, magerr):
 
     return stetj
 
-def stetsonK(mag, magerr):
+def stetsonK(time,mag,magerr):
     """
     The variability index K was first suggested by Peter B. Stetson and serves as a
     measure of the kurtosis of the magnitude distribution.
@@ -304,7 +292,7 @@ def stetsonK(mag, magerr):
             
     return np.nan_to_num(stetsonK)
 
-def stetsonL(mag,magerr):
+def stetsonL(time,mag,magerr):
     """
     The variability index L was first suggested by Peter B. Stetson and serves as a
     means of distinguishing between different types of variation. When individual random
@@ -324,10 +312,10 @@ def stetsonL(mag,magerr):
     rtype: float    
     """  
     
-    stetL = (stetsonJ(mag,magerr)*stetsonK(mag,magerr)) / 0.798
+    stetL = (stetsonJ(time,mag,magerr)*stetsonK(time,mag,magerr)) / 0.798
     return stetL
 
-def median_buffer_range(mag):
+def median_buffer_range(time,mag,magerr):
     """
     This function returns the ratio of points that are between plus or minus 10% of the
     amplitude value over the mean.
@@ -342,7 +330,7 @@ def median_buffer_range(mag):
     """
     
     n = np.float(len(mag))
-    amp = amplitude(mag)
+    amp = amplitude(time,mag,magerr)
     #mean = meanMag(mag, magerr)
     mean = np.median(mag)
     a = mean - amp/10.
@@ -351,7 +339,7 @@ def median_buffer_range(mag):
     median_buffer_range = len(np.argwhere((mag > a) & (mag < b))) / n
     return median_buffer_range
 
-def median_buffer_range2(mag):
+def median_buffer_range2(time,mag,magerr):
     """
     This function returns the ratio of points that are more than 20% of the amplitude
     value over the mean.
@@ -366,7 +354,7 @@ def median_buffer_range2(mag):
     """
     
     n = np.float(len(mag))
-    amp = amplitude(mag)
+    amp = amplitude(time,mag,magerr)
     #mean = meanMag(mag, magerr)
     mean = np.median(mag)
     a = mean - amp/5.
@@ -374,7 +362,7 @@ def median_buffer_range2(mag):
     median_buffer_range = len(np.argwhere((mag < a))) / n
     return median_buffer_range
 
-def std_over_mean(mag):
+def std_over_mean(time,mag,magerr):
     """
     A measure of the ratio of standard deviation and mean.
     
@@ -393,7 +381,7 @@ def std_over_mean(mag):
     std_over_mean = std/mean
     return std_over_mean
 
-def amplitude2(mag):
+def amplitude2(time,mag,magerr):
     """
     This amplitude metric is defined as the difference between the maximum magnitude
     measurement and the lowest magnitude measurement. We account for outliers by
@@ -415,7 +403,7 @@ def amplitude2(mag):
     return amplitude2
 
 
-def amplitude(mag):
+def amplitude(time,mag,magerr):
     """
     This amplitude metric is defined as the difference between the maximum magnitude
     measurement and the lowest magnitude measurement, divided by 2. We account for 
@@ -430,12 +418,12 @@ def amplitude(mag):
     rtype: float
     """
 
-    mag_range = amplitude2(mag)
+    mag_range = amplitude2(time,mag,magerr)
     amplitude = mag_range / 2.0
 
     return amplitude
 
-def median_distance(time, mag):
+def median_distance(time, mag,magerr):
     """
     This function calculates the median eucledian distance between each photometric 
     measurement, helpful metric for detecting overlapped lightcurves.
@@ -456,7 +444,7 @@ def median_distance(time, mag):
     distance = np.median(np.sqrt(delta_mag + delta_t))
     return distance
 
-def above1(mag):
+def above1(time,mag,magerr):
     """
     This function measures the ratio of data points that are above 1 standard deviation
     from the median magnitude.
@@ -471,12 +459,10 @@ def above1(mag):
     rtype: float
     """
     
-    a = np.median(mag) + np.std(mag)
-    above1 = len(np.argwhere(mag > a) )
-    
-    return above1
 
-def above3(mag):
+    above1 = len(np.where(mag-np.median(mag)>magerr)[0])/len(mag)
+    return above1
+def above3(time,mag,magerr):
     """
     This function measures the ratio of data points that are above 3 standard deviations
     from the median magnitude.
@@ -491,12 +477,11 @@ def above3(mag):
     rtype: float
     """
     
-    a = np.median(mag) + 3*np.std(mag)
-    above3 = len(np.argwhere(mag > a) )
+    above3 = len(np.where(mag-np.median(mag)>3*magerr)[0])/len(mag)
     
     return above3
 
-def above5(mag):
+def above5(time,mag,magerr):
     """
     This function measures the ratio of data points that are above 5 standard deviations
     from the median magnitude.
@@ -511,12 +496,10 @@ def above5(mag):
     rtype: float   
     """
     
-    a = np.median(mag) + 5*np.std(mag)
-    above5 = len(np.argwhere(mag > a))
-    
+    above5 = len(np.where(mag-np.median(mag)>5*magerr)[0])/len(mag)
     return above5
 
-def below1(mag):
+def below1(time,mag, magerr):
     """
     This function measures the ratio of data points that are below 1 standard deviations
     from the median magnitude.
@@ -531,12 +514,11 @@ def below1(mag):
     rtype: float
     """
     
-    a = np.median(mag) - np.std(mag)
-    below1 = len(np.argwhere(mag < a))
-    
+    below1 = len(np.where(-mag+np.median(mag)>magerr)[0])/len(mag)
+
     return below1
 
-def below3(mag):
+def below3(time,mag,magerr):
     """
     This function measures the ratio of data points that are below 3 standard deviations
     from the median magnitude.
@@ -551,12 +533,10 @@ def below3(mag):
     rtype: float
     """
     
-    a = np.median(mag) - 3*np.std(mag)
-    below3 = len(np.argwhere(mag < a))
-    
+    below3 = len(np.where(-mag+np.median(mag)>3*magerr)[0])/len(mag)
     return below3
 
-def below5(mag):
+def below5(time,mag,magerr):
     """
     This function measures the ratio of data points that are below 5 standard deviations
     from the median magnitude.
@@ -571,12 +551,10 @@ def below5(mag):
     rtype: float
     """
     
-    a = np.median(mag) - 5*np.std(mag)
-    below5 = len(np.argwhere(mag < a))
-    
+    below5 = len(np.where(-mag+np.median(mag)>5*magerr)[0])/len(mag)
     return below5
 
-def medianAbsDev(mag):
+def medianAbsDev(time,mag,magerr):
     """"
     A measure of the mean average distance between each magnitude value
     and the mean magnitude. https://en.wikipedia.org/wiki/Median_absolute_deviation 
@@ -596,7 +574,7 @@ def medianAbsDev(mag):
     
     return medianAbsDev
 
-def root_mean_squared(mag):
+def root_mean_squared(time,mag,magerr):
     """
     A measure of the root mean square deviation.
         
@@ -614,7 +592,7 @@ def root_mean_squared(mag):
     
     return rms
 
-def meanMag(mag, magerr):
+def meanMag(time,mag, magerr):
     """
     Calculates mean magnitude, weighted by the errors.
         
@@ -632,7 +610,7 @@ def meanMag(mag, magerr):
     
     return mean
 
-def integrate(mag):
+def integrate(time,mag,magerr):
     """
     Integrate magnitude using the trapezoidal rule.
     See: http://en.wikipedia.org/wiki/Trapezoidal_rule
@@ -646,11 +624,14 @@ def integrate(mag):
     rtype: float
     """
 
-    integral = np.trapz(mag)
+
+    #need time for proper integral
+
+    integral = np.trapz(mag,time)
 
     return integral
 
-def auto_corr(mag):
+def auto_corr(time,mag,magerr):
     """
     Similarity between observations as a function of a time lag between them.
 
@@ -669,7 +650,7 @@ def auto_corr(mag):
     return auto_corr
 
 
-def peak_detection(mag):
+def peak_detection(time,mag,magerr):
     """
     Function to detect number of peaks.
     
@@ -689,10 +670,10 @@ def peak_detection(mag):
     except ValueError:
         indices = []
 
-    return len(indices)
+    return len(indices)/len(mag)
 
 
-def normalize(mag, magerr):
+def normalize(time,mag,magerr):
     """
     Normalizes the magnitude to range from 0 to 1, scaling
     magerr in the proccess.
@@ -715,7 +696,7 @@ def normalize(mag, magerr):
 
 #Below stats from Richards et al (2011)
 
-def MaxSlope(time, mag):
+def MaxSlope(time, mag,magerr):
     """
     Examining successive (time-sorted) magnitudes, the maximal first difference
     (value of delta magnitude over delta time)
@@ -735,16 +716,16 @@ def MaxSlope(time, mag):
 
     return np.max(slope)
 
-def LinearTrend(time, mag):
+def LinearTrend(time, mag,magerr):
     """
     Slope of a linear fit to the light-curve.
     """
 
-    regression_slope = linregress(time, mag)[0]
+    regression_slope = sstats.linregress(time, mag)[0]
 
     return regression_slope
 
-def PairSlopeTrend(mag):
+def PairSlopeTrend(time,mag,magerr):
     """
     Considering the last 30 (time-sorted) measurements of source magnitude,
     the fraction of increasing first differences minus the fraction of
@@ -766,7 +747,7 @@ def PairSlopeTrend(mag):
 
     return PST
 
-def FluxPercentileRatioMid20(mag):
+def FluxPercentileRatioMid20(time,mag,magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
@@ -780,7 +761,9 @@ def FluxPercentileRatioMid20(mag):
     -------     
     rtype: float
     """
-
+    if len(mag) <= 18:
+        return 0
+        
     sorted_data = np.sort(mag)
     lc_length = len(sorted_data)
 
@@ -795,7 +778,7 @@ def FluxPercentileRatioMid20(mag):
 
     return F_mid20
 
-def FluxPercentileRatioMid35(mag):
+def FluxPercentileRatioMid35(time,mag,magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
@@ -824,7 +807,7 @@ def FluxPercentileRatioMid35(mag):
 
     return F_mid35
 
-def FluxPercentileRatioMid50(mag):
+def FluxPercentileRatioMid50(time,mag,magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
@@ -853,7 +836,7 @@ def FluxPercentileRatioMid50(mag):
 
     return F_mid50
 
-def FluxPercentileRatioMid65(mag):
+def FluxPercentileRatioMid65(time,mag,magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
@@ -882,7 +865,7 @@ def FluxPercentileRatioMid65(mag):
 
     return F_mid65
 
-def FluxPercentileRatioMid80(mag):
+def FluxPercentileRatioMid80(time,mag,magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
@@ -911,7 +894,7 @@ def FluxPercentileRatioMid80(mag):
 
     return F_mid80
 
-def PercentAmplitude(mag):
+def PercentAmplitude(time,mag,magerr):
     """
     The largest absolute departure from the median flux, divided by the median flux
     Largest percentage difference between either the max or min magnitude and the median.
@@ -933,7 +916,7 @@ def PercentAmplitude(mag):
 
     return percent_amplitude
 
-def PercentDifferenceFluxPercentile(mag):
+def PercentDifferenceFluxPercentile(time,mag,magerr):
     """
     Ratio of F5,95 over the median flux.
     Difference between the 2nd & 98th flux percentiles.
@@ -963,7 +946,7 @@ def PercentDifferenceFluxPercentile(mag):
 #Below stats from Kim (2015), used in Upsilon
 #https://arxiv.org/pdf/1512.01611.pdf
 
-def half_mag_amplitude_ratio(mag):
+def half_mag_amplitude_ratio(time,mag,magerr):
     """
     The ratio of the squared sum of residuals of magnitudes
     that are either brighter than or fainter than the mean
@@ -1007,7 +990,7 @@ def half_mag_amplitude_ratio(mag):
     return ratio
 
 
-def cusum(mag):
+def cusum(time,mag,magerr):
     """
     Range of cumulative sum
 
@@ -1024,7 +1007,7 @@ def cusum(mag):
 
     return np.max(c) - np.min(c)
 
-def shapiro_wilk(mag):
+def shapiro_wilk(time,mag,magerr):
     """
     Normalization-test.
     The Shapiro-Wilk test tests the null hypothesis that the 
@@ -1038,7 +1021,7 @@ def shapiro_wilk(mag):
     -------     
     rtype: float
     """
-    shapiro_w = shapiro(mag)[0]
+    shapiro_w = sstats.shapiro(mag)[0]
 
     return shapiro_w
 
@@ -1046,7 +1029,7 @@ def shapiro_wilk(mag):
 #following stats pulled from FEETS
 #https://feets.readthedocs.io/en/latest/tutorial.html
 
-def AndersonDarling(mag):
+def AndersonDarling(time,mag,magerr):
     """
     The Anderson-Darling test is a statistical test of whether a given 
     sample of data is drawn from a given probability distribution. 
@@ -1066,13 +1049,13 @@ def AndersonDarling(mag):
     rtype: float
     """
 
-    ander = anderson(mag)[0]
+    ander = sstats.anderson(mag)[0]
 
     return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
 
 
 
-def Gskew(mag):
+def Gskew(time,mag,magerr):
     """
     Median-based measure of the skew
     Gskew = mq3 + mq97 − 2m
@@ -1101,7 +1084,7 @@ def Gskew(mag):
 # The following features are derived using the Python package tsfresh.
 # Please see: http://tsfresh.readthedocs.io/en/latest/
 
-def abs_energy(mag):
+def abs_energy(time,mag,magerr):
     """
     Returns the absolute energy of the time series, defined to be the sum over the squared
     values of the time-series.
@@ -1119,7 +1102,7 @@ def abs_energy(mag):
 
     return energy
 
-def abs_sum_changes(mag):
+def abs_sum_changes(time,mag,magerr):
     """
     Returns sum over the abs value of consecutive changes in mag.
 
@@ -1136,7 +1119,7 @@ def abs_sum_changes(mag):
 
     return val
 
-def benford_correlation(mag):
+def benford_correlation(time,mag,magerr):
     """
     Useful for anomaly detection applications. Returns the 
     correlation from first digit distribution when compared to 
@@ -1164,7 +1147,7 @@ def benford_correlation(mag):
 
     return benford_corr
 
-def c3(mag, lag=1):
+def c3(time,mag,magerr, lag=1):
     """
     A measure of non-linearity.
     See: Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
@@ -1189,7 +1172,7 @@ def c3(mag, lag=1):
 
     return val
 
-def complexity(mag):
+def complexity(time,mag,magerr):
     """
     This function calculator is an estimate for a time series complexity.
     A higher value represents more complexity (more peaks,valleys,etc.)
@@ -1210,7 +1193,7 @@ def complexity(mag):
 
     return val
 
-def count_above(mag):
+def count_above(time,mag,magerr):
     """
     Number of values higher than the median
 
@@ -1226,9 +1209,9 @@ def count_above(mag):
     m = np.median(mag)
     val = np.where(mag > m)[0].size
 
-    return val
+    return val/len(mag)
 
-def count_below(mag):
+def count_below(time,mag,magerr):
     """
     Number of values below the median
 
@@ -1244,9 +1227,9 @@ def count_below(mag):
     m = np.median(mag)
     val = np.where(mag < m)[0].size
 
-    return val
+    return val/len(mag)
 
-def first_loc_max(mag):
+def first_loc_max(time,mag,magerr):
     """
     Returns location of maximum mag relative to the 
     lenght of mag array.
@@ -1264,7 +1247,7 @@ def first_loc_max(mag):
 
     return val
 
-def first_loc_min(mag):
+def first_loc_min(time,mag,magerr):
     """
     Returns location of minimum mag relative to the 
     lenght of mag array.
@@ -1282,7 +1265,7 @@ def first_loc_min(mag):
     
     return val
 
-def check_for_duplicate(mag):
+def check_for_duplicate(time,mag,magerr):
     """
     Checks if any val in mag repeats.
     1 if True, 0 if False
@@ -1303,7 +1286,7 @@ def check_for_duplicate(mag):
 
     return val
 
-def check_for_max_duplicate(mag):
+def check_for_max_duplicate(time,mag,magerr):
     """
     Checks if the maximum value in mag repeats.
     1 if True, 0 if False
@@ -1324,7 +1307,7 @@ def check_for_max_duplicate(mag):
 
     return val
 
-def check_for_min_duplicate(mag):
+def check_for_min_duplicate(time,mag,magerr):
     """
     Checks if the minimum value in mag repeats.
     1 if True, 0 if False.
@@ -1345,7 +1328,7 @@ def check_for_min_duplicate(mag):
 
     return val
 
-def check_max_last_loc(mag):
+def check_max_last_loc(time,mag,magerr):
     """
     Returns position of last maximum mag relative to
     the length of mag array.
@@ -1363,7 +1346,7 @@ def check_max_last_loc(mag):
 
     return val
 
-def check_min_last_loc(mag):
+def check_min_last_loc(time,mag,magerr):
     """
     Returns position of last minimum mag relative to
     the length of mag array.
@@ -1406,7 +1389,7 @@ def get_length_sequences_where(x):
         res = [len(list(group)) for value, group in itertools.groupby(x) if value == 1]
         return res if len(res) > 0 else [0]
 
-def longest_strike_above(mag):
+def longest_strike_above(time,mag,magerr):
     """
     Returns the length of the longest consecutive subsequence in 
     mag that is bigger than the median. 
@@ -1422,9 +1405,9 @@ def longest_strike_above(mag):
 
     val = np.max(get_length_sequences_where(mag > np.median(mag))) if mag.size > 0 else 0
 
-    return val
+    return val/len(mag)
 
-def longest_strike_below(mag):
+def longest_strike_below(time,mag,magerr):
     """
     Returns the length of the longest consecutive subsequence in mag 
     that is smaller than the median.
@@ -1440,9 +1423,9 @@ def longest_strike_below(mag):
 
     val = np.max(get_length_sequences_where(mag < np.median(mag))) if mag.size > 0 else 0
 
-    return val
+    return val/len(mag)
 
-def mean_change(mag):
+def mean_change(time,mag,magerr):
     """
     Returns mean over the differences between subsequent observations.
 
@@ -1459,7 +1442,7 @@ def mean_change(mag):
 
     return val
 
-def mean_abs_change(mag):
+def mean_abs_change(time,mag,magerr):
     """
     Returns mean over the abs differences between subsequent observations.
 
@@ -1476,7 +1459,7 @@ def mean_abs_change(mag):
 
     return val
 
-def mean_n_abs_max(mag, number_of_maxima=1):
+def mean_n_abs_max(time,mag,magerr,number_of_maxima=1):
     """
     Calculates the arithmetic mean of the n absolute maximum values of the time series, n = 1.
 
@@ -1495,7 +1478,7 @@ def mean_n_abs_max(mag, number_of_maxima=1):
 
     return val
 
-def mean_second_derivative(mag):
+def mean_second_derivative(time,mag,magerr):
     """
     Returns the mean value of a central approximation of the second derivative.
 
@@ -1512,7 +1495,7 @@ def mean_second_derivative(mag):
 
     return val
 
-def number_of_crossings(mag):
+def number_of_crossings(time,mag,magerr):
     """
     Calculates the number of crossings of x on the median, m. A crossing is defined as two 
     sequential values where the first value is lower than m and the next is greater, 
@@ -1530,9 +1513,9 @@ def number_of_crossings(mag):
     positive = mag > np.median(mag)
     val = np.where(np.diff(positive))[0].size
 
-    return val
+    return val/len(mag)
 
-def number_of_peaks(mag, n=7):
+def number_of_peaks(time,mag,magerr, n=7):
     """
     Calculates the number of peaks of at least support n in the time series x. 
     A peak of support n is defined as a subsequence of x where a value occurs, 
@@ -1576,9 +1559,9 @@ def number_of_peaks(mag, n=7):
 
     val = np.sum(res)
 
-    return val
+    return val/len(mag)
 
-def ratio_recurring_points(mag):
+def ratio_recurring_points(time,mag,magerr):
     """
     Returns the ratio of unique values, that are present in the time 
     series more than once, normalized to the number of data points. 
@@ -1601,7 +1584,7 @@ def ratio_recurring_points(mag):
 
     return val
 
-def into_subchunks(mag, subchunk_length, every_n=1):
+def into_subchunks(time,mag,magerr, subchunk_length, every_n=1):
     """
     Split the time series x into subwindows of length "subchunk_length", starting every "every_n".
     This is NOT a standalone feature, it is required for the computation of a few metrics.
@@ -1623,7 +1606,7 @@ def into_subchunks(mag, subchunk_length, every_n=1):
 
     return np.asarray(mag)[indexer]
 
-def sample_entropy(mag):
+def sample_entropy(time,mag,magerr):
     """
     Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
     
@@ -1639,17 +1622,17 @@ def sample_entropy(mag):
     m = 2  # common value for m, according to wikipedia...
     tolerance = 0.2 * np.std(mag)  # 0.2 is a common value for r, according to wikipedia...
 
-    xm = into_subchunks(mag, m)
+    xm = into_subchunks(time,mag,magerr, m)
     B = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= tolerance) - 1 for xmi in xm])
 
-    xmp1 = into_subchunks(mag, m + 1)
+    xmp1 = into_subchunks(time,mag,magerr, m + 1)
     A = np.sum([np.sum(np.abs(xmi - xmp1).max(axis=1) <= tolerance) - 1 for xmi in xmp1])
 
     SampEn = -np.log(A / B)
 
     return SampEn
 
-def sum_values(mag):
+def sum_values(time,mag,magerr):
     """
     Sums over all mag values.
 
@@ -1664,9 +1647,9 @@ def sum_values(mag):
 
     val = np.sum(mag)
 
-    return val
+    return val/len(mag)
 
-def time_reversal_asymmetry(mag, lag=1):
+def time_reversal_asymmetry(time,mag,magerr, lag=1):
     """
     Derives a feature introduced by Fulcher.
     See: (Fulcher, B.D., Jones, N.S. (2014). Highly comparative 
@@ -1694,7 +1677,7 @@ def time_reversal_asymmetry(mag, lag=1):
 
     return val
 
-def variance(mag):
+def variance(time,mag,magerr):
     """
     Returns the variance.
 
@@ -1711,7 +1694,7 @@ def variance(mag):
 
     return val
 
-def variance_larger_than_standard_deviation(mag):
+def variance_larger_than_standard_deviation(time,mag,magerr):
     """
     This feature denotes if the variance of x is greater than its standard deviation. 
     Is equal to variance of x being larger than 1. 
@@ -1736,7 +1719,7 @@ def variance_larger_than_standard_deviation(mag):
 
     return val
 
-def variation_coefficient(mag):
+def variation_coefficient(time,mag,magerr):
     """
     Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
 
@@ -1759,7 +1742,7 @@ def variation_coefficient(mag):
     return val
 
 
-def large_standard_deviation(mag, r=.3):
+def large_standard_deviation(time,mag,magerr, r=.3):
     """
     Does time series have "large" standard deviation?
 
@@ -1783,7 +1766,7 @@ def large_standard_deviation(mag, r=.3):
 
     return val
 
-def symmetry_looking(mag, r=0.5):
+def symmetry_looking(time,mag,magerr, r=0.5):
     """
     Check to see if the distribution of the mag "looks symmetric". This is the case if:
 
@@ -1811,7 +1794,7 @@ def symmetry_looking(mag, r=0.5):
 
     return val
   
-def index_mass_quantile(mag, r=0.5):
+def index_mass_quantile(time,mag,magerr, r=0.5):
     """
     Calculates the relative index i of time series x where r% of the mass of x lies left of i.
     For example for r = 50% this feature will return the mass center of the time series.
@@ -1834,7 +1817,7 @@ def index_mass_quantile(mag, r=0.5):
 
     return val
 
-def number_cwt_peaks(mag, n=30):
+def number_cwt_peaks(time,mag,magerr, n=30):
     """
     Number of different peaks in the magnitude array.
 
@@ -1852,12 +1835,12 @@ def number_cwt_peaks(mag, n=30):
     rtype: int
     """
 
-    val = len(find_peaks_cwt(vector=mag, widths=np.array(list(range(1, n + 1))), wavelet=ricker))
+    val = len(ssignal.find_peaks_cwt(vector=mag, widths=np.array(list(range(1, n + 1))), wavelet=ssignal.ricker))
 
-    return val
+    return val/len(mag)
 
 
-def permutation_entropy(mag, tau=1, dimension=3):
+def permutation_entropy(time,mag,magerr, tau=1, dimension=3):
     """
     Calculate the permutation entropy.
 
@@ -1877,7 +1860,7 @@ def permutation_entropy(mag, tau=1, dimension=3):
     rtype: float
     """
 
-    X = into_subchunks(mag, dimension, tau)
+    X = into_subchunks(time,mag,magerr, dimension, tau)
     permutations = np.argsort(np.argsort(X))
     counts = np.unique(permutations, axis=0, return_counts=True)[1]
 
@@ -1886,7 +1869,7 @@ def permutation_entropy(mag, tau=1, dimension=3):
 
     return val
 
-def quantile(mag, r=0.75):
+def quantile(time,mag,magerr, r=0.75):
     """
     Calculates the r quantile of the mag. This is the value of mag greater than r% of the ordered values.
 
@@ -1904,29 +1887,29 @@ def quantile(mag, r=0.75):
 
     return val 
 
-def remove_allbad(mjd, mag, magerr):
-    """
-    Function to remove bad photometric measurements.
+#def remove_allbad(time, mag, magerr):
+#    """
+#    Function to remove bad photometric measurements.
 
-    rtype : array
-    """
-    
-    bad = np.where(np.isnan(magerr) == True)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(mjd, bad)
-    mag = np.delete(mag, bad)
-    
-    bad = np.where(magerr == 0)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(mjd, bad)
-    mag = np.delete(mag, bad)
-    
-    bad = np.where(mag == 0)
-    magerr = np.delete(magerr, bad)
-    mjd = np.delete(mjd, bad)
-    mag = np.delete(mag, bad)
-    
-    return mjd, mag, magerr
+#    rtype : array
+#    """
+#    
+#    bad = np.where(np.isnan(magerr) == True)
+#    magerr = np.delete(magerr, bad)
+#    mjd = np.delete(mjd, bad)
+#    mag = np.delete(mag, bad)
+#    
+#    bad = np.where(magerr == 0)
+#    magerr = np.delete(magerr, bad)
+#    mjd = np.delete(mjd, bad)
+#    mag = np.delete(mag, bad)
+#    
+#    bad = np.where(mag == 0)
+#    magerr = np.delete(magerr, bad)
+#    mjd = np.delete(mjd, bad)
+#    mag = np.delete(mag, bad)
+#    
+#    return mjd, mag, magerr
 
 #The following code was done to exclude outliers -- not currently employed#    
 #mag, magerr = remove_bad(mag, magerr)

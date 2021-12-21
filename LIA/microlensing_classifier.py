@@ -8,7 +8,7 @@ import numpy as np
 from warnings import warn
 from LIA import extract_features
 
-def predict(time, mag, magerr, model, pca=None):
+def predict(time, mag, magerr, model):
     """This function uses machine learning to classify any given lightcurve as either
         a cataclysmic variable (CV), a variable source, microlensing, or a constant star 
         displaying no variability.
@@ -46,15 +46,25 @@ def predict(time, mag, magerr, model, pca=None):
         warn('The number of data points is low -- results may be unstable')
 
     classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
+    #classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'RUBBISH', 'VARIABLE']
+
     stat_array=[]
     stat_array.append(extract_features.extract_all(time, mag, magerr, convert=True))
 
-    if pca is not None:
-        stat_array = pca.transform(stat_array)
+    #if pca is not None:
+    #    stat_array = pca.transform(stat_array)
 
-    pred = model.predict_proba(stat_array)
-    cons_pred, cv_pred, lpv_pred, ml_pred, var_pred = pred[:,0],pred[:,1],pred[:,2],pred[:,3],pred[:,4]
-    prediction = classes[np.argmax(pred)]
+    try:
+        pred = model.predict_proba(stat_array)
+        predictions = np.c_[classes,pred[0]]
+        
+    except:
+        #here is PCA
+        stat_array = model[1].transform(stat_array)
+        pred = model[0].predict_proba(stat_array)
+        predictions = np.c_[classes,pred[0]]
 
-    return prediction, ml_pred, cons_pred, cv_pred, var_pred, lpv_pred
+    
+    
+    return predictions
 
