@@ -8,6 +8,7 @@ import os
 import random
 import pkg_resources
 from warnings import warn
+from inspect import getmembers, isfunction
 
 import numpy as np
 from astropy.io import fits
@@ -19,8 +20,10 @@ from LIA import simulate
 from LIA import noise_models
 from LIA import quality_check
 from LIA import extract_features
+from LIA import features
     
-def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, test=True):
+def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, 
+    t0_dist=None, u0_dist=None, tE_dist=None, filename='', test=True):
     """Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
@@ -81,12 +84,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         A txt file containing all PCA features plus class label and ID. 
     """
 
-    if n_class < 17:
-        raise ValueError("Parameter n_class must be at least 17 for principal components to be computed.")
+    if len(getmembers(features, isfunction))*2 > n_class*5:
+        raise ValueError("Parameter n_class must be at least "+str(int(1+len(getmembers(features, isfunction))*2//5))+" for principal components to be computed.")
     
     while True:
         try:
-            x=len(timestamps[0])
+            len(timestamps[0])
             break
         except TypeError:
             raise ValueError("Incorrect format -- append the timestamps to a list and try again.")
@@ -105,9 +108,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         mag, amplitude, period = simulate.variable(time,baseline)
            
         if noise is not None:
-            mag, magerr = noise_models.add_noise(mag, noise)
+            mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
         if noise is None:
-           mag, magerr = noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+           mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
            
         source_class = ['VARIABLE']*len(time)
         source_class_list.append(source_class)
@@ -119,7 +122,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag,magerr,convert=True)
+        stats = extract_features.extract_all(time, mag, magerr, convert=True)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -133,9 +136,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
         mag = simulate.constant(time, baseline)
         
         if noise is not None:
-            mag, magerr = noise_models.add_noise(mag, noise)
+            mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
         if noise is None:
-           mag, magerr = noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+           mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
            
         source_class = ['CONSTANT']*len(time)
         source_class_list.append(source_class)
@@ -169,9 +172,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
             if quality is True:
                 try:
                     if noise is not None:
-                        mag, magerr = noise_models.add_noise(mag,noise)
+                        mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
                     if noise is None:
-                        mag, magerr = noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+                        mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
                 except ValueError:
                     continue
                 
@@ -208,9 +211,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
 
             try:
                 if noise is not None:
-                    mag, magerr = noise_models.add_noise(mag,noise)
+                    mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
                 if noise is None:             
-                    mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+                    mag, magerr= noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
             except ValueError:
                 continue
                 
@@ -255,9 +258,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     
         try:
             if noise is not None:
-                mag, magerr = noise_models.add_noise(mag,noise)
+                mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
             if noise is None:             
-                mag, magerr= noise_models.add_gaussian_noise(mag,zp=max_mag+3)
+                mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
         except ValueError:
             continue
                 
@@ -286,10 +289,10 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
     col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
     cols = fits.ColDefs([col0, col1, col2, col3, col4])
     hdu = fits.BinTableHDU.from_columns(cols)
-    hdu.writeto('lightcurves.fits',overwrite=True)
+    hdu.writeto('lightcurves'+filename+'.fits',overwrite=True)
 
     np.savetxt('feats.txt',np.array(stats_list).astype(str),fmt='%s')
-    with open(r'feats.txt', 'r') as infile, open(r'all_features.txt', 'w') as outfile:      
+    with open(r'feats.txt', 'r') as infile, open(r'all_features'+filename+'.txt', 'w') as outfile:      
          data = infile.read()
          data = data.replace("'", "")
          data = data.replace(",", "")
@@ -298,14 +301,21 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, n_class=500, ml_n1=7,
          outfile.write(data)
     os.remove('feats.txt')
 
-    coeffs = np.loadtxt('all_features.txt', dtype=str)
-    pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
-    pca.fit(coeffs[:,np.arange(2,84)].astype(float))
-    X_pca = pca.transform(coeffs[:,np.arange(2,84)].astype(float))
+    coeffs = np.loadtxt('all_features'+filename+'.txt', dtype=str)
+    pca = decomposition.PCA(n_components=len(stats_list[0])-2, whiten=True, svd_solver='auto')
+    pca.fit(coeffs[:,2:].astype(float))
+    X_pca = pca.transform(coeffs[:,2:].astype(float))
 
     classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*len(np.where(coeffs[:,0] == 'LPV')[0])
-    np.savetxt('pca_features.txt',np.c_[classes,np.arange(1,len(classes)+1),X_pca[:,:82]],fmt='%s')
+    np.savetxt('pca_features'+filename+'.txt',np.c_[classes,np.arange(1,len(classes)+1),X_pca[:,:len(stats_list[0])-2]],fmt='%s')
+    
 
     if test == True:
-        quality_check.test_classifier('all_features.txt', 'pca_features.txt')
+        print("")
+        print("------------------------------")
+        print("Creating testing data set...")
+        print("------------------------------")
+        quality_check.create_test(timestamps, min_mag, max_mag, noise, zp, exptime, n_class, ml_n1, cv_n1, cv_n2, t0_dist, u0_dist, tE_dist, 
+            'all_features'+filename+'.txt', 'pca_features'+filename+'.txt')
+
 

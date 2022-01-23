@@ -15,7 +15,6 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
     analysis of the OGLE III microlensing survey from Y. Tsapras et al (2016).
     See: The OGLE-III planet detection efficiency from six years of microlensing observations (2003 to 2008).
     (https://arxiv.org/abs/1602.02519)
-
     Parameters
     ----------
     timestamps : array
@@ -37,7 +36,6 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
         considered during the microlensing simulations. The indivial
         tE per simulation will be selected from a uniform distribution
         between these two values.
-
     Returns
     -------
     mag : array
@@ -51,25 +49,12 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
     blend_ratio : float
         The blending coefficient chosen between 0 and 10.     
     """   
- 
-    mag = constant(timestamps, baseline)
-    if t0_dist:
-        lower_bound = t0_dist[0]
-        upper_bound = t0_dist[1]
-    else:
-
-        # Set bounds to ensure enough measurements are available near t_0 
-        lower_bound = np.percentile(timestamps, 10)
-        upper_bound = np.percentile(timestamps, 90)
-    
-    t_0 = np.random.uniform(lower_bound, upper_bound)  
 
     if u0_dist:
        lower_bound = u0_dist[0]
        upper_bound = u0_dist[1]
        u_0 = np.random.uniform(lower_bound, upper_bound) 
     else:
-             
        u_0 = np.random.uniform(0, 1.0)
 
     if tE_dist:
@@ -77,25 +62,34 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
        upper_bound = tE_dist[1]
        t_e = np.random.normal(lower_bound, upper_bound) 
     else:
+       t_e = np.random.normal(30, 10.0)
 
-        t_e = np.random.normal(30, 10.0)
-    
+    if t0_dist:
+        lower_bound = t0_dist[0]
+        upper_bound = t0_dist[1]
+    else:
+        # Set bounds to ensure enough measurements are available near t_0 
+        lower_bound = np.percentile(timestamps, 1)-0.5*t_e
+        upper_bound = np.percentile(timestamps, 99)+0.5*t_e
+
+    t_0 = np.random.uniform(lower_bound, upper_bound)  
+
     blend_ratio = np.random.uniform(0,1)
 
     u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
- 
-    flux = 10**((mag) / -2.5)
-    baseline = np.median(mag)
+
+    flux = 10**((baseline) / -2.5)
+
     flux_base = np.median(flux)
-    flux_noise = flux-flux_base
+
     f_s = flux_base / (1 + blend_ratio)
     f_b = blend_ratio * f_s
-    
-    flux_obs = f_s*magnification + f_b+flux_noise
+
+    flux_obs = f_s*magnification + f_b
     microlensing_mag = -2.5*np.log10(flux_obs)
 
-    return np.array(microlensing_mag), baseline, u_0, t_0, t_e, blend_ratio
+    return np.array(microlensing_mag), [baseline]*len(flux_obs), u_0, t_0, t_e, blend_ratio
     
 def cv(timestamps, baseline):
     """Simulates Cataclysmic Variable event.

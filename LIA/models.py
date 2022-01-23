@@ -34,12 +34,13 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     pca_model : fn
         PCA transformation if pca_feats is not None.
     """
-    coeffs = np.loadtxt(all_feats,usecols=np.arange(2,84))
+    coeffs = np.loadtxt(all_feats,dtype=str)[:,2:].astype(float)
     
     if model == 'rf':
-        model = RandomForestClassifier(n_estimators=100)#, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
+        model = RandomForestClassifier(n_estimators=1000)#, max_depth = 4, max_features=2, min_samples_leaf = 4, min_samples_split=2)
     elif model == 'nn':
-        model = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001)
+        print("Training NN...")
+        model = MLPClassifier(hidden_layer_sizes=(1000,750,500,250,125), max_iter=5000, activation='relu', solver='adam', verbose=10, tol=1e-4, learning_rate_init=.0001)
         if pca_feats is None:
             warn('Neural network classifier may works best with PCA transformation!')
     else:
@@ -47,15 +48,13 @@ def create_models(all_feats, pca_feats=None, model='rf'):
 
     if pca_feats:
         training_set = np.loadtxt(pca_feats, dtype = str)
-        pca = decomposition.PCA(n_components=82, whiten=True, svd_solver='auto')
+        pca = decomposition.PCA(n_components= training_set.shape[1]-2, whiten=True, svd_solver='auto')
         pca.fit(coeffs)
-        model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
+        model.fit(training_set[:,2:].astype(float),training_set[:,0])
 
         return model, pca
     else:
+
         training_set = np.loadtxt(all_feats, dtype = str)
-        model.fit(training_set[:,np.arange(2,84)].astype(float),training_set[:,0])
-
+        model.fit(training_set[:,2:].astype(float),training_set[:,0])
         return model 
-
-    
