@@ -49,6 +49,12 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
     blend_ratio : float
         The blending coefficient chosen between 0 and 10.     
     """   
+<<<<<<< HEAD
+=======
+ 
+
+    
+>>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
 
     if u0_dist:
        lower_bound = u0_dist[0]
@@ -74,18 +80,43 @@ def microlensing(timestamps, baseline, t0_dist = None, u0_dist = None, tE_dist =
 
     t_0 = np.random.uniform(lower_bound, upper_bound)  
 
+<<<<<<< HEAD
+=======
+        t_e = np.random.normal(30, 10.0)
+    
+    if t0_dist:
+        lower_bound = t0_dist[0]
+        upper_bound = t0_dist[1]
+    else:
+
+        # Set bounds to ensure enough measurements are available near t_0 
+        lower_bound = np.percentile(timestamps, 1)-0.5*t_e
+        upper_bound = np.percentile(timestamps, 99)+0.5*t_e
+    
+    t_0 = np.random.uniform(lower_bound, upper_bound)  
+    
+    
+>>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
     blend_ratio = np.random.uniform(0,1)
 
     u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
+<<<<<<< HEAD
 
+=======
+ 
+>>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
     flux = 10**((baseline) / -2.5)
 
     flux_base = np.median(flux)
 
     f_s = flux_base / (1 + blend_ratio)
     f_b = blend_ratio * f_s
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
     flux_obs = f_s*magnification + f_b
     microlensing_mag = -2.5*np.log10(flux_obs)
 
