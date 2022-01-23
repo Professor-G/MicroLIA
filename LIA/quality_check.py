@@ -153,15 +153,11 @@ def test_classifier(train_feats, train_pca_feats, test_feats, test_pca_feats):
     print("Testing classifier without PCA...")
     print("------------------------------")
 
-<<<<<<< HEAD
     X_train = np.loadtxt(train_feats, dtype=str)[:,2:].astype(float)
     y_train = np.loadtxt(train_feats, dtype=str)[:,0]
 
     X_test = np.loadtxt(test_feats, dtype=str)[:,2:].astype(float)
     y_test = np.loadtxt(test_feats, dtype=str)[:,0]
-=======
-    X_train, X_test, y_train, y_test = train_test_split(train_data[:,2:].astype(float),train_data[:,0])
->>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
 
     RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
     RF_pred_test = RF.predict(X_test)
@@ -169,11 +165,7 @@ def test_classifier(train_feats, train_pca_feats, test_feats, test_pca_feats):
 
     NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
     NN_pred_test = NN.predict(X_test)
-<<<<<<< HEAD
     NN_cross_validation = cross_validate(NN, X_test, y_test, cv=10)
-=======
-    NN_cross_validation = cross_validate(NN, train_data[:,2:].astype(float), train_data[:,0], cv=10)
->>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
 
     print(" --- Random Forest Classification Report ---")
     print(classification_report(y_test, RF_pred_test))
@@ -189,7 +181,6 @@ def test_classifier(train_feats, train_pca_feats, test_feats, test_pca_feats):
     print("------------------------------")
     print("Testing classifier with PCA...")
     print("------------------------------")
-<<<<<<< HEAD
 
     X_train = np.loadtxt(train_pca_feats, dtype=str)[:,2:].astype(float)
     y_train = np.loadtxt(train_pca_feats, dtype=str)[:,0]
@@ -204,18 +195,6 @@ def test_classifier(train_feats, train_pca_feats, test_feats, test_pca_feats):
     NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
     NN_pred_test = NN.predict(X_test)
     NN_cross_validation = cross_validate(NN, X_test, y_test, cv=10)
-=======
-    train_data = np.loadtxt(pca_feats, dtype=str)
-    X_train, X_test, y_train, y_test = train_test_split(train_data[:,2:].astype(float),train_data[:,0])
-
-    RF=RandomForestClassifier(n_estimators=100).fit(X_train, y_train)
-    RF_pred_test = RF.predict(X_test)
-    RF_cross_validation = cross_validate(RF, train_data[:,2:].astype(float), train_data[:,0], cv=10)
-
-    NN = MLPClassifier(hidden_layer_sizes=(1000,), max_iter=5000, activation='relu', solver='adam', tol=1e-4, learning_rate_init=.0001).fit(X_train, y_train)
-    NN_pred_test = NN.predict(X_test)
-    NN_cross_validation = cross_validate(NN, train_data[:,2:].astype(float), train_data[:,0], cv=10)
->>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
 
     print(" --- Random Forest Classification Report ---")
     print(classification_report(y_test, RF_pred_test))

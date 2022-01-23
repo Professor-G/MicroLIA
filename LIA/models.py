@@ -41,10 +41,6 @@ def create_models(all_feats, pca_feats=None, model='rf'):
     elif model == 'nn':
         print("Training NN...")
         model = MLPClassifier(hidden_layer_sizes=(1000,750,500,250,125), max_iter=5000, activation='relu', solver='adam', verbose=10, tol=1e-4, learning_rate_init=.0001)
-<<<<<<< HEAD
-=======
-
->>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
         if pca_feats is None:
             warn('Neural network classifier may works best with PCA transformation!')
     else:
@@ -58,16 +54,7 @@ def create_models(all_feats, pca_feats=None, model='rf'):
 
         return model, pca
     else:
-<<<<<<< HEAD
 
         training_set = np.loadtxt(all_feats, dtype = str)
         model.fit(training_set[:,2:].astype(float),training_set[:,0])
         return model 
-=======
-
-        training_set = np.loadtxt(all_feats, dtype = str)
-        model.fit(training_set[:,2:].astype(float),training_set[:,0])
-        return model 
-
-    
->>>>>>> 4e56799e39cb3591859b33bdf6c8b7c8ebdfe52b
