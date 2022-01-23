@@ -6,7 +6,9 @@
 """
 from __future__ import print_function
 import numpy as np
-from LIA.features import *
+from LIA import features
+from inspect import getmembers, isfunction
+
 
 def extract_all(time, mag, magerr, convert=True, zp=24):
     """This function will compute the statistics used to train the RF.
@@ -41,58 +43,106 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     elif convert is False:
         flux = mag
         flux_err = magerr
-    
-    amp = amplitude(flux)
-    MedBuffRng = median_buffer_range(flux)
-    MedBuffRng2 = median_buffer_range2(flux)
+
 
     # Normalize by max flux
     norm_flux = flux/np.max(flux)
     norm_fluxerr = flux_err*(norm_flux/flux)
+
+
+
+#    amp = amplitude(flux)
+#    MedBuffRng = median_buffer_range(flux)
+#    MedBuffRng2 = median_buffer_range2(flux)
+
+#    
+#    stetJ = stetsonJ(norm_flux,norm_fluxerr)
+#    stetK = stetsonK(norm_flux,norm_fluxerr)
+#    stetL = (stetJ*stetK) / 0.798
+
+#    stats_normal = np.array((above1(norm_flux,norm_fluxerr), above3(norm_flux,norm_fluxerr), above5(norm_flux,norm_fluxerr), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux),
+#        below1(norm_flux,norm_fluxerr), below3(norm_flux,norm_fluxerr), c3(norm_flux), check_max_last_loc(norm_flux), complexity(norm_flux), count_above(norm_flux), count_below(norm_flux),
+#        first_loc_max(norm_flux), integrate(norm_flux), kurtosis(norm_flux), longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux),
+#        mean_change(norm_flux), mean_second_derivative(norm_flux), medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux),
+#        root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux),
+#        stetJ, stetK, stetL, sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux), amplitude2(norm_flux), meanMag(norm_flux, norm_fluxerr), 
+#        MaxSlope(time,norm_flux), LinearTrend(time, norm_flux), PairSlopeTrend(norm_flux), FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux), 
+#        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), FluxPercentileRatioMid80(norm_flux), PercentAmplitude(norm_flux), PercentDifferenceFluxPercentile(norm_flux),
+#        half_mag_amplitude_ratio(norm_flux), cusum(norm_flux), shapiro_wilk(norm_flux), AndersonDarling(norm_flux), Gskew(norm_flux), benford_correlation(norm_flux),
+#        number_of_crossings(norm_flux), number_of_peaks(norm_flux), variance(norm_flux), variation_coefficient(norm_flux), index_mass_quantile(norm_flux),
+#        number_cwt_peaks(norm_flux), permutation_entropy(norm_flux), quantile(norm_flux)))
+
+
+#    #The following re-computes important metrics in derivative space
+#    flux = np.gradient(flux, time)
+#    flux_err = np.gradient(flux_err, time) 
+
+#    amp = amplitude(flux)
+#    MedBuffRng = median_buffer_range(flux)
+
+#    # Normalize by max flux
+#    norm_flux = flux/np.max(flux)
+#    norm_fluxerr = flux_err*(norm_flux/flux)
+#    
+#    stetJ = stetsonJ(norm_flux,norm_fluxerr)
+#    stetK = stetsonK(norm_flux,norm_fluxerr)
+#    stetL = (stetJ*stetK) / 0.798
+
+#    stats_derivative = np.array((amp, longest_strike_above(norm_flux), longest_strike_below(norm_flux), medianAbsDev(norm_flux), MedBuffRng, root_mean_squared(norm_flux),
+#        sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), stetJ, stetK, stetL, FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux),
+#        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), shapiro_wilk(norm_flux), quantile(norm_flux))) #17
+
+#    stats = np.r_[stats_normal, stats_derivative]
+#    #import pdb; pdb.set_trace()
+#    stats[np.isinf(stats)] = 0
+#    stats[np.isnan(stats)] = 0
+#    #stats[stats<10**-6] = 10**-6
+#    #stats[stats>10**6] = 10**6
     
-    stetJ = stetsonJ(norm_flux,norm_fluxerr)
-    stetK = stetsonK(norm_flux,norm_fluxerr)
-    stetL = (stetJ*stetK) / 0.798
 
-    stats_normal = np.array((above1(norm_flux), above3(norm_flux), above5(norm_flux), abs_energy(norm_flux), abs_sum_changes(norm_flux), amp, auto_corr(norm_flux),
-        below1(norm_flux), below3(norm_flux), c3(norm_flux), check_max_last_loc(norm_flux), complexity(norm_flux), count_above(norm_flux), count_below(norm_flux),
-        first_loc_max(norm_flux), integrate(norm_flux), kurtosis(norm_flux), longest_strike_above(norm_flux), longest_strike_below(norm_flux), mean_abs_change(norm_flux),
-        mean_change(norm_flux), mean_second_derivative(norm_flux), medianAbsDev(norm_flux), MedBuffRng, MedBuffRng2, peak_detection(norm_flux), ratio_recurring_points(norm_flux),
-        root_mean_squared(norm_flux), sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), skewness(norm_flux), np.std(norm_flux), std_over_mean(norm_flux),
-        stetJ, stetK, stetL, sum_values(norm_flux), time_reversal_asymmetry(norm_flux), vonNeumannRatio(norm_flux), amplitude2(norm_flux), meanMag(norm_flux, norm_fluxerr), 
-        MaxSlope(time,norm_flux), LinearTrend(time, norm_flux), PairSlopeTrend(norm_flux), FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux), 
-        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), FluxPercentileRatioMid80(norm_flux), PercentAmplitude(norm_flux), PercentDifferenceFluxPercentile(norm_flux),
-        half_mag_amplitude_ratio(norm_flux), cusum(norm_flux), shapiro_wilk(norm_flux), AndersonDarling(norm_flux), Gskew(norm_flux), benford_correlation(norm_flux),
-        number_of_crossings(norm_flux), number_of_peaks(norm_flux), variance(norm_flux), variation_coefficient(norm_flux), index_mass_quantile(norm_flux),
-        number_cwt_peaks(norm_flux), permutation_entropy(norm_flux), quantile(norm_flux)))
+    all_features_functions = getmembers(features, isfunction)
 
 
-    #The following re-computes important metrics in derivative space
-    flux = np.gradient(flux, time)
-    flux_err = np.gradient(flux_err, time) 
+    stats = []
+    #normal space
 
-    amp = amplitude(flux)
-    MedBuffRng = median_buffer_range(flux)
-
-    # Normalize by max flux
-    norm_flux = flux/np.max(flux)
-    norm_fluxerr = flux_err*(norm_flux/flux)
+    for func in all_features_functions:
     
-    stetJ = stetsonJ(norm_flux,norm_fluxerr)
-    stetK = stetsonK(norm_flux,norm_fluxerr)
-    stetL = (stetJ*stetK) / 0.798
-
-    stats_derivative = np.array((amp, longest_strike_above(norm_flux), longest_strike_below(norm_flux), medianAbsDev(norm_flux), MedBuffRng, root_mean_squared(norm_flux),
-        sample_entropy(norm_flux), shannon_entropy(norm_flux,norm_fluxerr), stetJ, stetK, stetL, FluxPercentileRatioMid20(norm_flux), FluxPercentileRatioMid35(norm_flux),
-        FluxPercentileRatioMid50(norm_flux), FluxPercentileRatioMid65(norm_flux), shapiro_wilk(norm_flux), quantile(norm_flux))) #17
-
-    stats = np.r_[stats_normal, stats_derivative]
+        try:
+            thefeat = func[1](time,norm_flux,norm_fluxerr)
+            if isinstance(thefeat, float) or isinstance(thefeat, int):
+                stats.append(thefeat)
+            else:
+                pass
+        except:
+            #print(func[0]+' bugged')    
+            pass
+            
+    #derivative space
+    flux_deriv = np.gradient(flux, time)
+    flux_deriv_err = np.gradient(flux_err, time) 
     
+
+    norm_flux_deriv = flux_deriv/np.max(flux_deriv)
+    norm_flux_deriv_err = flux_deriv_err*(norm_flux_deriv/flux_deriv)
+
+    for func in all_features_functions:
+    
+        try:
+            thefeat = func[1](time,norm_flux_deriv,norm_flux_deriv_err)
+            if isinstance(thefeat, float) or isinstance(thefeat, int):
+                stats.append(thefeat)
+            else:
+                pass
+        except:
+            #print(func[0]+' bugged')    
+            pass
+    stats = np.array(stats)
     stats[np.isinf(stats)] = 0
     stats[np.isnan(stats)] = 0
     stats[stats<10**-6] = 10**-6
     stats[stats>10**6] = 10**6
-    
+
     return stats
 
 """
