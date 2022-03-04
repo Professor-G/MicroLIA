@@ -94,4 +94,4 @@ If you use LIA in publication, we would appreciate citations to the paper, [Godi
  
 # How to Contribute?
 
-Want to contribute? Bug detections? Comments? Suggestions? Please email us : danielgodinez123@gmail.com, etibachelet@gmail.com, rstreet@lcogt.net.
+Want to contribute? Bug detections? Comments? Suggestions? Please email us : danielgodinez123@gmail.com, etibachelet@gmail.com, rstreet@lcogt.net, claudiatrevino2002@gmail.com.
