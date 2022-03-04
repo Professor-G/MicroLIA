@@ -207,7 +207,10 @@ def test_classifier(train_feats, train_pca_feats, test_feats, test_pca_feats):
     print("---------------------------------------------")
 
 def create_test(timestamps, min_mag, max_mag, noise, zp, exptime, n_class, ml_n1, cv_n1, cv_n2, t0_dist, u0_dist, tE_dist, train_feats, train_pca_feats):
+    """This function will create a test and then it will output the classification accuracy after 10-fold Cross-Validation.
+    ----------
 
+    """
     
     training_set.create(timestamps=timestamps, min_mag=min_mag, max_mag=max_mag, noise=None, zp=zp, exptime=exptime, n_class=n_class, ml_n1=ml_n1, cv_n1=cv_n1, cv_n2=cv_n2, 
     t0_dist=t0_dist, u0_dist=u0_dist, tE_dist=tE_dist, filename='_TEST', test=False)
