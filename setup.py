@@ -4,21 +4,30 @@ Created on Fri Aug 3 13:30:11 2018
 
 @author: danielgodinez
 """
-from setuptools import find_packages, setup, Extension
+from setuptools import setup, find_packages, Extension
+
 
 setup(
-	name = "LIA",
-	version = 1.2,
-	description = "Microlensing detection algorithm",
-	author = "Daniel Godinez",
-	author_email = "danielgodinez123@gmail.com",
-	license = 'GPL-3.0',
-	url = "https://github.com/dgodinez77/LIA",
-	packages = find_packages('.'),
-	include_package_data=True,
-	install_requires = ['numpy','sklearn','astropy','mpmath','scipy','PeakUtils', 'progress'],
-	test_suite="nose.collector",
-	package_data={
+    name="LIA",
+    version="1.4",
+    author="Daniel Godines",
+    author_email="danielgodinez123@gmail.com",
+    description="Machine learning classifier for microlensing",
+    license='GPL-3.0',
+	url = "https://github.com/Professor-G/LIA",
+    classifiers=[
+		'Development Status :: 5 - Production/Stable',
+		'Intended Audience :: Developers',
+		'Topic :: Software Development :: Build Tools',
+                'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+		'Programming Language :: Python :: 3',	   
+],
+    packages=find_packages('.'),
+    python_requires='>=3.6,<4',
+    include_package_data=True,
+    test_suite="nose.collector",
+    package_data={
     '': ['Miras_vo.xml'],
-    },
-	)
+},
+
+)
