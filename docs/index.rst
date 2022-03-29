@@ -26,7 +26,7 @@ Each file contains three columns: time, mag, magerr
 
 We will train MicorLIA for OGLE IV microlensing detection, and record how many of these 219 events we successfully recover.
 
-Example: Training Set
+OGLE IV: Training Set
 ==================
 We need to train MicroLIA using OGLE IV cadence, which in this example we will take to be the timestamps of these 219 lightcurves. We will append the time array of each lightcurve to a list:
 
@@ -79,7 +79,7 @@ To be more accurate we will set these optional parameters, and even include a no
 
 This will simulate the lightcurves for our training set, all of which will be saved in the 'lightcurves.fits' file, organized by ID. The other two files 'pca_features.txt', and 'all_lightcurves.txt' include the data that will be used to train our machine learning model.
 
-Example: Microlensing Classification
+OGLE IV: Microlensing Classification
 ==================
 
 We will create our Random Forest machine learning model using the statistical features:
@@ -91,7 +91,7 @@ We will create our Random Forest machine learning model using the statistical fe
    model = models.create_models('all_features.txt', model='rf')
 
 
-Now we can begin classifying any lightcurve! Let's load the first OGLE IV microlensing lightcurve and check what the prediction is:
+With the model saved we can begin classifying any lightcurve! Let's load the first OGLE IV microlensing lightcurve and check what the prediction is:
 
 .. code-block:: python
 
@@ -118,7 +118,7 @@ The prediction output is the probability prediction of each class. Finally, let'
 
    print('total accuracy '+str(len(predictions)/len(np.argwhere(predictions == 'ML'))))
 
-Example: From start to finish
+OGLE IV: From start to finish
 ==================
 
 .. code-block:: python
