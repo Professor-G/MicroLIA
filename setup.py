@@ -23,7 +23,7 @@ setup(
 		'Programming Language :: Python :: 3',	   
 ],
     packages=find_packages('.'),
-	install_requires = ['numpy','scikit-learn','astropy','scipy','peakutils', 'progress'],
+    install_requires = ['numpy','scikit-learn','astropy','scipy','peakutils', 'progress'],
     python_requires='>=3.6,<4',
     include_package_data=True,
     test_suite="nose.collector",
