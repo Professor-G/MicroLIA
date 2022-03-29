@@ -58,9 +58,9 @@
 
 <span class="n">timestamps</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
-  <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">i</span><span class="p">)[:,</span><span class="mi">0</span><span class="p">]</span>
-  <span class="n">timestamps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+  <span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">name</span><span class="p">)[:,</span><span class="mi">0</span><span class="p">]</span>
+  <span class="n">timestamps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>In this example we will set the min_mag of the survey to be 15, and the max_mag to be 20. We will also set n_class=500, this is the size of our training classes.</p>
@@ -69,7 +69,7 @@
 <span class="n">training_set</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">timestamps</span><span class="p">,</span> <span class="n">min_mag</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">max_mag</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">n_class</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>There a number of other parameters we can control when creating our training set, including exposure time and zeropoint of the survey elescope. Setting these parameters carefully will ensure that our training set matches what will be observed.</p>
+<p>There a number of other parameters we can control when creating our training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed.</p>
 <p>To be more accurate we will set these optional parameters, and even include a noise model using the rms and median mag of our OGLE IV data.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">training_set</span>
 <span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">noise_models</span>
@@ -81,27 +81,32 @@
    <span class="n">mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">i</span><span class="p">)[:,</span><span class="mi">1</span><span class="p">]</span>
    <span class="n">rms</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">mag</span><span class="p">,</span><span class="mi">84</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">mag</span><span class="p">,</span><span class="mi">16</span><span class="p">))</span>
    <span class="n">rms_mag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rms</span><span class="p">)</span>
-   <span class="n">median</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">mag</span><span class="p">))</span>
+   <span class="n">median_mag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">mag</span><span class="p">))</span>
 
 <span class="n">ogle_noise</span> <span class="o">=</span> <span class="n">noise_models</span><span class="o">.</span><span class="n">create_noise</span><span class="p">(</span><span class="n">median</span><span class="p">,</span> <span class="n">rms</span><span class="p">)</span>
 
-<span class="n">training_set</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">timestamps</span><span class="p">,</span> <span class="n">min_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span> <span class="n">max_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span> <span class="n">noise</span><span class="o">=</span><span class="n">ogle_noise</span><span class="p">,</span> <span class="n">zp</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">n_class</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="n">training_set</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">timestamps</span><span class="p">,</span> <span class="n">min_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span>
+   <span class="n">max_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span> <span class="n">noise</span><span class="o">=</span><span class="n">ogle_noise</span><span class="p">,</span> <span class="n">zp</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
+   <span class="n">exptime</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">n_class</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This will simulate the lightcurves for our training set, all of which will be saved in the <a href="#id1"><span class="problematic" id="id2">`</span></a>lightcurves.fits’ file, organized by ID. The other two files <a href="#id3"><span class="problematic" id="id4">`</span></a>pca_features.txt’, and <a href="#id5"><span class="problematic" id="id6">`</span></a>all_lightcurves.txt’ include the data that will be used to train our machine learning model.</p>
-<p>We will create our Random Forest model using the statistical features:</p>
+<p>This will simulate the lightcurves for our training set, all of which will be saved in the ‘lightcurves.fits’ file, organized by ID. The other two files ‘pca_features.txt’, and ‘all_lightcurves.txt’ include the data that will be used to train our machine learning model.</p>
+</section>
+<section id="example-microlensing-classification">
+<h1>Example: Microlensing Classification<a class="headerlink" href="#example-microlensing-classification" title="Permalink to this headline">¶</a></h1>
+<p>We will create our Random Forest machine learning model using the statistical features:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">models</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">create_models</span><span class="p">(</span><span class="s1">&#39;all_features.txt&#39;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s1">&#39;rf&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now we can begin classifying any lightcurve! Let’s load the first OGLE IV microlensing lightcurve and check what the prediction is:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">LIA</span> <span class="kn">import</span> <span class="n">microlensing_classifier</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">microlensing_classifier</span>
 
 <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filenames</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span>
 
-<span class="n">prediction</span> <span class="o">=</span> <span class="n">microlensing_classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">prediction</span> <span class="o">=</span> <span class="n">microlensing_classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span>
 </pre></div>
@@ -112,7 +117,47 @@
    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filenames</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
    <span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span>
 
-   <span class="n">prediction</span> <span class="o">=</span> <span class="n">microlensing_classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+   <span class="n">prediction</span> <span class="o">=</span> <span class="n">microlensing_classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+   <span class="n">predictions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prediction</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">prediction</span><span class="p">[</span><span class="mi">1</span><span class="p">])])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;total accuracy &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">predictions</span> <span class="o">==</span> <span class="s1">&#39;ML&#39;</span><span class="p">))))</span>
+</pre></div>
+</div>
+</section>
+<section id="example-from-start-to-finish">
+<h1>Example: From start to finish<a class="headerlink" href="#example-from-start-to-finish" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">training_set</span><span class="p">,</span> <span class="n">microlensing_classifier</span>
+<span class="kn">from</span> <span class="nn">MicroLIA</span> <span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">noise_models</span>
+
+<span class="n">filenames</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s1">&#39;/data&#39;</span><span class="p">)</span>
+
+<span class="n">timestamps</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">rms_mag</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">median_mag</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+   <span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">name</span><span class="p">)[:,</span><span class="mi">0</span><span class="p">]</span>
+   <span class="n">mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">name</span><span class="p">)[:,</span><span class="mi">1</span><span class="p">]</span>
+
+   <span class="n">rms</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">mag</span><span class="p">,</span><span class="mi">84</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">mag</span><span class="p">,</span><span class="mi">16</span><span class="p">))</span>
+   <span class="n">timestamps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+   <span class="n">median_mag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">mag</span><span class="p">))</span>
+   <span class="n">rms_mag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rms</span><span class="p">)</span>
+
+<span class="n">ogle_noise</span> <span class="o">=</span> <span class="n">noise_models</span><span class="o">.</span><span class="n">create_noise</span><span class="p">(</span><span class="n">median_mag</span><span class="p">,</span> <span class="n">rms_mag</span><span class="p">)</span>
+
+<span class="n">training_set</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">timestamps</span><span class="p">,</span> <span class="n">min_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span> <span class="n">max_mag</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">median_mag</span><span class="p">),</span> <span class="n">noise</span><span class="o">=</span><span class="n">ogle_noise</span><span class="p">,</span> <span class="n">zp</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">n_class</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">create_models</span><span class="p">(</span><span class="s1">&#39;all_features.txt&#39;</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s1">&#39;rf&#39;</span><span class="p">)</span>
+
+<span class="n">predictions</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+   <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+   <span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span>
+
+   <span class="n">prediction</span> <span class="o">=</span> <span class="n">microlensing_classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">mag</span><span class="p">,</span> <span class="n">magerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
    <span class="n">predictions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prediction</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">prediction</span><span class="p">[</span><span class="mi">1</span><span class="p">])])</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;total accuracy &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">predictions</span> <span class="o">==</span> <span class="s1">&#39;ML&#39;</span><span class="p">))))</span>

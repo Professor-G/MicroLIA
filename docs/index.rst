@@ -39,9 +39,9 @@ We need to train MicroLIA using OGLE IV cadence, which in this example we will t
 
     timestamps = []
 
-    for i in filenames:
-      t = np.loadtxt(i)[:,0]
-      timestamps.append(t)
+    for name in filenames:
+      time = np.loadtxt(name)[:,0]
+      timestamps.append(time)
 
 
 In this example we will set the min_mag of the survey to be 15, and the max_mag to be 20. We will also set n_class=500, this is the size of our training classes.
@@ -53,7 +53,7 @@ In this example we will set the min_mag of the survey to be 15, and the max_mag 
    training_set.create(timestamps, min_mag=15, max_mag=20, n_class=500)
 
 
-There a number of other parameters we can control when creating our training set, including exposure time and zeropoint of the survey elescope. Setting these parameters carefully will ensure that our training set matches what will be observed. 
+There a number of other parameters we can control when creating our training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. 
 
 To be more accurate we will set these optional parameters, and even include a noise model using the rms and median mag of our OGLE IV data.
 
@@ -69,15 +69,20 @@ To be more accurate we will set these optional parameters, and even include a no
       mag = np.loadtxt(i)[:,1]
       rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
       rms_mag.append(rms)
-      median.append(np.median(mag))
+      median_mag.append(np.median(mag))
 
    ogle_noise = noise_models.create_noise(median, rms)
 
-   training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=500)
+   training_set.create(timestamps, min_mag=np.min(median_mag), 
+      max_mag=np.max(median_mag), noise=ogle_noise, zp=22, 
+      exptime=30, n_class=500)
 
-This will simulate the lightcurves for our training set, all of which will be saved in the `lightcurves.fits' file, organized by ID. The other two files `pca_features.txt', and `all_lightcurves.txt' include the data that will be used to train our machine learning model.
+This will simulate the lightcurves for our training set, all of which will be saved in the 'lightcurves.fits' file, organized by ID. The other two files 'pca_features.txt', and 'all_lightcurves.txt' include the data that will be used to train our machine learning model.
 
-We will create our Random Forest model using the statistical features:
+Example: Microlensing Classification
+==================
+
+We will create our Random Forest machine learning model using the statistical features:
 
 .. code-block:: python
 
@@ -95,7 +100,7 @@ Now we can begin classifying any lightcurve! Let's load the first OGLE IV microl
    data = np.loadtxt(filenames[0])
    time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
-   prediction = microlensing_classifier.predict(time, mag, magerr, model)[0:2]
+   prediction = microlensing_classifier.predict(time, mag, magerr, model)
 
    print(prediction)
 
@@ -113,7 +118,9 @@ The prediction output is the probability prediction of each class. Finally, let'
 
    print('total accuracy '+str(len(predictions)/len(np.argwhere(predictions == 'ML'))))
 
-From start to finish:
+Example: From start to finish
+==================
+
 .. code-block:: python
 
    import os
@@ -124,29 +131,27 @@ From start to finish:
    filenames = os.listdir('/data')
 
    timestamps = []
-
-   for i in filenames:
-      t = np.loadtxt(i)[:,0]
-      timestamps.append(t)
-
    rms_mag = []
    median_mag = []
 
-   for i in filenames:
-      mag = np.loadtxt(i)[:,1]
-      rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
-      rms_mag.append(rms)
-      median.append(np.median(mag))
+   for name in filenames:
+      time = np.loadtxt(name)[:,0]
+      mag = np.loadtxt(name)[:,1]
 
-   ogle_noise = noise_models.create_noise(median, rms)
+      rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
+      timestamps.append(time)
+      median_mag.append(np.median(mag))
+      rms_mag.append(rms)
+
+   ogle_noise = noise_models.create_noise(median_mag, rms_mag)
 
    training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=500)
 
    model = models.create_models('all_features.txt', model='rf')
 
    predictions = []
-   for i in filenames:
-      data = np.loadtxt(filenames[0])
+   for name in filenames:
+      data = np.loadtxt(name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
       prediction = microlensing_classifier.predict(time, mag, magerr, model)
