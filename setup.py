@@ -9,7 +9,7 @@ from setuptools import setup, find_packages, Extension
 
 setup(
     name="LIA",
-    version="1.4",
+    version="1.55",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
@@ -23,6 +23,7 @@ setup(
 		'Programming Language :: Python :: 3',	   
 ],
     packages=find_packages('.'),
+	install_requires = ['numpy','scikit-learn','astropy','scipy','peakutils', 'progress'],
     python_requires='>=3.6,<4',
     include_package_data=True,
     test_suite="nose.collector",
