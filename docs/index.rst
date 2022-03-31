@@ -160,14 +160,3 @@ OGLE IV: From start to finish
    print('total accuracy '+str(len(predictions)/len(np.argwhere(predictions == 'ML'))))
 
 
-modules details
-----------------------
-
-Here is the (hopefully up-to-date) documentation
-for all submodules.
-
-.. toctree::
-   :maxdepth: 1
-
-   source/MicroLIA
-
