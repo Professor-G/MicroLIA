@@ -94,7 +94,7 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     stats = np.array(stats)
     stats[np.isnan(stats)] = 0
     stats[np.isinf(stats)] = 1e6
-    stats[stats<1e-6] = 1e-6
+    stats[(stats<1e-6) * (stats>0)] = 1e-6
     stats[stats>1e6] = 1e6
 
     return stats
