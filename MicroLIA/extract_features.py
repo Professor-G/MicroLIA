@@ -4,7 +4,6 @@
     
     @author: danielgodinez
 """
-#from __future__ import print_function
 import numpy as np
 from MicroLIA import features
 from inspect import getmembers, isfunction
