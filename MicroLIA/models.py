@@ -22,7 +22,8 @@ from sklearn.manifold import TSNE
 from MicroLIA.optimization import hyper_opt, boruta_opt, KNN_imputation, MissForest_imputation
 from MicroLIA import extract_features
 
-def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='MissForest', n_iter=25):
+def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25,
+    save_model=False, path=None):
     """Creates the machine learning engine, current options are either a
     Random Forest or a Neural Network classifier. 
     
@@ -62,7 +63,24 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='M
             algorithm. Defaults to 'MissForest'.
         n_iter (int, optional): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
+        save_model (bool, optional): If True the machine learning model will be saved to the
+            designated path. If path is not set the file will be saved to the local home dir.
+            Defaults to False.
+        path (str, optional): Absolute path of where to save the model. This path must include
+            the desired filename. Defaults to None, in which case the file is saved locally 
+            to the home directory.
     
+    Note:
+        If save_model=True, the path argument must be the absolute path, including the filename,
+        of where to save the model. If path=None the file will be saved to the local home directory.
+
+        This file can be loaded in the future and used to make predictions
+        
+        >>> import joblib
+        >>> 
+        >>> model = joblib.load(path)
+        >>> model.predict(time, mag, magerr, model=model)
+
     Returns:
         Random Forest classifier model created with scikit-learn. If optimize=True, this
         model will already include the optimal hyperparameters. 
@@ -82,6 +100,7 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='M
         if imp_method == 'KNN':
             data, imputer = KNN_imputation(data=data_x, imputer=None)
         elif imp_method == 'MissForest':
+            warn('MissForest imputation refits every time, do not use to transform new, unseen data; use KNN instead.')
             data, imputer = MissForest_imputation(data=data_x, imputer=None)
         else:
             raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
@@ -101,6 +120,12 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='M
     print('Hyperparameter optimization complete! Optimal parameters:{}'.format(best_params))
     model.fit(data_x[:,features_index], data_y)
 
+    if save_model:
+        if path is None:
+            print("No path specified, saving model to local home directory.")
+            path = '~/MicroLIA_Model'
+        joblib.dump(model, path)
+
     return model, imputer, features_index
 
 def predict(time, mag, magerr, model, imputer=None, feats_to_use=None):
@@ -119,7 +144,7 @@ def predict(time, mag, magerr, model, imputer=None, feats_to_use=None):
             Defaults to None, in which case all columns in the data array are used.
 
     Returns:
-        Array containing the classes and the corresponding probability prediction
+        Array containing the classes and the corresponding probability predictions.
     """
 
     if len(mag) < 30:
@@ -135,13 +160,13 @@ def predict(time, mag, magerr, model, imputer=None, feats_to_use=None):
         return np.c_[classes, pred[0]]
 
     if imputer is not None:
-        data = imputer.transform(stat_array)
+        stat_array = imputer.transform(stat_array)
 
     if feats_to_use is not None:
         pred = model.predict_proba(stat_array[:,feats_to_use])
         return np.c_[classes, pred[0]]
 
-    pred = model.predict_proba(stat_array[:,feats_to_use])
+    pred = model.predict_proba(stat_array)
     return np.c_[classes, pred[0]]
 
 def plot_tsne(data_x, data_y, norm=False, pca=False, title='Segmentation Parameter Space'):
@@ -165,20 +190,16 @@ def plot_tsne(data_x, data_y, norm=False, pca=False, title='Segmentation Paramet
     else:
         method = 'exact' #Scales with O(N^2)
 
-    #data_x[data_x>1e6] = 1e6
-    #data_x[(data_x>0) * (data_x<1e-6)] = 1e-6
-    #data_x[data_x<-1e6] = -1e6
-
     if norm:
         scaler = MinMaxScaler()
         data_x = scaler.fit_transform(data_x)
 
     if np.any(np.isnan(data_x)):
-        print('Automatically imputing NaN values with the MissForeset algorithm.')
+        print('Automatically imputing NaN values with the MissForest algorithm.')
         data_x = MissForest_imputation(data=data_x)
 
     if pca:
-        pca_transformation = decomposition.PCA(n_components=len(data_x[0]), whiten=True, svd_solver='auto')
+        pca_transformation = decomposition.PCA(n_components=data_x.shape[1], whiten=True, svd_solver='auto')
         pca_transformation.fit(data_x) 
         data_x = pca_transformation.transform(data_x)
     
@@ -190,6 +211,8 @@ def plot_tsne(data_x, data_y, norm=False, pca=False, title='Segmentation Paramet
     feats = np.unique(data_y)
 
     for count, feat in enumerate(feats):
+        if count+1 > len(markers):
+            count = -1
         mask = np.where(data_y == feat)[0]
         plt.scatter(x[mask], y[mask], marker=markers[count], label=str(feat), alpha=0.7)
 

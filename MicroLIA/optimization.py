@@ -322,8 +322,11 @@ def KNN_imputation(data, imputer=None, k=3):
 
     return imputer.transform(data) 
 
-def MissForest_imputation(data, imputer=None):
+def MissForest_imputation(data):
     """
+    !!! THIS ALGORITHM REFITS EVERY TIME, THEREFORE NOT HELPFUL
+    FOR IMPUTING NEW, UNSEEN DATA. USE KNN_IMPUTATION INSTEAD !!!
+
     Imputation algorithm created by Stekhoven and Buhlmann (2012).
     See: https://academic.oup.com/bioinformatics/article/28/1/112/219101
 
@@ -366,14 +369,12 @@ def MissForest_imputation(data, imputer=None):
     data[(data>0) * (data<1e-6)] = 1e-6
     data_x[data_x<-1e6] = -1e6
     
-    if np.all(np.isfinite(data)) and imputer is None:
+    if np.all(np.isfinite(data)):
         raise ValueError('No missing values in training dataset, do not apply imputation algorithms!')
-
-    if imputer is None:
-        imputer = MissForest(verbose=0)
-        imputer.fit(data)
-        imputed_data = imputer.transform(data)
-        return imputed_data, imputer
+    
+    imputer = MissForest(verbose=0)
+    imputer.fit(data)
+    imputed_data = imputer.transform(data)
 
     return imputer.transform(data) 
 
