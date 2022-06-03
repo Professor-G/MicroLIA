@@ -125,9 +125,8 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25):
 
     sampler = optuna.samplers.TPESampler(seed=10) 
     study = optuna.create_study(direction='maximize', sampler=sampler)
-
+    print('Beginning optimization procedure, this will take a while...')
     if clf == 'rf':
-        print('Beginning optimization procedure, this will take a while...')
         try:
             study.optimize(objective_rf, n_trials=n_iter, callbacks=[logging_callback])
             params = study.best_trial.params
@@ -139,20 +138,16 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25):
         except:
             print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
     elif clf == 'nn':
-        try:
-            study.optimize(objective_nn, n_trials=n_iter, callbacks=[logging_callback])
-            params = study.best_trial.params
-            layers = [param for param in params if 'n_units_' in param]
-            layers = tuple(params[i] for i in layers)
-            clf = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
-                activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
-                batch_size=params['batch_size'], solver=params['solver'])
-            return clf, params
-        except:
-            raise ValueError('Error occurred when optimizing neural network with Optuna.')
+        study.optimize(objective_nn, n_trials=n_iter, callbacks=[logging_callback])
+        params = study.best_trial.params
+        layers = [param for param in params if 'n_units_' in param]
+        layers = tuple(params[i] for i in layers)
+        clf = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
+            activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
+            batch_size=params['batch_size'], solver=params['solver'])
+        return clf, params
     else:
         raise ValueError('clf argument must either be "rf"" or "nn".')
-
 
     params = {
         'criterion': ["gini", "entropy"],
@@ -175,7 +170,6 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25):
     #plot_convergence(gs.optimizer_results_[0])
     #plot_objective(gs.optimizer_results_[0])
     #plots.plot_evaluations(gs.optimizer_results_[0])
-    
     return gs.best_estimator_, gs.best_params_
 
 def boruta_opt(data_x, data_y):
@@ -202,13 +196,13 @@ def boruta_opt(data_x, data_y):
 
     feat_selector.support = np.array([str(feat) for feat in feat_selector.support_])
     index = np.where(feat_selector.support == 'True')[0]
-    print('Feature selection complete, {} selected out of {}! Calculating classification accuracy...'.format(len(index),len(feat_selector.support)))
+    print('Feature selection complete, {} selected out of {}! Calculating accuracy...'.format(len(index),len(feat_selector.support)))
     
-    cv = cross_validate(classifier, data_x[:,index], data_y, cv=10)
-    print('Accuracy without feature optimization: {}'.format(np.round(np.mean(cv['test_score']),3)))
-    print('-------------------------------------')
-    cv = cross_validate(classifier, data_x[:,index], data_y, cv=10)   
-    print('Accuracy with feature optimization: {}'.format(np.round(np.mean(cv['test_score']),3)))
+    cv = cross_validate(classifier, data_x, data_y, cv=10)
+    cv_opt = cross_validate(classifier, data_x[:,index], data_y, cv=10)   
+    print('Mean accuracy with all features: {}'.format(np.round(np.mean(cv['test_score']),3)))
+    print('------------------------------')
+    print('Mean acuracy with feature selection: {}'.format(np.round(np.mean(cv_opt['test_score']),3)))
     
     return index
 
