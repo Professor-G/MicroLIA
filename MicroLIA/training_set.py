@@ -6,6 +6,7 @@ Created on Thu Jun 28 20:30:11 2018
 """
 import os
 import random
+from pathlib import Path
 import pkg_resources
 from warnings import warn
 from inspect import getmembers, isfunction
@@ -290,7 +291,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
     col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
     cols = fits.ColDefs([col0, col1, col2, col3, col4])
     hdu = fits.BinTableHDU.from_columns(cols)
-    hdu.writeto('lightcurves'+filename+'.fits',overwrite=True)
+
+    filename = Path('lightcurves'+filename+'.fits')
+    if filename.exists():
+        filename.unlink()
+
+    hdu.writeto(filename,overwrite=True)
 
     np.savetxt('feats.txt',np.array(stats_list).astype(str),fmt='%s')
     with open(r'feats.txt', 'r') as infile, open(r'all_features'+filename+'.txt', 'w') as outfile:      
