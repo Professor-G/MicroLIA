@@ -159,4 +159,21 @@ OGLE IV: From start to finish
 
    print('total accuracy '+str(len(predictions)/len(np.argwhere(predictions == 'ML'))))
 
+Pages
+==================
+.. toctree::
+   :maxdepth: 1
 
+   source/Gravitational Microlensing
+   source/Loading MicroLIA
+   source/Examples
+
+Documentation
+==================
+
+Here is the documentation for all the modules:
+
+.. toctree::
+   :maxdepth: 1
+
+   source/MicroLIA

@@ -22,7 +22,7 @@ copyright = '2022, Daniel Godines'
 author = 'Daniel Godines'
 
 # The full version, including alpha/beta/rc tags
-release = '1.61'
+release = '1.7'
 
 
 # -- General configuration ---------------------------------------------------
