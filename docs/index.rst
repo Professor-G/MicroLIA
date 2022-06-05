@@ -6,7 +6,7 @@
 Welcome to MicroLIA's documentation!
 ===============================
 
-MicroLIA is an open-source program for microlensing detection in wide-field surveys. This engine uses the machine learning RF model using a variety of lightcurve statistics, therefore a training set with survey parameters must be created before MicroLIA can begin its query. See example below.
+MicroLIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of MicroLIA supports two additional models: Extreme Gradient Boost and Neural Network. 
 
 Installation
 ==================
@@ -21,7 +21,7 @@ The current stable version can be installed via pip:
 Importing MicroLIA
 ==================
 
-The most important variable to set when employing MicroLIA is the cadence of the survey -- we can construct this by appending timestamp arrays to an empty list. When a lightcurve is simulated, a random timestamp will then be selected. 
+The most important variable to set when employing MicroLIA is the cadence of the survey -- we can construct this by appending timestamp arrays to an empty list. When a lightcurve is simulated, a timestamp from the list will be selected at random.
 
 With our timestamps saved we can simulate our training data and generate an optimal machine learning model with the following import:
 
