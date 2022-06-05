@@ -174,7 +174,15 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
         model_0 = MLPClassifier()
     elif clf == 'xgb':
         if all(isinstance(val, (int, str)) for val in data_y):
-            raise ValueError('XGBoost classifier requires numerical class labels! Convert data_y to numerical values and try again.')
+            print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
+            print('____________________________________')
+            y = np.zeros(len(data_y))
+            for i in range(len(np.unique(data_y))):
+                print('{} -----------> {}'.format(np.unique(data_y)[i], i))
+                index = np.where(data_y == np.unique(data_y)[i])[0]
+                y[index] = i
+            data_y = y 
+            print('____________________________________')
         model_0 = XGBClassifier()
     else:
         raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
@@ -223,7 +231,6 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
     elif clf == 'nn':
         try:
             study.optimize(lambda trial: objective_nn(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
-            #study.optimize(objective_nn(data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
             params = study.best_trial.params
             layers = [param for param in params if 'n_units_' in param]
             layers = tuple(params[layer] for layer in layers)
@@ -236,7 +243,6 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
     elif clf == 'xgb':
         try:
             study.optimize(lambda trial: objective_xgb(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
-            #study.optimize(objective_xgb(data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
             params = study.best_trial.params
             if params['booster'] == 'dart':
                 model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
@@ -281,7 +287,7 @@ def boruta_opt(data_x, data_y):
 
     classifier = RandomForestClassifier()
 
-    feat_selector = BorutaPy(classifier, n_estimators='auto', verbose=0, random_state=1)
+    feat_selector = BorutaPy(classifier, n_estimators='auto', verbose=0, random_state=1909)
     print('Running feature optimization...')
     feat_selector.fit(data_x, data_y)
 
@@ -296,40 +302,6 @@ def boruta_opt(data_x, data_y):
     cv = cross_validate(classifier, data_x[:,index], data_y, cv=10)   
     print('Accuracy with feature optimization: {}'.format(np.round(np.mean(cv['test_score']),3)))
     """
-
-def boruta_opt(data_x, data_y):
-    """
-    Applies the Boruta algorithm (Kursa & Rudnicki 2011) to identify features
-    that perform worse than random chance.
-    See: https://arxiv.org/pdf/1106.5112.pdf
-
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-            
-    Returns:
-        1D array containing the indices of the selected features. This can then
-        be used to index the columns in the data_x array.
-    """
-
-    classifier = RandomForestClassifier()
-
-    feat_selector = BorutaPy(classifier, n_estimators='auto', verbose=0, random_state=1)
-    print('Running feature optimization...')
-    feat_selector.fit(data_x, data_y)
-
-    feat_selector.support = np.array([str(feat) for feat in feat_selector.support_])
-    index = np.where(feat_selector.support == 'True')[0]
-    print('Feature selection complete, {} selected out of {}! Calculating accuracy...'.format(len(index),len(feat_selector.support)))
-    
-    cv = cross_validate(classifier, data_x, data_y, cv=10)
-    cv_opt = cross_validate(classifier, data_x[:,index], data_y, cv=10)   
-    print('Mean accuracy with all features: {}'.format(np.round(np.mean(cv['test_score']),3)))
-    print('------------------------------')
-    print('Mean acuracy with feature selection: {}'.format(np.round(np.mean(cv_opt['test_score']),3)))
-    
-    return index
 
 def Strawman_imputation(data):
     """
@@ -354,10 +326,6 @@ def Strawman_imputation(data):
     Returns:
         The data array with the missing values filled in. 
     """
-
-    data[data>1e6] = 1e6
-    data[(data>0) * (data<1e-6)] = 1e-6
-    data_x[data_x<-1e6] = -1e6
 
     if np.all(np.isfinite(data)):
         print('No missing values in data, returning original array.')
@@ -432,13 +400,6 @@ def KNN_imputation(data, imputer=None, k=3):
         new data, prior to predictions. 
     """
 
-    data[data>1e6] = 1e6
-    data[(data>0) * (data<1e-6)] = 1e-6
-    data_x[data_x<-1e6] = -1e6
-
-    if np.all(np.isfinite(data)) and imputer is None:
-        raise ValueError('No missing values in training dataset, do not apply imputation algorithms!')
-
     if imputer is None:
         imputer = KNNImputer(n_neighbors=k)
         imputer.fit(data)
@@ -490,12 +451,9 @@ def MissForest_imputation(data):
         The second output is the Miss Forest Imputer that should be used to transform
         new data, prior to predictions. 
     """
-    data[data>1e6] = 1e6
-    data[(data>0) * (data<1e-6)] = 1e-6
-    data_x[data_x<-1e6] = -1e6
-    
+
     if np.all(np.isfinite(data)):
-        raise ValueError('No missing values in training dataset, do not apply imputation algorithms!')
+        raise ValueError('No missing values in training dataset, do not apply MissForest imputation!')
     
     imputer = MissForest(verbose=0)
     imputer.fit(data)
