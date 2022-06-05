@@ -9,6 +9,7 @@ import random
 from pathlib import Path
 import pkg_resources
 from warnings import warn
+from pathlib import Path
 from inspect import getmembers, isfunction
 
 import numpy as np
@@ -25,7 +26,7 @@ from MicroLIA import features
     
 def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
     n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, 
-    filename='', test=False):
+    filename='', test=False, save_file=True):
     """
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
@@ -34,7 +35,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
 
     Parameters
     __________
-    timestamps : array of arrays
+    timestamps : list of arrays
         Times at which to simulate the different lightcurves.
         Must be an array containing all possible timestamps combinations.
     min_mag : float, optional
@@ -76,6 +77,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
     test: bool, optional
         If False there will be no classification reports after training.
         Defaults to True.
+    save_file: bool
+        If True the lightcurve.fits and all_features.txt files will be
+        saved to the home directory. Defaults to True.
 
     Outputs
     _______
@@ -83,8 +87,6 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         All simulated lightcurves in a FITS file, sorted by class and ID
     all_features : txt file
         A txt file containing all the features plus class label and ID.
-    pca_stats : txt file
-        A txt file containing all PCA features plus class label and ID. 
     """
 
     if len(getmembers(features, isfunction))*2 > n_class*5:
@@ -284,29 +286,32 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         progess_bar.next()
     progess_bar.finish()
 
-    print('Writing files to local directory...')
-    col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
-    col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
-    col2 = fits.Column(name='time', format='D', array=np.hstack(times_list))
-    col3 = fits.Column(name='mag', format='E', array=np.hstack(mag_list))
-    col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
-    cols = fits.ColDefs([col0, col1, col2, col3, col4])
-    hdu = fits.BinTableHDU.from_columns(cols)
+    if save_file:
+        print('Writing files to home directory...')
+        path = str(Path.home())+'/'
 
-    fname = Path('lightcurves'+filename+'.fits')
-    if fname.exists(): #To avoid error if file already exists
-        fname.unlink()
-    hdu.writeto(fname,overwrite=True)
+        col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
+        col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
+        col2 = fits.Column(name='time', format='D', array=np.hstack(times_list))
+        col3 = fits.Column(name='mag', format='E', array=np.hstack(mag_list))
+        col4 = fits.Column(name='magerr', format='E', array=np.hstack(magerr_list))
+        cols = fits.ColDefs([col0, col1, col2, col3, col4])
+        hdu = fits.BinTableHDU.from_columns(cols)
 
-    np.savetxt('feats.txt',np.array(stats_list).astype(str),fmt='%s')
-    with open(r'feats.txt', 'r') as infile, open('all_features'+filename+'.txt', 'w') as outfile:    
-         data = infile.read()
-         data = data.replace("'", "")
-         data = data.replace(",", "")
-         data = data.replace("[", "")
-         data = data.replace("]", "")
-         outfile.write(data)
-    os.remove('feats.txt')
+        fname = Path('lightcurves'+filename+'.fits')
+        if fname.exists(): #To avoid error if file already exists
+            fname.unlink()
+        hdu.writeto(path+fname,overwrite=True)
+
+        np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
+        with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
+             data = infile.read()
+             data = data.replace("'", "")
+             data = data.replace(",", "")
+             data = data.replace("[", "")
+             data = data.replace("]", "")
+             outfile.write(data)
+        os.remove('feats.txt')
     print("Simulation complete!")
 
     """
@@ -318,4 +323,3 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         quality_check.create_test(timestamps, min_mag, max_mag, noise, zp, exptime, n_class, ml_n1, cv_n1, cv_n2, t0_dist, u0_dist, tE_dist, 
             'all_features'+filename+'.txt', 'pca_features'+filename+'.txt')
     """
-
