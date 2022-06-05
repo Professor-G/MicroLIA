@@ -173,6 +173,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
     elif clf == 'nn':
         model_0 = MLPClassifier()
     elif clf == 'xgb':
+        model_0 = XGBClassifier()
         if all(isinstance(val, (int, str)) for val in data_y):
             print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
             print('____________________________________')
@@ -183,7 +184,6 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
                 y[index] = i
             data_y = y 
             print('____________________________________')
-        model_0 = XGBClassifier()
     else:
         raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
 
@@ -199,7 +199,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
     sampler = optuna.samplers.TPESampler(seed=1909) 
     study = optuna.create_study(direction='maximize', sampler=sampler)
 
-    print('Beginning optimization procedure, this will take a while...')
+    print('Starting hyperparameter optimization procedure, this will take a while...')
     if clf == 'rf':
         try:
             study.optimize(lambda trial: objective_rf(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])

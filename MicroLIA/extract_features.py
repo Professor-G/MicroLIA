@@ -8,8 +8,9 @@ import numpy as np
 from MicroLIA import features
 from inspect import getmembers, isfunction
 
-def extract_all(time, mag, magerr, convert=True, zp=24):
-    """This function will compute the statistics used to train the RF.
+def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
+    """
+    This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the
     mag/flux is normalized by the maximum value to compute the remanining
     features. By default a conversion from mag to flux is performed. If input
@@ -23,6 +24,9 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
         Magnitude array.
     magerr : array
         Corresponing photometric errors.  
+    feats_to_use : array
+        Array containing indices of features to use. This will be used to index the columns 
+        in the data array. Defaults to None, in which case all columns in the data array are used.
     convert : boolean, optional 
         If False the features are computed with the input magnitudes,
         defaults to True to convert and compute in flux. 
@@ -50,9 +54,12 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
 
     stats = []
     #normal space
-
+    counter = 0
     for func in all_features_functions:
-    
+        if feats_to_use is not None:
+            if counter not in feats_to_use:
+                counter += 1
+                continue
         try:
             if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
                 feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
@@ -66,6 +73,8 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
 
         except:
             stats.append(np.NaN)
+
+        counter += 1
             
     #derivative space
     flux_deriv = np.gradient(flux, time)
@@ -75,7 +84,10 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
     norm_flux_deriv_err = flux_deriv_err*(norm_flux_deriv/flux_deriv)
 
     for func in all_features_functions:
-
+        if feats_to_use is not None:
+            if counter not in feats_to_use:
+                counter += 1
+                continue
         try:
             if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
                 feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
@@ -90,12 +102,13 @@ def extract_all(time, mag, magerr, convert=True, zp=24):
         except:
             stats.append(np.NaN)
             
-    stats = np.array(stats)
-    stats[np.isnan(stats)] = 0
-    stats[np.isinf(stats)] = 1e6
-    stats[(stats<1e-6) * (stats>0)] = 1e-6
-    stats[stats>1e6] = 1e6
+        counter += 1
 
+    stats = np.array(stats)
+    stats[np.isinf(stats)] = np.NaN
+    #stats[np.isnan(stats)] = 0
+    #stats[(stats<1e-6) * (stats>0)] = 1e-6
+    #stats[stats>1e6] = 1e6
     return stats
 
 

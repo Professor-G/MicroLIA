@@ -26,7 +26,8 @@ from MicroLIA import features
 def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
     n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, 
     filename='', test=False):
-    """Creates a training dataset using adaptive cadence.
+    """
+    Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
     function, or Gaussian by default
@@ -124,7 +125,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag, magerr, convert=True)
+        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -152,7 +153,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag,magerr,convert=True)
+        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
         stats = [i for i in stats]
         stats = ['CONSTANT'] + [1*n_class+k] + stats
         stats_list.append(stats) 
@@ -189,7 +190,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(time,mag,magerr,convert=True)
+                stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
                 stats = [i for i in stats]
                 stats = ['CV'] + [2*n_class+k] + stats
                 stats_list.append(stats)
@@ -230,7 +231,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                
-                stats = extract_features.extract_all(time, mag,magerr, convert=True)
+                stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
                 stats = [i for i in stats]
                 stats = ['ML'] + [3*n_class+k] + stats
                 stats_list.append(stats)
@@ -276,14 +277,14 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time,mag,magerr,convert=True)
+        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
         stats = [i for i in stats]
         stats = ['LPV'] + [4*n_class+k] + stats
         stats_list.append(stats)
         progess_bar.next()
     progess_bar.finish()
 
-    print('Writing files...')
+    print('Writing files to local directory...')
     col0 = fits.Column(name='Class', format='20A', array=np.hstack(source_class_list))
     col1 = fits.Column(name='ID', format='E', array=np.hstack(id_list))
     col2 = fits.Column(name='time', format='D', array=np.hstack(times_list))
@@ -292,14 +293,13 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
     cols = fits.ColDefs([col0, col1, col2, col3, col4])
     hdu = fits.BinTableHDU.from_columns(cols)
 
-    filename = Path('lightcurves'+filename+'.fits')
-    if filename.exists():
-        filename.unlink()
-
-    hdu.writeto(filename,overwrite=True)
+    fname = Path('lightcurves'+filename+'.fits')
+    if fname.exists(): #To avoid error if file already exists
+        fname.unlink()
+    hdu.writeto(fname,overwrite=True)
 
     np.savetxt('feats.txt',np.array(stats_list).astype(str),fmt='%s')
-    with open(r'feats.txt', 'r') as infile, open(r'all_features'+filename+'.txt', 'w') as outfile:      
+    with open(r'feats.txt', 'r') as infile, open('all_features'+filename+'.txt', 'w') as outfile:    
          data = infile.read()
          data = data.replace("'", "")
          data = data.replace(",", "")
@@ -307,16 +307,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
          data = data.replace("]", "")
          outfile.write(data)
     os.remove('feats.txt')
+    print("Simulation complete!")
 
-    coeffs = np.loadtxt('all_features'+filename+'.txt', dtype=str)
-    pca = decomposition.PCA(n_components=len(stats_list[0])-2, whiten=True, svd_solver='auto')
-    pca.fit(coeffs[:,2:].astype(float))
-    X_pca = pca.transform(coeffs[:,2:].astype(float))
-
-    classes = ["VARIABLE"]*n_class+['CONSTANT']*n_class+["CV"]*n_class+["ML"]*n_class+["LPV"]*len(np.where(coeffs[:,0] == 'LPV')[0])
-    np.savetxt('pca_features'+filename+'.txt',np.c_[classes,np.arange(1,len(classes)+1),X_pca[:,:len(stats_list[0])-2]],fmt='%s')
-    
-
+    """
     if test == True:
         print("")
         print("------------------------------")
@@ -324,5 +317,5 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         print("------------------------------")
         quality_check.create_test(timestamps, min_mag, max_mag, noise, zp, exptime, n_class, ml_n1, cv_n1, cv_n2, t0_dist, u0_dist, tE_dist, 
             'all_features'+filename+'.txt', 'pca_features'+filename+'.txt')
-
+    """
 

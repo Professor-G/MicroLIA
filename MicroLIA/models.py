@@ -130,7 +130,6 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
 
     features_index = boruta_opt(data_x, data_y)
     model, best_params = hyper_opt(data_x[:,features_index], data_y, clf=clf, n_iter=n_iter)
-    print('Hyperparameter optimization complete!')
     model.fit(data_x[:,features_index], data_y)
 
     if save_model:
@@ -141,20 +140,24 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
 
     return model, imputer, features_index
 
-def predict(time, mag, magerr, model, imputer=None, feats_to_use=None):
+def predict(time, mag, magerr, model, imputer=None, feats_to_use=None, convert=True, zp=24):
     """
-    Predics the class label of new, unseen data
+    Predics the class label of new, unseen data.
 
     Args:
         time (ndarray): Array of observation timestamps.
         mag (ndarray): Array of observed magnitudes.
         magerr (ndarray): Array of corresponding magnitude errors.
-        model: The machine learning model to use for predictions.
+        model (object): The machine learning model to use for predictions.
         imputer: The imputer to use for imputation transformations.
             Defaults to None, in which case no imputation is performed.
         feats_to_use (ndarray): Array containing indices of features
             to use. This will be used to index the columns in the data array.
             Defaults to None, in which case all columns in the data array are used.
+        convert (bool, optional): If False the features are computed with the input magnitudes.
+            Defaults to True to convert and compute in flux. 
+        zp (float): Zeropoint of the instrument, used to convert from magnitude
+            to flux. Defaults to 24.
 
     Returns:
         Array containing the classes and the corresponding probability predictions.
@@ -166,20 +169,18 @@ def predict(time, mag, magerr, model, imputer=None, feats_to_use=None):
     classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
 
     stat_array=[]
-    stat_array.append(extract_features.extract_all(time, mag, magerr, convert=True))
     
     if imputer is None and feats_to_use is None:
+        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp))
         pred = model.predict_proba(stat_array)
         return np.c_[classes, pred[0]]
-
+    
+    stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, feats_to_use=feats_to_use))
+    
     if imputer is not None:
         stat_array = imputer.transform(stat_array)
-
-    if feats_to_use is not None:
-        pred = model.predict_proba(stat_array[:,feats_to_use])
-        return np.c_[classes, pred[0]]
-
     pred = model.predict_proba(stat_array)
+
     return np.c_[classes, pred[0]]
 
 def plot_tsne(data_x, data_y, norm=False, pca=False, title='Segmentation Parameter Space'):
