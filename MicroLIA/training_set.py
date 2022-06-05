@@ -301,7 +301,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         fname = Path('lightcurves'+filename+'.fits')
         if fname.exists(): #To avoid error if file already exists
             fname.unlink()
-        hdu.writeto(path+fname,overwrite=True)
+        hdu.writeto(path+str(fname),overwrite=True)
 
         np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
         with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
@@ -311,7 +311,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
              data = data.replace("[", "")
              data = data.replace("]", "")
              outfile.write(data)
-        os.remove('feats.txt')
+        os.remove(path+'feats.txt')
     print("Simulation complete!")
 
     """
