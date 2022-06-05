@@ -94,6 +94,19 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
         model = MLPClassifier()
     elif clf == 'xgb':
         model = XGBClassifier()
+        if all(isinstance(val, (int, str)) for val in data_y):
+            print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
+            print('________________________________')
+            y = np.zeros(len(data_y))
+            for i in range(len(np.unique(data_y))):
+                print('{} -----------> {}'.format(np.unique(data_y)[i], i))
+                index = np.where(data_y == np.unique(data_y)[i])[0]
+                y[index] = i
+            data_y = y 
+            print('--------------------------------')
+
+    else:
+        raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
     
     if impute is False and optimize is False:
         print("Returning base model...")
