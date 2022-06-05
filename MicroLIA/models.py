@@ -22,7 +22,7 @@ from sklearn.manifold import TSNE
 from MicroLIA.optimization import hyper_opt, boruta_opt, KNN_imputation, MissForest_imputation
 from MicroLIA import extract_features
 
-def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25,
+def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25,
     save_model=False, path=None):
     """Creates the machine learning engine, current options are either a
     Random Forest or a Neural Network classifier. 
@@ -50,8 +50,9 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='K
         data_x (ndarray): 2D array of size (n x m), where n is the
             number of samples, and m the number of features.
         data_y (ndarray, str): 1D array containing the corresponing labels.
-        model (str): Model to use for classification, can either be 'rf' for Random Forest 
-            or 'nn' for Neural Network.
+        clf (str): The machine learning classifier to optimize. Can either be
+            'rf' for Random Forest, 'nn' for Neural Network, or 'xgb' for Extreme Gradient Boosting. 
+            Defaults to 'rf'.
         optimize (bool): If True the Boruta algorithm will be run to identify the features
             that contain useful information, after which the optimal Random Forest hyperparameters
             will be calculated using Bayesian optimization. 
@@ -60,7 +61,7 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='K
             for future transformations. 
         imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
             neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
-            algorithm. Defaults to 'MissForest'.
+            algorithm. Defaults to 'KNN'.
         n_iter (int, optional): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
         save_model (bool, optional): If True the machine learning model will be saved to the
@@ -86,14 +87,16 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='K
         model will already include the optimal hyperparameters. 
     """
 
+    if clf == 'rf':
+        model = RandomForestClassifier()
+    elif clf == 'nn':
+        model = MLPClassifier()
+    elif clf == 'xgb':
+        model = XGBClassifier()
+    
     if impute is False and optimize is False:
-        if model == 'rf':
-            model = RandomForestClassifier()
-        elif model == 'nn':
-            model = MLPClassifier()
-
+        print("Returning base model...")
         model.fit(data_x, data_y)
-        Print("Returning base model...")
         return model 
 
     if impute:
@@ -101,23 +104,19 @@ def create(data_x, data_y, model='rf', optimize=True, impute=True, imp_method='K
             data, imputer = KNN_imputation(data=data_x, imputer=None)
         elif imp_method == 'MissForest':
             warn('MissForest imputation refits every time, do not use to transform new, unseen data; use KNN instead.')
-            data, imputer = MissForest_imputation(data=data_x, imputer=None)
+            data, imputer = MissForest_imputation(data=data_x)
         else:
             raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
         
         if optimize:
             data_x = data
         else:
-            if model == 'rf':
-                model = RandomForestClassifier()
-            elif model == 'nn':
-                model = MLPClassifier()
             model.fit(data, data_y)
-            return model, imputer 
+            return model, imputer
 
     features_index = boruta_opt(data_x, data_y)
-    model, best_params = hyper_opt(data_x[:,features_index], data_y, clf=model, n_iter=n_iter)
-    print('Hyperparameter optimization complete! Optimal parameters:{}'.format(best_params))
+    model, best_params = hyper_opt(data_x[:,features_index], data_y, clf=clf, n_iter=n_iter)
+    print('Hyperparameter optimization complete!')
     model.fit(data_x[:,features_index], data_y)
 
     if save_model:

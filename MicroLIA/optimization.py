@@ -27,43 +27,77 @@ from skopt.utils import use_named_args
 
 import optuna
 optuna.logging.set_verbosity(optuna.logging.WARN)
+from xgboost import XGBClassifier
 
-def objective_nn(trial):
+def objective_xgb(trial, data_x, data_y):
+    """
+    The Optuna objective function for the tree-based XGBoost classifier. 
+    The Optuna software for hyperparameter optimization was published in 
+    2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
+    """
+
+    booster = trial.suggest_categorical('booster', ['gbtree', 'dart'])
+    reg_lambda = trial.suggest_loguniform('reg_lambda', 1e-6, 1)
+    reg_alpha = trial.suggest_loguniform('reg_alpha', 1e-6, 1)
+    max_depth = trial.suggest_int('max_depth', 1, 9)
+    eta = trial.suggest_loguniform('eta', 1e-6, 1)
+    gamma = trial.suggest_loguniform('gamma', 1e-6, 1)
+    grow_policy = trial.suggest_categorical('grow_policy', ['depthwise', 'lossguide'])
+
+    if booster == "dart":
+        sample_type = trial.suggest_categorical('sample_type', ['uniform', 'weighted'])
+        normalize_type = trial.suggest_categorical('normalize_type', ['tree', 'forest'])
+        rate_drop = trial.suggest_loguniform('rate_drop', 1e-6, 1.0)
+        skip_drop = trial.suggest_loguniform('skip_drop', 1e-6, 1.0)
+
+        clf = XGBClassifier(booster=booster, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
+            gamma=gamma, grow_policy=grow_policy, sample_type=sample_type, normalize_type=normalize_type,rate_drop=rate_drop, 
+            skip_drop=skip_drop)
+    
+    elif booster == 'gbtree':
+        subsample = trial.suggest_loguniform('subsample', 1e-6, 1.0)
+        clf = XGBClassifier(booster=booster, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
+            gamma=gamma, grow_policy=grow_policy, subsample=subsample)
+
+    cv = cross_validate(clf, data_x, data_y, cv=3)
+    final_score = np.round(np.mean(cv['test_score']), 4)
+
+    return final_score
+
+def objective_nn(trial, data_x, data_y):
     """
     The Optuna objective function for the scikit-learn implementatin of the
-    MLP classifier. The Optuna software was for hyperparameter optimization
+    MLP classifier. The Optuna software for hyperparameter optimization
     was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
 
-    See software documentation: https://github.com/optuna/optuna-examples 
+    See Optuna examples: https://github.com/optuna/optuna-examples 
     """
 
-    learning_rate_init= trial.suggest_float('learning_rate_init', .0001, 0.1)
+    learning_rate_init= trial.suggest_float('learning_rate_init', 1e-6, 1)
     solver = trial.suggest_categorical("solver", ["sgd", "adam"]) #"lbfgs"
     activation = trial.suggest_categorical("activation", ["identity", "logistic", "tanh", "relu"])
     learning_rate = trial.suggest_categorical("learning_rate", ["constant", "invscaling", "adaptive"])
-    alpha = trial.suggest_float("alpha", 0.00001, 0.001)
+    alpha = trial.suggest_float("alpha", 1e-6, 1)
     batch_size = trial.suggest_int('batch_size', 1, 1000)
     
     n_layers = trial.suggest_int('hidden_layer_sizes', 1, 10)
     layers = []
     for i in range(n_layers):
-        layers.append(trial.suggest_int(f'n_units_{i}', 1, 2500))
+        layers.append(trial.suggest_int(f'n_units_{i}', 100, 1000))
 
-    x_train, x_test, y_train, y_test = train_test_split(data_x, data_y)
+    clf = MLPClassifier(hidden_layer_sizes=tuple(layers),learning_rate_init=learning_rate_init, 
+        solver=solver, activation=activation, alpha=alpha, batch_size=batch_size, max_iter=2500)
+    
+    cv = cross_validate(clf, data_x, data_y, cv=3)
+    final_score = np.round(np.mean(cv['test_score']), 4)
 
-    clf = MLPClassifier(hidden_layer_sizes=tuple(layers),learning_rate_init=learning_rate_init, solver=solver, 
-        activation=activation, alpha=alpha, batch_size=batch_size)
-    clf.fit(x_train, y_train)
+    return final_score
 
-    return clf.score(x_test, y_test)
-
-def objective_rf(trial):
+def objective_rf(trial, data_x, data_y):
     """
     The Optuna objective function for the scikit-learn implementatin of the
-    Random Forest classifier. The Optuna software was for hyperparameter optimization
+    Random Forest classifier. The Optuna software for hyperparameter optimization
     was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
-
-    See software documentation: https://github.com/optuna/optuna-examples 
     """
 
     n_estimators = trial.suggest_int('n_estimators', 100, 3000)
@@ -74,21 +108,26 @@ def objective_rf(trial):
     max_features = trial.suggest_int('max_features', 1, data_x.shape[1])
     bootstrap = trial.suggest_categorical('bootstrap', [True, False])
     
-    x_train, x_test, y_train, y_test = train_test_split(data_x, data_y)
-
     clf = RandomForestClassifier(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth,
                                 min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
                                 max_features=max_features, bootstrap=bootstrap)
     
-    clf.fit(x_train, y_train)
+    cv = cross_validate(clf, data_x, data_y, cv=3)
+    final_score = np.round(np.mean(cv['test_score']), 4)
 
-    return clf.score(x_test, y_test)
+    return final_score
 
-def hyper_opt(data_x, data_y, clf='rf', n_iter=25):
+def hyper_opt(data_x, data_y, clf='rf', n_iter=25, save_study=False):
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
     This function uses Bayesian Optimizattion and should only be used for
     optimizing the scikit-learn implementation of the Random Forest Classifier.
+    
+    Note:
+        If save_study=True, the Optuna study object will be the third output. This
+        object can be used for various analysis, including optimization visualization.
+
+        See: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.study.Study.html
 
     Example:
         The function will create the classification engine and optimize the hyperparameters
@@ -102,75 +141,161 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25):
         
         The second output of the optimize function is the dictionary containing
         the hyperparameter combination that yielded the highest mean accuracy.
+
+        If save_study = True, the Optuna study object will also be returned as the third output.
+        This can be used to plot the optimization results, see: https://optuna.readthedocs.io/en/latest/tutorial/10_key_features/005_visualization.html#sphx-glr-tutorial-10-key-features-005-visualization-py
+
+        >>> from optuna.visualization.matplotlib import plot_contour
+        >>> 
+        >>> model, params, study = hyper_opt(data_x, data_y, clf='rf', save_study=True) 
+        >>> plot_contour(study)
         
     Args:
         data_x (ndarray): 2D array of size (n x m), where n is the
             number of samples, and m the number of features.
         data_y (ndarray, str): 1D array containing the corresponing labels.
         clf (str): The machine learning classifier to optimize. Can either be
-            'rf' for Random Forest or 'nn' for Neural Network. Defaults to 'rf'.
+            'rf' for Random Forest, 'nn' for Neural Network, or 'xgb' for eXtreme Gradient Boosting. 
+            Defaults to 'rf'.
         n_iter (int, optional): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25.
+        save_study (bool, optional): If True the Optuna study object will be returned. This
+            can be used to review the method attributes, such as optimization plots. Defaults to False.
         
     Returns:
-        The first output is the Random Forest classifier with the optimal hyperparameters.
+        The first output is the classifier with the optimal hyperparameters.
         Second output is a dictionary containing the optimal hyperparameters.
+        If save_study=True, the Optuna study object will be the third output.
     """
 
-    def logging_callback(study, trial):
-        previous_best_value = study.user_attrs.get("previous_best_value", None)
-        if previous_best_value != study.best_value:
-            study.set_user_attr("previous_best_value", study.best_value)
-            print("Highest accuracy: {} (Trial # {}). ".format(trial.value, trial.number))
+    if clf == 'rf':
+        model_0 = RandomForestClassifier()
+    elif clf == 'nn':
+        model_0 = MLPClassifier()
+    elif clf == 'xgb':
+        if all(isinstance(val, (int, str)) for val in data_y):
+            raise ValueError('XGBoost classifier requires numerical class labels! Convert data_y to numerical values and try again.')
+        model_0 = XGBClassifier()
+    else:
+        raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
 
-    sampler = optuna.samplers.TPESampler(seed=10) 
+    cv = cross_validate(model_0, data_x, data_y, cv=3)
+    initial_score = np.round(np.mean(cv['test_score']), 4)
+
+    def logging_callback(study, trial):
+        previous_best = study.user_attrs.get("previous_best", None)
+        if previous_best != study.best_value:
+            study.set_user_attr("previous_best", study.best_value)
+            print("Highest 3-fold CV accuracy: {} (Trial # {}). ".format(trial.value, trial.number))
+
+    sampler = optuna.samplers.TPESampler(seed=1909) 
     study = optuna.create_study(direction='maximize', sampler=sampler)
+
     print('Beginning optimization procedure, this will take a while...')
     if clf == 'rf':
         try:
-            study.optimize(objective_rf, n_trials=n_iter, callbacks=[logging_callback])
+            study.optimize(lambda trial: objective_rf(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
+            #study.optimize(objective_rf(data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
             params = study.best_trial.params
-            clf = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
+            model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
                 max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
                 min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], 
                 bootstrap=params['bootstrap'])
-            return clf, params
         except:
             print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
-    elif clf == 'nn':
-        study.optimize(objective_nn, n_trials=n_iter, callbacks=[logging_callback])
-        params = study.best_trial.params
-        layers = [param for param in params if 'n_units_' in param]
-        layers = tuple(params[i] for i in layers)
-        clf = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
-            activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
-            batch_size=params['batch_size'], solver=params['solver'])
-        return clf, params
-    else:
-        raise ValueError('clf argument must either be "rf"" or "nn".')
+            params = {
+                'criterion': ["gini", "entropy"],
+                'n_estimators': [int(x) for x in np.linspace(50,1000, num=20)], 
+                'max_features': [data_x.shape[1], "sqrt", "log2"],
+                'max_depth': [int(x) for x in np.linspace(5,50,num=5)],
+                'min_samples_split': [3,4,6,7,8,9,10],
+                'min_samples_leaf': [1,3,5,7,9,10],
+                'max_leaf_nodes': [int(x) for x in np.linspace(2,200)],
+                'bootstrap': [True,False]   
+            }
+            gs = BayesSearchCV(n_iter=n_iter, estimator=RandomForestClassifier(), search_spaces=params, 
+                optimizer_kwargs={'base_estimator': 'RF'}, cv=3)
+            gs.fit(data_x, data_y)
+            best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
+            print('Highest mean accuracy: {}'.format(best_score))
+            return gs.best_estimator_, gs.best_params_
 
-    params = {
-        'criterion': ["gini", "entropy"],
-        'n_estimators': [int(x) for x in np.linspace(50,1000, num=20)], 
-        'max_features': [len(data_x[0]), "sqrt", "log2"],
-        'max_depth': [int(x) for x in np.linspace(5,50,num=5)],
-        'min_samples_split': [3,4,6,7,8,9,10],
-        'min_samples_leaf': [1,3,5,7,9,10],
-        'max_leaf_nodes': [int(x) for x in np.linspace(2,200)],
-        'bootstrap': [True,False]   
-    }
-        
-    gs = BayesSearchCV(n_iter=n_iter, estimator=RandomForestClassifier(), search_spaces=params, 
-        optimizer_kwargs={'base_estimator': 'RF'}, cv=10)
-    print('Performing Bayesian optimization...')
-    gs.fit(data_x, data_y)
-    best_est = gs.best_estimator_
-    best_score = np.round(gs.best_score_, 3)
-    print(f"Highest mean accuracy: {best_score}")
-    #plot_convergence(gs.optimizer_results_[0])
-    #plot_objective(gs.optimizer_results_[0])
-    #plots.plot_evaluations(gs.optimizer_results_[0])
-    return gs.best_estimator_, gs.best_params_
+    elif clf == 'nn':
+        try:
+            study.optimize(lambda trial: objective_nn(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
+            #study.optimize(objective_nn(data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
+            params = study.best_trial.params
+            layers = [param for param in params if 'n_units_' in param]
+            layers = tuple(params[layer] for layer in layers)
+            model = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
+                activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
+                batch_size=params['batch_size'], solver=params['solver'], max_iter=2500)
+        except:
+            raise ValueError('Error occurred while optimizing neural network with Optuna.')
+
+    elif clf == 'xgb':
+        try:
+            study.optimize(lambda trial: objective_xgb(trial, data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
+            #study.optimize(objective_xgb(data_x=data_x, data_y=data_y), n_trials=n_iter, callbacks=[logging_callback])
+            params = study.best_trial.params
+            if params['booster'] == 'dart':
+                model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
+                    max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
+                    sample_type=params['sample_type'], normalize_type=params['normalize_type'],rate_drop=params['rate_drop'], 
+                    skip_drop=params['skip_drop'])
+            elif params['booster'] == 'gbtree':
+                model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
+                    max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
+                    subsample=params['subsample'], sampling_method=params['sampling_method'], tree_method=params['tree_method'],
+                    process_type=params['process_type'])
+        except:
+            raise ValueError('Error occurred while optimizing XGBoost with Optuna.')
+
+    final_score = study.best_trial.value
+
+    if initial_score > final_score:
+        print('Hyperparameter optimization complete! 3-fold CV accuracy of {} is lower than the base accuracy of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 4), np.round(initial_score, 4)))
+    else:
+        print('Hyperparameter optimization complete! 3-fold CV accuracy of {} is higher than the base accuracy of {}.'.format(np.round(final_score, 4), np.round(initial_score, 4)))
+
+    if save_study:
+        return model, params, study
+    return model, params
+
+def boruta_opt(data_x, data_y):
+    """
+    Applies the Boruta algorithm (Kursa & Rudnicki 2011) to identify features
+    that perform worse than random.
+
+    See: https://arxiv.org/pdf/1106.5112.pdf
+
+    Args:
+        data_x (ndarray): 2D array of size (n x m), where n is the
+            number of samples, and m the number of features.
+        data_y (ndarray, str): 1D array containing the corresponing labels.
+            
+    Returns:
+        1D array containing the indices of the selected features. This can then
+        be used to index the columns in the data_x array.
+    """
+
+    classifier = RandomForestClassifier()
+
+    feat_selector = BorutaPy(classifier, n_estimators='auto', verbose=0, random_state=1)
+    print('Running feature optimization...')
+    feat_selector.fit(data_x, data_y)
+
+    feat_selector.support = np.array([str(feat) for feat in feat_selector.support_])
+    index = np.where(feat_selector.support == 'True')[0]
+    print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support)))
+    return index
+    """
+    cv = cross_validate(classifier, data_x[:,index], data_y, cv=10)
+    print('Accuracy without feature optimization: {}'.format(np.round(np.mean(cv['test_score']),3)))
+    print('-------------------------------------')
+    cv = cross_validate(classifier, data_x[:,index], data_y, cv=10)   
+    print('Accuracy with feature optimization: {}'.format(np.round(np.mean(cv['test_score']),3)))
+    """
 
 def boruta_opt(data_x, data_y):
     """
