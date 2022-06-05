@@ -24,7 +24,7 @@ setup(
 ],
     packages=find_packages('.'),
     install_requires = ['numpy','scikit-learn', 'scikit-optimize', 'astropy','scipy','peakutils',
-        'progress', 'matplotlib', 'missingpy', 'optuna', 'boruta'],
+        'progress', 'matplotlib', 'missingpy', 'optuna', 'boruta', 'xgboost'],
     python_requires='>=3.7,<4',
     include_package_data=True,
     test_suite="nose.collector",
