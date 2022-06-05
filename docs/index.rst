@@ -43,6 +43,11 @@ The above procedure may take ~1 hour given the default parameters. We can now ma
 
 To learn about MicroLIA's functionality please refer to the `example page <https://microlia.readthedocs.io/en/latest/source/Examples.html>`_, which covers in detail how to create the simulated data and the options we have when training and tuning the classifier. 
 
+Science
+==================
+
+To learn about Gravitational Microlensing, including how to derive the magnification equation, please visit the `science page <https://microlia.readthedocs.io/en/latest/source/Gravitational%20Microlensing.html>`_. 
+
 
 Pages
 ==================
