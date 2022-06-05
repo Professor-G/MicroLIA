@@ -9,7 +9,7 @@ Each file contains three columns: time, mag, magerr
 We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we successfully recover.
 
 OGLE II: Training Set
-==================
+-----------
 Adaptive cadence is important as this allows MicroLIA to detect microlensing events even if the survey footprint is sparse. In this example we need to train MicroLIA using OGLE IV cadence, which we can take to be the timestamps of these 214 lightcurves. We will append the time array of each lightcurve to a list.
 
 .. code-block:: python
@@ -67,7 +67,7 @@ There are additional parameters that can be controlled when creating the trainin
 
 
 OGLE II: Classification Engine
-==================
+-----------
 
 We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
@@ -117,7 +117,7 @@ There has been particular interest in the XGBoost algorithm, which can outperfor
 
 
 OGLE II: Classification Accuracy
-==================
+-----------
 
 With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE IV microlensing lightcurve and check what the prediction is:
 
@@ -152,7 +152,7 @@ The predicted class in this case is 'ML', as the corresponding classification ac
    print('Total accuracy :{}'.format(np.round(accuracy, 4)))
 
 OGLE II: From Start to Finish
-==================
+-----------
 
 .. code-block:: python
 
