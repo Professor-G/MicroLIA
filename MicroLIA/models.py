@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.rc('font', family='serif')
 from warnings import warn
+from pathlib import Path
 
 from sklearn import decomposition
 from sklearn.preprocessing import MinMaxScaler
@@ -66,12 +67,8 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
         n_iter (int, optional): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
         save_model (bool, optional): If True the machine learning model will be saved to the
-            designated path. If path is not set the file will be saved to the local home dir.
-            Defaults to False.
-        path (str, optional): Absolute path of where to save the model. This path must include
-            the desired filename. Defaults to None, in which case the file is saved locally 
-            to the home directory.
-    
+            local home directory. Defaults to False.
+        
     Note:
         If save_model=True, the path argument must be the absolute path, including the filename,
         of where to save the model. If path=None the file will be saved to the local home directory.
@@ -133,10 +130,9 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
     model.fit(data_x[:,features_index], data_y)
 
     if save_model:
-        if path is None:
-            print("No path specified, saving model to local home directory.")
-            path = '~/MicroLIA_Model'
-        joblib.dump(model, path)
+        print("No path specified, saving model to local home directory.")
+        path = str(Path.home())+'/MicroLIA_Model'
+    joblib.dump(model, path)
 
     return model, imputer, features_index
 
@@ -251,6 +247,9 @@ def plot_conf_matrix(classifier, data_x, data_y, norm=False, pca=False, k_fold=1
         k_fold (int, optional): The number of cross-validations to perform.
             The output confusion matrix will display the mean accuracy across
             all k_fold iterations. Defaults to 10.
+        normalize (bool, optional): If False the confusion matrix will display the
+            total number of objects in the sample. Defaults to True, in which case
+            the values are normalized between 0 and 1.
         classes (list): A list containing the label of the two training bags. This
             will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
         title (str, optional): The title of the output plot. 
@@ -419,10 +418,10 @@ def generate_matrix(predicted_labels_list, actual_targets, normalize=True, class
     np.set_printoptions(precision=2)
 
     plt.figure()
-    if normalize == True:
-        generate_plot(conf_matrix, classes=classes, normalize=normalize, title='Confusion matrix, without normalization')
+    if normalize:
+        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
     elif normalize == False:
-        generate_plot(conf_matrix, classes=classes, normalize=normalize, title='Normalized Confusion Matrix')
+        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
     plt.show()
 
 def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix'):

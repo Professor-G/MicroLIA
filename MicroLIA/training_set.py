@@ -83,6 +83,10 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
 
     Outputs
     _______
+    data_x : array
+        2D array containing the statistical metrics of all simulated lightcurves.
+    data_y : array
+        1D array containing the class label of all simulated lightcurves.
     dataset : FITS
         All simulated lightcurves in a FITS file, sorted by class and ID
     all_features : txt file
@@ -313,6 +317,12 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
              outfile.write(data)
         os.remove(path+'feats.txt')
     print("Simulation complete!")
+
+    data = np.loadtxt(path+'all_features'+filename+'.txt', dtype=str)
+    data_x = data[:,2:].astype('float')
+    data_y = data[:,0]
+
+    return data_x, data_y
 
     """
     if test == True:
