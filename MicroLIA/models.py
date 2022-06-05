@@ -24,7 +24,8 @@ from MicroLIA import extract_features
 
 def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25,
     save_model=False, path=None):
-    """Creates the machine learning engine, current options are either a
+    """
+    Creates the machine learning engine, current options are either a
     Random Forest or a Neural Network classifier. 
     
     Example:
