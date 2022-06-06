@@ -2,7 +2,7 @@
 
 Example: OGLE II
 ==================
-The lightcurves for 214 OGLE II microlensing events can be downloaded :download:`here <OGLE_II.zip>`.
+The lightcurves for 214 OGLE II microlensing events can be downloaded here: :download:`<OGLE_II.zip>`.
 
 
 
