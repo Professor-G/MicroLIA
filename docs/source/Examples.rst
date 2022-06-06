@@ -62,6 +62,8 @@ To be more accurate we will set these optional parameters, and even include a no
 .. figure:: _static/simulation.jpg
     :align: center
 
+
+
 This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file as will be shown in the next step.
 
 There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
@@ -71,7 +73,7 @@ OGLE II: Classification Engine
 -----------
 We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-We can load this file and create our data_x and data_y arrays, although note above that these variables were created when we made our training set, this is just to show how we could generally load the saved training data, but note if need-be we can always re-compute the statistics using the `extract_features modules <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_.
+We can load this file and create our data_x and data_y arrays, although note above that these variables were created for us when we made our training set, this example is just to show how to generally load the saved training data (if need-be we can always re-compute the statistics using the `extract_features module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_).
 
 .. code-block:: python
    
@@ -99,9 +101,9 @@ Since these are turned on by default, we can create and optimize a Random Forest
 
    model, imputer, feats_to_use = models.create(data_x, data_y, clf='rf')
 
-Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
+To avoid overfitting influencing the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take over an hour, depending on the size of the training set and the algorithm being optimized. 
 
-Since neural networks require more tuning to properly identify the optimal number of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters:
+Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. Since neural networks require more tuning to properly identify the optimal number of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters:
 
 .. code-block:: python
 
