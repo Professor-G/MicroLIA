@@ -2,7 +2,8 @@
 
 Example: OGLE II
 ==================
-The lightcurves for 214 OGLE II microlensing events can be downloaded <a href="OGLE_II.zip">here</a>.
+The lightcurves for 214 OGLE II microlensing events can be downloaded :download:`here <OGLE_II.zip>`.
+
 
 
 Each file contains three columns: time, mag, magerr
