@@ -2,7 +2,8 @@
 
 Example: OGLE II
 ==================
-The lightcurves for 214 OGLE II microlensing events can be downloaded here:
+The lightcurves for 214 OGLE II microlensing events can be downloaded <a href="OGLE_II.zip">here</a>.
+
 
 Each file contains three columns: time, mag, magerr
 
@@ -59,19 +60,16 @@ To be more accurate we will set these optional parameters, and even include a no
 
    data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=1000)
 
-This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt' and contains the statistical metrics of each lightcurve. The first two columns of this file contain the class of each lightcurve and its unique ID, which allows us to inspect the individual lightcurves in the .fits file. This function will return the statistical metrics (data_x) and the corresponding labels (data_y), which can be loaded directly from the 'all_features.txt' file.
+This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file as will be shown in the next step.
 
-There are additional parameters that can be controlled when creating the training set, the most imporant being the arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. Please refer to the API for more information on these parameters.
-
-`Please refer to the API documentation for more information on these parameters and how to control them <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
+There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
 
 
 OGLE II: Classification Engine
 -----------
-
 We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-We can load this file and create our data_x and data_y arrays, although note above that these variables were created when we made our training set. This is just to show how we could generally load the saved training data:
+We can load this file and create our data_x and data_y arrays, although note above that these variables were created when we made our training set, this is just to show how we could generally load the saved training data, but note if need-be we can always re-compute the statistics using the `extract_features modules <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_.
 
 .. code-block:: python
    
@@ -83,9 +81,9 @@ We can load this file and create our data_x and data_y arrays, although note abo
    
 With our training data loaded we can create our machine learning engine with MicroLIA's `models module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html>`_.
 
-Unless set otherwise, when creating the model three optimization procedures will automatically run, in the following order:
+Unless turned off, when creating the model three optimization procedures will automatically run, in the following order:
 
--  Any missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, therefore solving the issue of missing values. 
+-  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a workaround for the issue of missing data values. 
 
 -  The features that contain information will be selected using the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. While bagging algorithms like the Forest Random are robust to irrelevant features, computation-wise it is imperative that we compute only the features that are helpful.
 
@@ -118,7 +116,6 @@ There has been particular interest in the XGBoost algorithm, which can outperfor
 
 OGLE II: Classification Accuracy
 -----------
-
 With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE IV microlensing lightcurve and check what the prediction is:
 
 .. code-block:: python
