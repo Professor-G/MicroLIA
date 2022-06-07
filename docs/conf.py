@@ -43,7 +43,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'autoapi.extension',
-    'sphinx.ext.pngmath',
+    'sphinx.ext.imgmath',
    # 'sphinx.ext.autosectionlabel'
 ]
 
