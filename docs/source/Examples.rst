@@ -208,15 +208,9 @@ Finally, we will create a new model and re-predict the class of these variables:
 
 The false-positive rate in this instance is ~0.03, very nice! But what if we now predict the class of the original 214 microlensing lightcurves? This new model was tuned using the variable lightcurves, so we would expect the accuracy to drop. After classifying these 214 lightcurves with this new model, only 0.63 were classified as microlensing -- better than random, but quite a ways from our initial 0.97 prediction accuracy!
 
-The best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. Sure enough, upon creating a new model with this new training data, the microlensing accuracy went back up to :bolditalic:`0.96`, and the false-alert rate among variables went back down to :bolditalic:`0.03`.
+The best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. Sure enough, upon creating a new model with this new training data, the microlensing accuracy went back up to 0.96, and the false-alert rate among variables went back down to 0.03.
 
-.. role:: red
-  :class: red
-
-.. role:: bolditalic
-  :class: bolditalic
-
-:red:`WARNING` :bolditalic: `It is imperative to remember always: The accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training set is important, as is the need for a large sample of real data if available.`
+WARNING: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
 
 Misc: Visualizations
 -----------
