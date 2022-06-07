@@ -30,19 +30,19 @@ Microlensing Theory
 Microlensing refers to the particular case of gravitational lensing in which the images produced are so close together that they appear as one image as observed from Earth. This is caused by the position of the source and lens star, as during the event the source star aligns behind the lens star (see Figure 3). As this occurs, the light from the source passes on all sides of the lens star, creating several distorted images of the source star. How many images appear during these events is in turn dependent on the number of lensing masses involved, with a single lens producing two images. 
 
 
-.. figure:: _static/ML_diagram.png
+.. figure:: _static/distance.png
     :align: center
     :width: 1200px
 
-    Figure 3: Geometry of distances during a microlensing event. Observer is noted as O. Image from book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_..
+    Figure 3: Geometry of distances during a microlensing event. Observer is noted as O. Image from the 2003 book by Hartle.
 
 
 
-.. figure:: _static/exo.png
+.. figure:: _static/galaxy_ml.png
     :align: center
     :width: 1200px
 
-    Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_..
+    Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from the 2003 book by Hartle.
 
 In the event that the source star and the lens star are perfectly aligned, the images create a ring around the lens, known as the Einstein Ring, :math:`R_E` - an example of this is displayed in Figure 4, with the light bending around the Einstein Ring of a distant galaxy. :math:`R_E` is expressed as
 
@@ -107,7 +107,7 @@ Figure 5 displays the images created during a microlensing event. The left diagr
     :class: with-shadow with-border
     :width: 1200px
 
-    Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
+    Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by Hartle.
 
 
 Using this we can define the magnification of the event to be the ratio of non-lens to lensed flux -- this yields a proportionality between solid angles,
@@ -224,7 +224,7 @@ In the event that the source causing the blending is not constant (e.g. variable
     :class: with-shadow with-border
     :width: 1200px
 
-    Figure 8: Baseline magnitude as a function of the blending coefficient :math:`b`. This microlensing data was taken by OGLE III and compiled between 2003 and 2008 by by `Richards et al 2011 <https://arxiv.org/abs/1101.1959>`_. For modeling events, we took :math:`1 \leq b \leq 10`.
+    Figure 8: Baseline magnitude as a function of the blending coefficient :math:`b`. This microlensing data was taken by OGLE III and compiled between 2003 and 2008 by Richards et al 2011. For modeling events, we took :math:`1 \leq b \leq 10`.
 
 
 While in reality a lens is not a point source, this simple model serves to illuminate the basic fundamentals behind the microlensing theory, and was sufficient for our modeling of microlensing events, as described in Section 3.
