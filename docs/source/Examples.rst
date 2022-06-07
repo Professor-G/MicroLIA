@@ -214,11 +214,11 @@ WARNING: It is imperative to remember always that the accuracy of the classifier
 
 Misc: Visualizations
 -----------
-The training set consists of only simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the cv parameter:
+The training set consists of only simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the k_fold parameter:
 
 .. code-block:: python
 
-   model.plot_conf_matrix(cv=3)
+   model.plot_conf_matrix(k_fold=3)
 
 We can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space when using the eucledian distance metric, we will set norm=True so as to min-max normalize all the features:
 
@@ -243,8 +243,8 @@ It would be nice to include the parameter space of the real OGLE II microlensing
       ogle_stats.append(stats)
       ogle_data_y.append('OGLE II')
 
-   data_x = np.r_[data_x, ogle_data_x]
-   data_y = np.c_[data_y, ogle_data_y]
+   data_x = np.concatenate((data_x, ogle_data_x))
+   data_y = np.r_[data_y, ogle_data_y]
 
    models.plot_tsne(norm=True)
 
