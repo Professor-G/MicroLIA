@@ -31,13 +31,16 @@ Microlensing refers to the particular case of gravitational lensing in which the
 
 
 .. figure:: _static/distance.png
+	:align: center
     :width: 1200px
 
     Figure 2: Diagram of gravitational microlensing event as lensing star aligns between the observer and the source, image from the 2003 book on Gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
 
 .. figure:: _static/galaxy_ml.png
+	:align: center
     :width: 1200px
+    
     Figure 2: Diagram of gravitational microlensing event as lensing star aligns between the observer and the source, image from the 2003 book on Gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
 
