@@ -34,7 +34,7 @@ Microlensing refers to the particular case of gravitational lensing in which the
     :align: center
     :width: 1200px
 
-    Figure 3: Geometry of distances during a microlensing event. Observer is noted as O. Image from book by Hartle.
+    Figure 3: Geometry of distances during a microlensing event. Observer is noted as O. Image from book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_..
 
 
 
@@ -42,7 +42,7 @@ Microlensing refers to the particular case of gravitational lensing in which the
     :align: center
     :width: 1200px
 
-    Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from book by Hartle.
+    Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_..
 
 In the event that the source star and the lens star are perfectly aligned, the images create a ring around the lens, known as the Einstein Ring, :math:`R_E` - an example of this is displayed in Figure 4, with the light bending around the Einstein Ring of a distant galaxy. :math:`R_E` is expressed as
 
