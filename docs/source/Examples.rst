@@ -18,8 +18,7 @@ Adaptive cadence is important as this allows MicroLIA to detect microlensing eve
     import numpy as np
     from pathlib import Path
 
-    path = str(Path.home())+'/OGLE_II/'
-
+    path = str(Path.home())+'/OGLE_II/' #If folder were saved in home dir
     filenames = os.listdir(path)
 
     timestamps = []
@@ -87,81 +86,87 @@ Unless turned off, when creating the model three optimization procedures will au
 
 -  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a workaround for the issue of missing data values. 
 
--  The features that contain information will be selected using the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. While bagging algorithms like the Forest Random are robust to irrelevant features, computation-wise it is imperative that we compute only the features that are helpful.
+-  The features that contain information will be selected using `BorutaShap <https://zenodo.org/record/4247618>`_, a procedure based off of the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. This new method improves upon the original approach by coupling the Boruta algorithm's probabilistic approach to feature selection with `Shapley Values <https://christophm.github.io/interpretable-ml-book/shapley.html>`_. While bagging algorithms like the Random Forest are robust to irrelevant features, computation-wise, it is imperative that we compute only the features that are helpful.
 
--  Finally, the model hyperparameters will be optimized using the hyperparameter optimization software `Optuna <https://optuna.org/>`_, developed by `Akiba et al 2019 <https://arxiv.org/abs/1907.10902>`_. The default sampler Optuna employs is the Tree Parzen Estimator, a Bayesian optimization approach that effectively reduces the error by narrowing the search space according to the performance of previous iterations.
+-  Finally, the model hyperparameters will be optimized using the hyperparameter optimization software `Optuna <https://optuna.org/>`_, developed by `Akiba et al 2019 <https://arxiv.org/abs/1907.10902>`_. The default sampler Optuna employs is the Tree Parzen Estimator, a Bayesian optimization approach that effectively reduces the error by narrowing the search space according to the performance of previous iterations, therefore in principle it is best to increase the number of trials to perform.
 
-Since these are turned on by default, we can create and optimize a Random Forest clasifier using the following:
+Since these three methods are run by default, we can create and optimize a Random Forest classifier using the following:
 
 .. code-block:: python
 
    from MicroLIA import models
 
-   model, imputer, feats_to_use = models.create(data_x, data_y, clf='rf')
+   model = models.classifier(data_x, data_y, clf='rf')
+   model.create()
 
-To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take over an hour depending on the size of the training set and the algorithm being optimized. 
+To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. 
 
 Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. Since neural networks require more tuning to properly identify the optimal number of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters:
 
 .. code-block:: python
 
-   model, imputer, feats_to_use = models.create(data_x, data_y, clf='nn', n_iter=100)
+   model = models.classifier(data_x, data_y, clf='nn', n_iter=100)
+   model.create()
 
 There has been particular interest in the XGBoost algorithm, which can outperform the Random Forest:
 
 .. code-block:: python
 
-   model, imputer, feats_to_use = models.create(data_x, data_y, clf='xgb')
+   model = models.classifier(data_x, data_y, clf='xgb')
+   model.create()
 
 `For details please refer to the function documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_.
 
 
 OGLE II: Classification Accuracy
 -----------
-With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE IV microlensing lightcurve and check what the prediction is:
+With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
 
 .. code-block:: python
 
    data = np.loadtxt(filenames[0])
    time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
-   prediction = models.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
+   prediction = model.predict(time, mag, magerr, convert=True, zp=22)
 
 Note that by default convert=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example zp=22. 
 
-The prediction output is the lable probability prediction of each class, ordered in alphabetical order:
+The prediction output is the label and probability prediction of each class, ordered in alphabetical order. The predicted class in this case is 'ML', as the corresponding classification accuracy of is higher than all the others. Finally, let's load all 214 lightcurves and check the overall prediction accuracy:
 
 .. code-block:: python
 
-   print(prediction)
+   predictions = [] #Empty list to store only the prediction label
 
-The predicted class in this case is 'ML', as the corresponding classification accuracy of () is higher than all the others. Finally, let's load all 214 lightcurves and check the overall prediction accuracy by selecting whatever class has the largest probability prediction:
-
-.. code-block:: python
-
-   predictions = []
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
       prediction = models.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
-      predictions.append(prediction[0][np.argmax(prediction[1])])
+      predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    accuracy = len(np.argwhere(predictions == 'ML'))/len(predictions)
    print('Total accuracy :{}'.format(np.round(accuracy, 4)))
 
-OGLE II: From Start to Finish
------------
+The accuarcy is over 0.97, that's very good, but to be more certain, let's classify some random variable lightcurves. The photometry for 91 OGLE II variable stars can be :download:`downloaded here <variables.zip>`. 
 
 .. code-block:: python
 
-   import os
-   import numpy as np
-   from pathlib import Path
-   from MicroLIA import training_set, noise_models, models
-
-   path = str(Path.home())+'/OGLE_II/data/'
+   path = str(Path.home())+'/variables/'
    filenames = os.listdir(path)
+
+   for name in filenames:
+      data = np.loadtxt(path+name)
+      time, mag, magerr = data[:,0], data[:,1], data[:,2]
+      prediction = model.predict(time, mag, magerr, zp=22)
+      predictions.append(prediction[np.argmax(prediction[:,1])][0])
+
+   predictions = np.array(predictions)
+   false_alert = len(np.argwhere(predictions == 'ML'))/len(predictions)
+   print('False alert rate: {}'.format(np.round(false_alert, 4)))
+
+A false-positive rate of ~0.15 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, to show this we can re-create our training data using this sample of variables. We will simulate lightcurves with this particular cadence and noise, and while we can set a filename argument, to avoid overwriting our files from our previous run, we will set save_file=False:
+
+.. code-block:: python
 
    timestamps = []
    for name in filenames:
@@ -179,46 +184,55 @@ OGLE II: From Start to Finish
 
    ogle_noise = noise_models.create_noise(median_mag, rms_mag)
 
-   training_set.create(timestamps, min_mag=np.min(median_mag), 
+   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), 
          max_mag=np.max(median_mag), noise=ogle_noise, zp=22, 
-         exptime=30, n_class=1000)
-   
-   home = str(Path.home())+'/' #By default the file is saved in the home directory
-   data = np.loadtxt(home+'all_features.txt', dtype=str)
+         exptime=30, n_class=1000, save_file=False)
 
-   data_x = data[:,2:].astype('float')
-   data_y = data[:,0]
-   
-   model, imputer, feats_to_use = models.create(data_x, data_y, clf='rf')
+Finally, we will create a new model and re-predict the class of these variables:
 
-   predictions = []
+.. code-block:: python
+   
+   new_model = models.classifier(data_x, data_y, optimize=False, n_iter=1)
+   new_model.create()
+
+   predictions=[]
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
+      prediction = new_model.predict(time, mag, magerr, zp=22)
+      predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
-      prediction = models.predict(time, mag, magerr, model=model, 
-         imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
+   predictions = np.array(predictions)
+   false_alert = len(np.argwhere(predictions == 'ML'))/len(predictions)
+   print('False alert rate: {}'.format(np.round(false_alert, 4)))
 
-      predictions.append(prediction[0][np.argmax(prediction[1])])
+The false-positive rate in this instance is ~0.03, very nice! But what if we now predict the class of the original 214 microlensing lightcurves? This new model was tuned using the variable lightcurves, so we would expect the accuracy to drop. After classifying these 214 lightcurves with this new model, only 0.63 were classified as microlensing -- better than random, but quite a ways from our initial 0.97 prediction accuracy!
 
-   accuracy = len(np.argwhere(predictions == 'ML'))/len(predictions)
-   print('Total accuracy :{}'.format(np.round(accuracy, 4)))
+The best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. Sure enough, upon creating a new model with this new training data, the microlensing accuracy went back up to :bolditalic:`0.96`, and the false-alert rate among variables went back down to :bolditalic:`0.03`.
 
-Misc: Data Visualization
+.. role:: red
+  :class: red
+
+.. role:: bolditalic
+  :class: bolditalic
+
+:red:`WARNING` :bolditalic: `It is imperative to remember always: The accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training set is important, as is the need for a large sample of real data if available.`
+
+Misc: Visualizations
 -----------
-The accuracy that's displayed while creating and tuning the classifier is the training set accuracy. The training set consists of all simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module:
+The training set consists of only simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the cv parameter:
 
 .. code-block:: python
 
-   models.plot_conf_matrix(model, data_x, data_y)
+   model.plot_conf_matrix(cv=3)
 
-We can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space, we will set norm=True so as to min-max normalize all the features:
+We can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space when using the eucledian distance metric, we will set norm=True so as to min-max normalize all the features:
 
 .. code-block:: python
 
-   models.plot_tsne(data_x, data_y, norm=True)
+   model.plot_tsne(norm=True)
 
-It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE II' and append these to the data_y array.
+It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE II' and will append to the data_y array.
 
 .. code-block:: python
 
@@ -230,15 +244,15 @@ It would be nice to include the parameter space of the real OGLE II microlensing
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      stats = extract_all(time, mag, magerr, feats_to_use=feats_to_use, zp=22)
+      stats = extract_all(time, mag, magerr, feats_to_use=model.feats_to_use, zp=22)
 
       ogle_stats.append(stats)
       ogle_data_y.append('OGLE II')
 
    data_x = np.r_[data_x, ogle_data_x]
-   data_y = np.r_[data_y, ogle_data_y]
+   data_y = np.c_[data_y, ogle_data_y]
 
-   models.plot_tsne(data_x, data_y, norm=True)
+   models.plot_tsne(norm=True)
 
 
    

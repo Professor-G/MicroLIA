@@ -22,20 +22,33 @@ Importing MicroLIA
 ==================
 The most important variable to set when employing MicroLIA is the cadence of the survey -- we can construct this by appending timestamp arrays to an empty list. When a lightcurve is simulated, a timestamp from the list will be selected at random.
 
-With our timestamps saved we can simulate our training data and generate an optimal machine learning model with the following import:
+With our timestamps saved we can simulate our training data and generate an optimal machine learning model with the following imports:
 
 .. code-block:: python
 
-   from MicroLIA import training_set, models
+   from MicroLIA import training_set
 
    data_x, data_y = training_set.create(timestamps)
-   model, imputer, feats_to_use = models.create(data_x, data_y)
 
-The above procedure may take ~1 hour given the default parameters. We can now make predictions of new, unseen data:
+.. figure:: _static/simulation.jpg
+    :align: center
+|
+With the lightcurves simulated and the feature matrix saved, we can create our classifier object:
+
+.. code-blocK:: python
+      
+      from MicroLIA import models
+
+      model = models.classifier(data_x, data_y)
+      model.create()
+
+By default all the optimization procedures are enabled, therefore the model creation may take several hours depending on the size of the training set and the model being optimized. 
+
+When the final model is output, we can predict new, unseen data, but note that if the input is in magnitude, an instrument zeropoint must be provided for proper flux conversion. If input is in flux, set convert=False:
 
 .. code-block:: python
 
-   prediction = models.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use)
+   prediction = model.predict(time, mag, magerr, convert=True, zp=24)
 
 Example
 ==================

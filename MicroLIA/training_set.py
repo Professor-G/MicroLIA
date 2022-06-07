@@ -9,7 +9,6 @@ import random
 from pathlib import Path
 import pkg_resources
 from warnings import warn
-from pathlib import Path
 from inspect import getmembers, isfunction
 
 import numpy as np
@@ -320,9 +319,9 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         os.remove(path+'feats.txt')
     print("Simulation complete!")
 
-    data = np.loadtxt(path+'all_features'+filename+'.txt', dtype=str)
+    data = np.array(stats_list)
     data_x = data[:,2:].astype('float')
-    data_y = data[:,0]
+    data_y = data[:,0].astype(str)
 
     return data_x, data_y
 
