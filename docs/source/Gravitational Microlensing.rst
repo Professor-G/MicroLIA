@@ -59,7 +59,7 @@ From Figure 3, we can write the following lens equation:
 .. math::
 	\theta D_S = \beta D_S + \alpha D_{LS}.
 
-From general relativity (see `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_), one can derive $\alpha$ to be
+From general relativity (see `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_), one can derive :math:`\alpha` to be
 
 .. math::
 	\alpha = \frac{4GM_L}{\xi c^2},
@@ -103,7 +103,7 @@ Figure 5 displays the images created during a microlensing event. The left diagr
     :align: center
     :class: with-shadow with-border
 
-    Figure 5: Image of galaxy if lens (located at L) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
+    Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
 
 Using this we can define the magnification of the event to be the ratio of non-lens to lensed flux -- this yields a proportionality between solid angles,
 
