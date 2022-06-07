@@ -4,6 +4,7 @@
     
     @author: danielgodinez
 """
+import joblib 
 import random
 import itertools
 import numpy as np
@@ -17,36 +18,33 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, auc, RocCurveDisplay
-from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 from sklearn.manifold import TSNE
 
-from MicroLIA.optimization import hyper_opt, boruta_opt, KNN_imputation, MissForest_imputation
+from MicroLIA.optimization import hyper_opt, borutashap_opt, KNN_imputation, MissForest_imputation
 from MicroLIA import extract_features
+from xgboost import XGBClassifier
+import scikitplot as skplt
 
-def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25,
-    save_model=False, path=None):
+class classifier:
     """
-    Creates the machine learning engine, current options are either a
-    Random Forest or a Neural Network classifier. 
-    
-    Example:
-        If the impute and optimize arguments are set to False, only the Random Forest
-        classifier will be returned.
+    Creates a machine learning classifier object.
+    The built-in methods can be used to optimize the engine
+    and output visualizations.
 
-        >>> classifier = create(data_x, data_y, impute=False, optimize=False)
+    Attributes:
+        model (object): The machine learning model that is created
+        
+        imputer (object): The imputer created during model creation
+        
+        feats_to_use (ndarray): Array of indices containing the metrics
+            that contribute to classification accuracy.
 
-        If impute=True, the imputer will also be returned which is necessary to 
-        properly transform unseen, new data.
+        plot_tsne (AxesImage): Plots the data_x parameter space using t-SNE
 
-        >>> classifier, imputer = create(data_x, data_y, impute=True, optimize=False)
+        plot_conf_matrix (AxesImage): Plots the confusion matrix, assessed with data_x.
 
-        Lastly, if optimize=True, the index of the useful features is also returned.
-
-        >>> classifier, index = create(data_x, data_y, impute=False, optimize=True)
-
-        By default, impute and optimize are set to True, therefore three items are returned.
-
-        >>> classfier, imputer, index = create(data_x, data_y)
+        plot_roc_curve (AxesImage): Plots ROC curve, assessed with data_x
 
     Args:
         data_x (ndarray): 2D array of size (n x m), where n is the
@@ -68,300 +66,393 @@ def create(data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN
             the hyperparameter search. Defaults to 25. 
         save_model (bool, optional): If True the machine learning model will be saved to the
             local home directory. Defaults to False.
-        
-    Note:
-        If save_model=True, the path argument must be the absolute path, including the filename,
-        of where to save the model. If path=None the file will be saved to the local home directory.
-
-        This file can be loaded in the future and used to make predictions
-        
-        >>> import joblib
-        >>> 
-        >>> model = joblib.load(path)
-        >>> model.predict(time, mag, magerr, model=model)
-
-    Returns:
-        Random Forest classifier model created with scikit-learn. If optimize=True, this
-        model will already include the optimal hyperparameters. 
-    """
-
-    if clf == 'rf':
-        model = RandomForestClassifier()
-    elif clf == 'nn':
-        model = MLPClassifier()
-    elif clf == 'xgb':
-        model = XGBClassifier()
-        if all(isinstance(val, (int, str)) for val in data_y):
-            print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
-            print('________________________________')
-            y = np.zeros(len(data_y))
-            for i in range(len(np.unique(data_y))):
-                print('{} -----------> {}'.format(np.unique(data_y)[i], i))
-                index = np.where(data_y == np.unique(data_y)[i])[0]
-                y[index] = i
-            data_y = y 
-            print('--------------------------------')
-
-    else:
-        raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
     
-    if impute is False and optimize is False:
-        print("Returning base model...")
-        model.fit(data_x, data_y)
-        return model 
-
-    if impute:
-        if imp_method == 'KNN':
-            data, imputer = KNN_imputation(data=data_x, imputer=None)
-        elif imp_method == 'MissForest':
-            warn('MissForest imputation refits every time, do not use to transform new, unseen data; use KNN instead.')
-            data, imputer = MissForest_imputation(data=data_x)
-        else:
-            raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
-        
-        if optimize:
-            data_x = data
-        else:
-            model.fit(data, data_y)
-            return model, imputer
-
-    features_index = boruta_opt(data_x, data_y)
-    model, best_params = hyper_opt(data_x[:,features_index], data_y, clf=clf, n_iter=n_iter)
-    model.fit(data_x[:,features_index], data_y)
-
-    if save_model:
-        print("No path specified, saving model to local home directory.")
-        path = str(Path.home())+'/MicroLIA_Model'
-    joblib.dump(model, path)
-
-    return model, imputer, features_index
-
-def predict(time, mag, magerr, model, imputer=None, feats_to_use=None, convert=True, zp=24):
-    """
-    Predics the class label of new, unseen data.
-
-    Args:
-        time (ndarray): Array of observation timestamps.
-        mag (ndarray): Array of observed magnitudes.
-        magerr (ndarray): Array of corresponding magnitude errors.
-        model (object): The machine learning model to use for predictions.
-        imputer: The imputer to use for imputation transformations.
-            Defaults to None, in which case no imputation is performed.
-        feats_to_use (ndarray): Array containing indices of features
-            to use. This will be used to index the columns in the data array.
-            Defaults to None, in which case all columns in the data array are used.
-        convert (bool, optional): If False the features are computed with the input magnitudes.
-            Defaults to True to convert and compute in flux. 
-        zp (float): Zeropoint of the instrument, used to convert from magnitude
-            to flux. Defaults to 24.
-
     Returns:
-        Array containing the classes and the corresponding probability predictions.
+        Trained machine learning model.
+
     """
+    def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25, save_model=False):
+        self.data_x = data_x
+        self.data_y = data_y
+        self.clf = clf
+        self.optimize = optimize 
+        self.impute = impute
+        self.imp_method = imp_method
+        self.n_iter = n_iter
+        self.save_model = save_model
 
-    if len(mag) < 30:
-        warn('The number of data points is low -- results may be unstable')
+        self.model = None
+        self.imputer = None
+        self.feats_to_use = None
 
-    classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
+    def create(self):
+        """
+        Creates the machine learning engine, current options are either a
+        Random Forest or a Neural Network classifier. 
+        
+        Example:
+            If the impute and optimize arguments are set to False, only the Random Forest
+            classifier will be returned.
 
-    stat_array=[]
-    
-    if imputer is None and feats_to_use is None:
-        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp))
-        pred = model.predict_proba(stat_array)
+            >>> classifier = create(data_x, data_y, impute=False, optimize=False)
+
+            If impute=True, the imputer will also be returned which is necessary to 
+            properly transform unseen, new data.
+
+            >>> classifier, imputer = create(data_x, data_y, impute=True, optimize=False)
+
+            Lastly, if optimize=True, the index of the useful features is also returned.
+
+            >>> classifier, index = create(data_x, data_y, impute=False, optimize=True)
+
+            By default, impute and optimize are set to True, therefore three items are returned.
+
+            >>> classfier, imputer, index = create(data_x, data_y)
+
+        Args:
+            data_x (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
+            data_y (ndarray, str): 1D array containing the corresponing labels.
+            clf (str): The machine learning classifier to optimize. Can either be
+                'rf' for Random Forest, 'nn' for Neural Network, or 'xgb' for Extreme Gradient Boosting. 
+                Defaults to 'rf'.
+            optimize (bool): If True the Boruta algorithm will be run to identify the features
+                that contain useful information, after which the optimal Random Forest hyperparameters
+                will be calculated using Bayesian optimization. 
+            impute (bool): If False no data imputation will be performed. Defaults to True,
+                which will result in two outputs, the classifier and the imputer to save
+                for future transformations. 
+            imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
+                neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
+                algorithm. Defaults to 'KNN'.
+            n_iter (int, optional): The maximum number of iterations to perform during 
+                the hyperparameter search. Defaults to 25. 
+            save_model (bool, optional): If True the machine learning model will be saved to the
+                local home directory. Defaults to False.
+            
+        Note:
+            If save_model=True, the path argument must be the absolute path, including the filename,
+            of where to save the model. If path=None the file will be saved to the local home directory.
+
+            This file can be loaded in the future and used to make predictions
+            
+            >>> import joblib
+            >>> 
+            >>> model = joblib.load(path)
+            >>> model.predict(time, mag, magerr, model=model)
+
+        Returns:
+            Random Forest classifier model created with scikit-learn. If optimize=True, this
+            model will already include the optimal hyperparameters. 
+        """
+
+        if self.data_x.shape[0] >= 5e3 and self.optimize is True:
+            warn('Large dataset detected, optimization may take days...')
+            
+        if self.clf == 'rf':
+            model = RandomForestClassifier()
+        elif self.clf == 'nn':
+            model = MLPClassifier()
+        elif self.clf == 'xgb':
+            model = XGBClassifier()
+            if all(isinstance(val, (int, str)) for val in self.data_y):
+                print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
+                print('________________________________')
+                y = np.zeros(len(self.data_y))
+                for i in range(len(np.unique(self.data_y))):
+                    print('{} -----------> {}'.format(np.unique(self.data_y)[i], i))
+                    index = np.where(self.data_y == np.unique(self.data_y)[i])[0]
+                    y[index] = i
+                self.data_y = y 
+                print('--------------------------------')
+
+        else:
+            raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
+        
+        if self.impute is False and self.optimize is False:
+            print("Returning base model...")
+            model.fit(self.data_x, self.data_y)
+            self.model = model
+            return
+            #return model 
+
+        if self.impute:
+            if self.imp_method == 'KNN':
+                data, self.imputer = KNN_imputation(data=self.data_x, imputer=None)
+            elif self.imp_method == 'MissForest':
+                warn('MissForest does not create imputer, it re-fits every time therefore cannot be used to impute new data! Returning imputer=None.')
+                data, self.imputer = MissForest_imputation(data=self.data_x), None 
+            else:
+                raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
+            
+            if self.optimize:
+                self.data_x = data
+            else:
+                model.fit(data, self.data_y)
+                self.model = model 
+                return
+                #return model, imputer
+
+        self.feats_to_use = borutashap_opt(self.data_x, self.data_y)
+        self.model, best_params = hyper_opt(self.data_x[:,self.feats_to_use], self.data_y, clf=self.clf, n_iter=self.n_iter)
+        print("Fitting and returning final model...")
+        self.model.fit(self.data_x[:,self.feats_to_use], self.data_y)
+        if self.save_model:
+            print("Saving 'MicroLIA_Model' to local home directory.")
+            path = str(Path.home())+'/MicroLIA_Model'
+            joblib.dump(self.model, path)
+        print('Optimization complete!')
+        return
+        #return model, imputer, features_index
+
+    def predict(self, time, mag, magerr, convert=True, zp=24):
+        """
+        Predics the class label of new, unseen data.
+
+        Args:
+            time (ndarray): Array of observation timestamps.
+            mag (ndarray): Array of observed magnitudes.
+            magerr (ndarray): Array of corresponding magnitude errors.
+            model (object): The machine learning model to use for predictions.
+            imputer: The imputer to use for imputation transformations.
+                Defaults to None, in which case no imputation is performed.
+            feats_to_use (ndarray): Array containing indices of features
+                to use. This will be used to index the columns in the data array.
+                Defaults to None, in which case all columns in the data array are used.
+            convert (bool, optional): If False the features are computed with the input magnitudes.
+                Defaults to True to convert and compute in flux. 
+            zp (float): Zeropoint of the instrument, used to convert from magnitude
+                to flux. Defaults to 24.
+
+        Returns:
+            Array containing the classes and the corresponding probability predictions.
+        """
+
+        if len(mag) < 30:
+            warn('The number of data points is low -- results may be unstable')
+
+        classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
+
+        stat_array=[]
+        
+        if self.imputer is None and self.feats_to_use is None:
+            stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp))
+            pred = self.model.predict_proba(stat_array)
+            return np.c_[classes, pred[0]]
+        
+        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, feats_to_use=self.feats_to_use))
+        
+        if self.imputer is not None:
+            stat_array = self.imputer.transform(stat_array)
+        pred = self.model.predict_proba(stat_array)
+
         return np.c_[classes, pred[0]]
-    
-    stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, feats_to_use=feats_to_use))
-    
-    if imputer is not None:
-        stat_array = imputer.transform(stat_array)
-    pred = model.predict_proba(stat_array)
 
-    return np.c_[classes, pred[0]]
+    def plot_tsne(self, norm=False, pca=False, title='Feature Parameter Space'):
+        """
+        Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
-def plot_tsne(data_x, data_y, norm=False, pca=False, title='Segmentation Parameter Space'):
-    """
-    Plots a t-SNE projection using the sklearn.manifold.TSNE() method
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-        norm (bool): If True the data will be min-max normalized. Defaults
-            to False.
-        pca (bool): If True the data will be fit to a Principal Component
-            Analysis and all of the corresponding principal components will 
-            be used to generate the t-SNE plot. Defaults to False.
-        title (str): Title 
-    Returns:
-        AxesImage. 
-    """
-    if len(data_x) > 1e3:
-        method = 'barnes_hut' #Scales with O(N)
-    else:
-        method = 'exact' #Scales with O(N^2)
+        Args:
+            data_x (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
+            data_y (ndarray, str): 1D array containing the corresponing labels.
+            norm (bool): If True the data will be min-max normalized. Defaults
+                to False.
+            pca (bool): If True the data will be fit to a Principal Component
+                Analysis and all of the corresponding principal components will 
+                be used to generate the t-SNE plot. Defaults to False.
+            title (str): Title 
+        Returns:
+            AxesImage. 
+        """
+        if np.any(np.isnan(self.data_x)):
+            print('Automatically imputing NaN values with KNN imputation.')
+            data = KNN_imputation(data=self.data_x)[0]
+        else:
+            data = self.data_x
 
-    if norm:
-        scaler = MinMaxScaler()
-        data_x = scaler.fit_transform(data_x)
+        if len(data) > 5e3:
+            method = 'barnes_hut' #Scales with O(N)
+        else:
+            method = 'exact' #Scales with O(N^2)
 
-    if np.any(np.isnan(data_x)):
-        print('Automatically imputing NaN values with the MissForest algorithm.')
-        data_x = MissForest_imputation(data=data_x)
+        if norm:
+            scaler = MinMaxScaler()
+            scaler.fit_transform(data)
 
-    if pca:
-        pca_transformation = decomposition.PCA(n_components=data_x.shape[1], whiten=True, svd_solver='auto')
-        pca_transformation.fit(data_x) 
-        data_x = pca_transformation.transform(data_x)
-    
-    feats = TSNE(n_components=2, method=method, learning_rate=1000, 
-        perplexity=35, init='random').fit_transform(data_x)
-    x, y = feats[:,0], feats[:,1]
- 
-    markers = ['o', '+', '*', 's', 'v', '.', 'x', 'h', 'p', '<', '>']
-    feats = np.unique(data_y)
+        if pca:
+            pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
+            pca_transformation.fit(data) 
+            data = pca_transformation.transform(data)
 
-    for count, feat in enumerate(feats):
-        if count+1 > len(markers):
-            count = -1
-        mask = np.where(data_y == feat)[0]
-        plt.scatter(x[mask], y[mask], marker=markers[count], label=str(feat), alpha=0.7)
+        feats = TSNE(n_components=2, method=method, learning_rate=1000, 
+            perplexity=35, init='random').fit_transform(data)
+        x, y = feats[:,0], feats[:,1]
+     
+        markers = ['o', '+', '*', 's', 'v', '.', 'x', 'h', 'p', '<', '>']
+        feats = np.unique(self.data_y)
 
-    plt.legend(loc='upper right', prop={'size': 8})
-    plt.title(title)
-    plt.show()
+        for count, feat in enumerate(feats):
+            if count+1 > len(markers):
+                count = -1
+            mask = np.where(self.data_y == feat)[0]
+            plt.scatter(x[mask], y[mask], marker=markers[count], label=str(feat), alpha=0.7)
 
-def plot_conf_matrix(classifier, data_x, data_y, norm=False, pca=False, k_fold=10, normalize=True, classes=["DIFFUSE","OTHER"], title='Confusion matrix'):
-    """
-    Returns a confusion matrix with k-fold validation.
+        plt.legend(loc='upper right', prop={'size': 8})
+        plt.title(title)
+        plt.show()
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-        norm (bool): If True the data will be min-max normalized. Defaults
-            to False.
-        pca (bool): If True the data will be fit to a Principal Component
-            Analysis and all of the corresponding principal components will 
-            be used to evaluate the classifier and construct the matrix. 
-            Defaults to False.
-        k_fold (int, optional): The number of cross-validations to perform.
-            The output confusion matrix will display the mean accuracy across
-            all k_fold iterations. Defaults to 10.
-        normalize (bool, optional): If False the confusion matrix will display the
-            total number of objects in the sample. Defaults to True, in which case
-            the values are normalized between 0 and 1.
-        classes (list): A list containing the label of the two training bags. This
-            will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
-        title (str, optional): The title of the output plot. 
+    def plot_conf_matrix(self, norm=False, pca=False, k_fold=10, normalize=True, title='Confusion matrix'):
+        """
+        Returns a confusion matrix with k-fold validation.
 
-    Returns:
-        AxesImage.
-    """
+        Args:
+            data_x (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
+            data_y (ndarray, str): 1D array containing the corresponing labels.
+            norm (bool): If True the data will be min-max normalized. Defaults
+                to False.
+            pca (bool): If True the data will be fit to a Principal Component
+                Analysis and all of the corresponding principal components will 
+                be used to evaluate the classifier and construct the matrix. 
+                Defaults to False.
+            k_fold (int, optional): The number of cross-validations to perform.
+                The output confusion matrix will display the mean accuracy across
+                all k_fold iterations. Defaults to 10.
+            normalize (bool, optional): If False the confusion matrix will display the
+                total number of objects in the sample. Defaults to True, in which case
+                the values are normalized between 0 and 1.
+            classes (list): A list containing the label of the two training bags. This
+                will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
+            title (str, optional): The title of the output plot. 
 
-    if len(classes) != 2:
-        raise ValueError('Only two training classes are currently supported.')
-
-    if norm:
-        data_x = min_max_norm(data_x)
-
-    if pca:
-        pca_transformation = decomposition.PCA(n_components=len(data_x[0]), whiten=True, svd_solver='auto')
-        pca_transformation.fit(data_x) 
-        pca_data = pca_transformation.transform(data_x)
-        data_x = np.asarray(pca_data).astype('float64')
-    
-    predicted_target, actual_target = evaluate_model(classifier, data_x, data_y, normalize=normalize, k_fold=k_fold)
-    generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title)
-
-def plot_roc_curve(classifier, data_x, data_y, k_fold=10, title="Receiver Operating Characteristic Curve"):
-    """
-    Plots ROC curve with k-fold cross-validation, as such the 
-    standard deviation variations are plotted.
-    
-    Example:
-        To assess the performance of a random forest classifier (created
-        using the scikit-learn implementation) we can run the following:
+        Returns:
+            AxesImage.
+        """
+        classes = [str(label) for label in np.unique(self.data_y)]
+        if np.any(np.isnan(self.data_x)):
+            print('Automatically imputing NaN values with KNN imputation.')
+            data = KNN_imputation(data=self.data_x)[0]
+        else:
+            data = self.data_x
+     
+        if norm:
+            scaler = MinMaxScaler()
+            scaler.fit_transform(data)
         
-        >>> from sklearn.ensemble import RandomForestClassifier
-        >>> classifier = RandomForestClassifier()
-        >>> plot_roc_curve(classifier, data_x, data_y)
-    
-    Args:
-        classifier: The machine learning classifier to optimize.
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-        k_fold (int, optional): The number of cross-validations to perform.
-            The output confusion matrix will display the mean accuracy across
-            all k_fold iterations. Defaults to 10.
-        title (str, optional): The title of the output plot. 
-    
-    Returns:
-        AxesImage
-    """
-    
-    cv = StratifiedKFold(n_splits=k_fold)
-    
-    tprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
+        if pca:
+            pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
+            pca_transformation.fit(data) 
+            pca_data = pca_transformation.transform(data)
+            data = np.asarray(pca_data).astype('float64')
 
-    train = data_x
-    fig, ax = plt.subplots()
-    for i, (data_x, test) in enumerate(cv.split(train, data_y)):
-        classifier.fit(train[data_x], data_y[data_x])
-        viz = RocCurveDisplay.from_estimator(
-            classifier,
-            train[test],
-            data_y[test],
-            name="ROC fold {}".format(i+1),
-            alpha=0.3,
-            lw=1,
-            ax=ax,
+        predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
+        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title)
+
+    def plot_roc_curve(self, k_fold=10, title="Receiver Operating Characteristic Curve"):
+        """
+        Plots ROC curve with k-fold cross-validation, as such the 
+        standard deviation variations are plotted.
+        
+        Example:
+            To assess the performance of a random forest classifier (created
+            using the scikit-learn implementation) we can run the following:
+            
+            >>> from sklearn.ensemble import RandomForestClassifier
+            >>> classifier = RandomForestClassifier()
+            >>> plot_roc_curve(classifier, data_x, data_y)
+        
+        Args:
+            classifier: The machine learning classifier to optimize.
+            data_x (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
+            data_y (ndarray, str): 1D array containing the corresponing labels.
+            k_fold (int, optional): The number of cross-validations to perform.
+                The output confusion matrix will display the mean accuracy across
+                all k_fold iterations. Defaults to 10.
+            title (str, optional): The title of the output plot. 
+        
+        Returns:
+            AxesImage
+        """
+        if np.any(np.isnan(self.data_x)):
+            print('Automatically imputing NaN values with KNN imputation.')
+            data = KNN_imputation(data=self.data_x)[0]
+        else:
+            data = self.data_x
+        
+        model0 = self.model
+        if len(np.unique(self.data_y)) != 2:
+            X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=0.2, random_state=0)
+            model0.fit(X_train, y_train)
+            y_probas = model0.predict_proba(X_test)
+            skplt.metrics.plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap= 'cividis', plot_macro=False, plot_micro=False)
+            plt.show()
+            return
+
+        cv = StratifiedKFold(n_splits=k_fold)
+        
+        tprs = []
+        aucs = []
+        mean_fpr = np.linspace(0, 1, 100)
+
+        train = data
+        fig, ax = plt.subplots()
+        for i, (data_x, test) in enumerate(cv.split(train, self.data_y)):
+            model0.fit(train[data_x], self.data_y[data_x])
+            viz = RocCurveDisplay.from_estimator(
+                model0,
+                train[test],
+                self.data_y[test],
+                name="ROC fold {}".format(i+1),
+                alpha=0.3,
+                lw=1,
+                ax=ax,
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+        ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Random Chance", alpha=0.8)
+
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            lw=2,
+            alpha=0.8,
         )
-        interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
-        interp_tpr[0] = 0.0
-        tprs.append(interp_tpr)
-        aucs.append(viz.roc_auc)
 
-    ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Random Chance", alpha=0.8)
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1 std. dev.",
+        )
 
-    mean_tpr = np.mean(tprs, axis=0)
-    mean_tpr[-1] = 1.0
-    mean_auc = auc(mean_fpr, mean_tpr)
-    std_auc = np.std(aucs)
-    ax.plot(
-        mean_fpr,
-        mean_tpr,
-        color="b",
-        label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
-        lw=2,
-        alpha=0.8,
-    )
+        ax.set(
+            xlim=[0, 1.0],
+            ylim=[0.0, 1.0],
+            title="Receiver Operating Characteristic Curve",
+        )
+        ax.legend(loc="lower right")
+        plt.ylabel('True Positive Rate', size=14)
+        plt.xlabel('False Positive Rate', size=14)
+        plt.title(label=title,fontsize=18)
+        plt.show()
 
-    std_tpr = np.std(tprs, axis=0)
-    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-    ax.fill_between(
-        mean_fpr,
-        tprs_lower,
-        tprs_upper,
-        color="grey",
-        alpha=0.2,
-        label=r"$\pm$ 1 std. dev.",
-    )
-
-    ax.set(
-        xlim=[0, 1.0],
-        ylim=[0.0, 1.0],
-        title="Receiver Operating Characteristic Curve",
-    )
-    ax.legend(loc="lower right")
-    plt.ylabel('True Positive Rate', size=14)
-    plt.xlabel('False Positive Rate', size=14)
-    plt.title(label=title,fontsize=18)
-    plt.show()
-
+#Helper functions below to generate confusion matrix
 def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
     """
     Cross-checks model accuracy and outputs both the predicted

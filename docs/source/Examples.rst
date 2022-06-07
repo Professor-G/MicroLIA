@@ -18,7 +18,7 @@ Adaptive cadence is important as this allows MicroLIA to detect microlensing eve
     import numpy as np
     from pathlib import Path
 
-    path = str(Path.home())+'/OGLE_II/data/'
+    path = str(Path.home())+'/OGLE_II/'
 
     filenames = os.listdir(path)
 
@@ -61,9 +61,7 @@ To be more accurate we will set these optional parameters, and even include a no
 
 .. figure:: _static/simulation.jpg
     :align: center
-
 |
-
 This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file as will be shown in the next step.
 
 There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
@@ -77,9 +75,9 @@ We can load this file and create our data_x and data_y arrays, although note abo
 
 .. code-block:: python
    
-   home = str(Path.home())+'/' #By default the file is saved in the home directory
+   home = str(Path.home()) #By default the file is saved in the home directory
 
-   data = np.loadtxt(home+'all_features.txt', dtype=str)
+   data = np.loadtxt(home+'/all_features.txt', dtype=str)
    data_x = data[:,2:].astype('float')
    data_y = data[:,0]
    
@@ -101,7 +99,7 @@ Since these are turned on by default, we can create and optimize a Random Forest
 
    model, imputer, feats_to_use = models.create(data_x, data_y, clf='rf')
 
-To avoid overfitting influencing the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take over an hour, depending on the size of the training set and the algorithm being optimized. 
+To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take over an hour depending on the size of the training set and the algorithm being optimized. 
 
 Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. Since neural networks require more tuning to properly identify the optimal number of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters:
 
@@ -129,7 +127,7 @@ With the optimized model saved, as well as our imputer and indices of features t
 
    prediction = models.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
 
-Note that since by default convert=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example zp=22. 
+Note that by default convert=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example zp=22. 
 
 The prediction output is the lable probability prediction of each class, ordered in alphabetical order:
 
@@ -205,3 +203,45 @@ OGLE II: From Start to Finish
 
    accuracy = len(np.argwhere(predictions == 'ML'))/len(predictions)
    print('Total accuracy :{}'.format(np.round(accuracy, 4)))
+
+Misc: Data Visualization
+-----------
+The accuracy that's displayed while creating and tuning the classifier is the training set accuracy. The training set consists of all simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module:
+
+.. code-block:: python
+
+   models.plot_conf_matrix(model, data_x, data_y)
+
+We can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space, we will set norm=True so as to min-max normalize all the features:
+
+.. code-block:: python
+
+   models.plot_tsne(data_x, data_y, norm=True)
+
+It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE II' and append these to the data_y array.
+
+.. code-block:: python
+
+   from MicroLIA.extract_features import extract_all
+
+   ogle_data_x=[]
+   ogle_data_y=[]
+
+   for name in filenames:
+      data = np.loadtxt(path+name)
+      time, mag, magerr = data[:,0], data[:,1], data[:,2]
+      stats = extract_all(time, mag, magerr, feats_to_use=feats_to_use, zp=22)
+
+      ogle_stats.append(stats)
+      ogle_data_y.append('OGLE II')
+
+   data_x = np.r_[data_x, ogle_data_x]
+   data_y = np.r_[data_y, ogle_data_y]
+
+   models.plot_tsne(data_x, data_y, norm=True)
+
+
+   
+
+
+

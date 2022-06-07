@@ -26,7 +26,7 @@ from MicroLIA import features
     
 def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
     n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, 
-    filename='', test=False, save_file=True):
+    filename='', save_file=True):
     """
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
@@ -74,9 +74,11 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         considered during the microlensing simulations. The indivial
         tE per simulation will be selected from a uniform distribution
         between these two values.
-    test: bool, optional
-        If False there will be no classification reports after training.
-        Defaults to True.
+    filename: str, optional
+        The name to be appended to the lightcurves.fits and the all_features.txt
+        files, only relevant if save_file=True. If no argument is input the
+        files will be saved with the default names only.
+
     save_file: bool
         If True the lightcurve.fits and all_features.txt files will be
         saved to the home directory. Defaults to True.
@@ -110,7 +112,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
     source_class_list=[]
     stats_list = []
 
-    progess_bar = bar.FillingSquaresBar('Simulating variables...', max=n_class)
+    progess_bar = bar.FillingSquaresBar('Simulating variables......', max=n_class)
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
@@ -138,7 +140,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         progess_bar.next()
     progess_bar.finish()
 
-    progess_bar = bar.FillingSquaresBar('Simulating constants...', max=n_class)
+    progess_bar = bar.FillingSquaresBar('Simulating constants......', max=n_class)
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
@@ -166,7 +168,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
         progess_bar.next()  
     progess_bar.finish()
 
-    progess_bar = bar.FillingSquaresBar('Simulating CV...', max=n_class)   
+    progess_bar = bar.FillingSquaresBar('Simulating CV.............', max=n_class)   
     for k in range(1,n_class+1):
         for j in range(100):
             if j > 20:
@@ -248,7 +250,7 @@ def create(timestamps, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60,
                 raise RuntimeError('Unable to simulate proper ML in 100 tries with current cadence -- inspect cadence and/or noise model and try again.')
     progess_bar.finish()
     
-    progess_bar = bar.FillingSquaresBar('Simulating LPV...', max=n_class)  
+    progess_bar = bar.FillingSquaresBar('Simulating LPV............', max=n_class)  
     resource_package = __name__
     resource_path = '/'.join(('data', 'Miras_vo.xml'))
     template = pkg_resources.resource_filename(resource_package, resource_path)
