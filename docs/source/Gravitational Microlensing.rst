@@ -36,8 +36,9 @@ Microlensing refers to the particular case of gravitational lensing in which the
     :align: center
     :class: with-shadow with-border
     :width: 1200px
-    
+
     Figure 3: Geometry of distances during a microlensing event, observer is denoted as O. Image from the book on gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
+
 
 
 .. figure:: _static/galaxy_ml.png
