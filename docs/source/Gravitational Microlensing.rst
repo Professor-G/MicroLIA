@@ -54,9 +54,9 @@ In the event that the source star and the lens star are perfectly aligned, the i
 where :math:`c` is the speed of light, :math:`M` is the lens mass, :math:`G` is Newton's gravitational constant and 
 
 .. math::
-	D = \frac{D_{LS}D_{L}}{D_{S}} 
+	D = \frac{D_{LS}D_{L}}{D_{S}}
 
-where :math::`D_{LS}` is the distance between the lens and the source, :math::`D_{L}` the distance to the lens star, and :math::`D_{S}` the distance to the source. A display of this geometry is in 3. Given the large distances involved, we can use the small angle approximation, and can also assume that the stars are point sources. Following is a derivation of the microlensing parameters assuming the event is a Point Source Point Lens (PSPL).
+where :math:`D_{LS}` is the distance between the lens and the source, :math:`D_{L}` the distance to the lens star, and :math:`D_{S}` the distance to the source. A display of this geometry is in 3. Given the large distances involved, we can use the small angle approximation, and can also assume that the stars are point sources. Following is a derivation of the microlensing parameters assuming the event is a Point Source Point Lens (PSPL).
 
 
 
