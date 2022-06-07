@@ -13,6 +13,7 @@ Gravitational microlensing occurs when the light from a foreground star (source 
 .. figure:: _static/exo.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 1: Microlensing lightcurve with planet detection. Note the blip on the curve caused by additional magnification from the planet, image from the book `Detection of Extrasolar Planets by Gravitational Microlensing <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
 
@@ -20,6 +21,7 @@ Gravitational microlensing occurs when the light from a foreground star (source 
 .. figure:: _static/ML_diagram.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 2: Diagram of gravitational microlensing event as lensing star aligns between the observer and the source, image from the 2003 book on Gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
@@ -33,13 +35,15 @@ Microlensing refers to the particular case of gravitational lensing in which the
 .. figure:: _static/distance.png
     :align: center
     :class: with-shadow with-border
-
+    :width: 1200px
+    
     Figure 3: Geometry of distances during a microlensing event, observer is denoted as O. Image from the book on gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
 
 .. figure:: _static/galaxy_ml.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from the book on Gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
@@ -105,6 +109,7 @@ Figure 5 displays the images created during a microlensing event. The left diagr
 .. figure:: _static/solid_angle_diagram.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by `Hartle <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
 
@@ -173,6 +178,7 @@ Thus a PSPL event can be described by three parameters, the timescale (:math:`t_
 .. figure:: _static/diagram2.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 6: The geometry of a microlensing event as viewed from the perspective of the observer, source pictured at :math:`x = t_0`. Setting the lens (:math:`L`) at the origin, and with a fixed :math:`u_0`, :math:`u(t)` can be be described by the derived equation. The total time it takes to cross the angular Einstein radius is :math:`2t_E`. Modified image, original from `Gaudi <http://adsabs.harvard.edu/abs/2010arXiv1002.0332G>`_.
 
@@ -195,7 +201,7 @@ The PSPL model thus far assumes that the source flux in the CCD frame is isolate
 .. figure:: _static/blending.png
     :align: center
     :class: with-shadow with-border
-
+    :width: 1200px
 
     Figure 7: Blending occurs when neighboring stars overlap in the CCD frame. Only the light from one star exhibits microlensing behavior, making it important to subtract the additional blend flux to model the event correctly.
 
@@ -220,6 +226,7 @@ In the event that the source causing the blending is not constant (e.g. variable
 .. figure:: _static/blendinggraph.png
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 8: Baseline magnitude as a function of the blending coefficient :math:`b`. This microlensing data was taken by OGLE III and compiled between 2003 and 2008 by by `Richards et al 2011 <https://arxiv.org/abs/1101.1959>`_. For modeling events, we took :math:`1 \leq b \leq 10`.
 
@@ -234,6 +241,7 @@ Planetary Perturbations
 .. figure:: _static/planetarypert.jpg
     :align: center
     :class: with-shadow with-border
+    :width: 1200px
 
     Figure 9: Example of a microlensing lightcurve with rare double planetary perturbation. An increase in magnification occurs when a planet is near the Major image, with a decrease occuring when a planet gets near the Minor image. We can approximate :math:`t_p` as the FWHM of the planetary signal. Modified image, original by `J Yee <http://www.microlensing-source.org/concept/extracting-parameters/>`_.
 
