@@ -107,7 +107,7 @@ Figure 5 displays the images created during a microlensing event. The left diagr
     :class: with-shadow with-border
     :width: 1200px
 
-    Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by Hartle.
+    Figure 5: Image of galaxy if lens (located at :math:`L`) was not present (left). The respective images (at :math:`\theta\pm`) during the presence of a lens (right). The source is located at an angle :math:`\beta` from the observer-lens axis with angular dimensions of :math:`\Delta \phi` and :math:`\Delta \theta\pm`. Note that the azimuthal width (:math:`\Delta \phi`) of the image, whether located at :math:`\theta \pm`, is always conserved. Image from the 2003 book by Hartle.
 
 
 Using this we can define the magnification of the event to be the ratio of non-lens to lensed flux -- this yields a proportionality between solid angles,
@@ -216,7 +216,7 @@ Taking :math:`b = \frac{f_b}{f_s}`, :math:`A_{obs}(t)` becomes
 .. math::
 	A_{obs}(t) = \frac{A(t)+b}{1 + b}.
 
-In the event that the source causing the blending is not constant (e.g. variable star), :math:`f_b` must be an appropriate function of time, like a sinusoid for a long period variable star. Ultimately, accounting for blending requires guessing initial event parameters to derive an initial model for :math:`A(t)`, and inferring :math:`f_b` and :math:`f_s` by applying a :math:`\chi^2` test. While constraining :math:`b` through the fitting process is the most common method for dealing with blending, it is also possible to actually resolve the stars contributing $f_b$ through the use of space or large ground-based telescopes. For our purposes of modeling microlensing, we only had to set a value for the blending coefficient :math:`b`. From a previous analysis of microlensing events performed by `Richards et al 2011 <https://arxiv.org/abs/1101.1959>`_, we determined a blending coefficient between 1 and 10 was reasonable for modeling PSPL events (Figure 8).
+In the event that the source causing the blending is not constant (e.g. variable star), :math:`f_b` must be an appropriate function of time, like a sinusoid for a long period variable star. Ultimately, accounting for blending requires guessing initial event parameters to derive an initial model for :math:`A(t)`, and inferring :math:`f_b` and :math:`f_s` by applying a :math:`\chi^2` test. While constraining :math:`b` through the fitting process is the most common method for dealing with blending, it is also possible to actually resolve the stars contributing :math:`f_b` through the use of space or large ground-based telescopes. For our purposes of modeling microlensing, we only had to set a value for the blending coefficient :math:`b`. From a previous analysis of microlensing events performed by `Richards et al 2011 <https://arxiv.org/abs/1101.1959>`_, we determined a blending coefficient between 1 and 10 was reasonable for modeling PSPL events (Figure 8).
 
 
 .. figure:: _static/blendinggraph.png
