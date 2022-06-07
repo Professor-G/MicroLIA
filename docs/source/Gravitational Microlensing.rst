@@ -30,7 +30,15 @@ Microlensing Theory
 Microlensing refers to the particular case of gravitational lensing in which the images produced are so close together that they appear as one image as observed from Earth. This is caused by the position of the source and lens star, as during the event the source star aligns behind the lens star (see Figure 3). As this occurs, the light from the source passes on all sides of the lens star, creating several distorted images of the source star. How many images appear during these events is in turn dependent on the number of lensing masses involved, with a single lens producing two images. 
 
 
-.. figure:: _static/galaxy_ml.png
+.. figure:: _static/ML_diagram.png
+    :align: center
+    :width: 1200px
+
+    Figure 3: Geometry of distances during a microlensing event, observer is denoted as O. Image from the book on gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
+
+
+
+.. figure:: _static/exo.png
     :align: center
     :width: 1200px
 
