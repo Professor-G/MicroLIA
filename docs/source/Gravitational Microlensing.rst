@@ -12,7 +12,6 @@ Gravitational microlensing occurs when the light from a foreground star (source 
 
 .. figure:: _static/exo.png
     :align: center
-    :class: with-shadow with-border
     :width: 1200px
 
     Figure 1: Microlensing lightcurve with planet detection. Note the blip on the curve caused by additional magnification from the planet, image from the book `Detection of Extrasolar Planets by Gravitational Microlensing <https://citations.springernature.com/item?doi=10.1007/978-3-540-74008-7_3>`_.
@@ -20,7 +19,6 @@ Gravitational microlensing occurs when the light from a foreground star (source 
 
 .. figure:: _static/ML_diagram.png
     :align: center
-    :class: with-shadow with-border
     :width: 1200px
 
     Figure 2: Diagram of gravitational microlensing event as lensing star aligns between the observer and the source, image from the 2003 book on Gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
@@ -33,21 +31,14 @@ Microlensing refers to the particular case of gravitational lensing in which the
 
 
 .. figure:: _static/distance.png
-    :align: center
-    :class: with-shadow with-border
-    :width: 600px
-    :height: 600px
+    :width: 1200px
 
     Figure 3: Geometry of distances during a microlensing event, observer is denoted as O. Image from the book on gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
 
 
 .. figure:: _static/galaxy_ml.png
-    :align: center
-    :class: with-shadow with-border
-    :width: 600px
-    :height: 600px
-
+    :width: 1200px
     Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from the book on gravity by `Hartle <https://ui.adsabs.harvard.edu/abs/2003gieg.book.....H/abstract>`_.
 
 
