@@ -87,63 +87,10 @@ class classifier:
 
     def create(self):
         """
-        Creates the machine learning engine, current options are either a
-        Random Forest or a Neural Network classifier. 
-        
-        Example:
-            If the impute and optimize arguments are set to False, only the Random Forest
-            classifier will be returned.
-
-            >>> classifier = create(data_x, data_y, impute=False, optimize=False)
-
-            If impute=True, the imputer will also be returned which is necessary to 
-            properly transform unseen, new data.
-
-            >>> classifier, imputer = create(data_x, data_y, impute=True, optimize=False)
-
-            Lastly, if optimize=True, the index of the useful features is also returned.
-
-            >>> classifier, index = create(data_x, data_y, impute=False, optimize=True)
-
-            By default, impute and optimize are set to True, therefore three items are returned.
-
-            >>> classfier, imputer, index = create(data_x, data_y)
-
-        Args:
-            data_x (ndarray): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features.
-            data_y (ndarray, str): 1D array containing the corresponing labels.
-            clf (str): The machine learning classifier to optimize. Can either be
-                'rf' for Random Forest, 'nn' for Neural Network, or 'xgb' for Extreme Gradient Boosting. 
-                Defaults to 'rf'.
-            optimize (bool): If True the Boruta algorithm will be run to identify the features
-                that contain useful information, after which the optimal Random Forest hyperparameters
-                will be calculated using Bayesian optimization. 
-            impute (bool): If False no data imputation will be performed. Defaults to True,
-                which will result in two outputs, the classifier and the imputer to save
-                for future transformations. 
-            imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
-                neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
-                algorithm. Defaults to 'KNN'.
-            n_iter (int, optional): The maximum number of iterations to perform during 
-                the hyperparameter search. Defaults to 25. 
-            save_model (bool, optional): If True the machine learning model will be saved to the
-                local home directory. Defaults to False.
-            
-        Note:
-            If save_model=True, the path argument must be the absolute path, including the filename,
-            of where to save the model. If path=None the file will be saved to the local home directory.
-
-            This file can be loaded in the future and used to make predictions
-            
-            >>> import joblib
-            >>> 
-            >>> model = joblib.load(path)
-            >>> model.predict(time, mag, magerr, model=model)
+        Creates the machine learning engine.
 
         Returns:
-            Random Forest classifier model created with scikit-learn. If optimize=True, this
-            model will already include the optimal hyperparameters. 
+            Trained and optimized classifier.
         """
 
         if self.data_x.shape[0] >= 5e3 and self.optimize is True:
