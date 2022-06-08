@@ -41,7 +41,7 @@ With the lightcurves simulated and the feature matrix saved, we can create our c
 
       model = models.classifier(data_x, data_y)
       model.create()
-|
+      
 .. figure:: _static/optimize.png
     :align: center
 |
