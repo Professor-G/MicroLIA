@@ -121,7 +121,6 @@ class classifier:
             model.fit(self.data_x, self.data_y)
             self.model = model
             return
-            #return model 
 
         if self.impute:
             if self.imp_method == 'KNN':
@@ -132,15 +131,17 @@ class classifier:
             else:
                 raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
             
-            if self.optimize:
-                self.data_x = data
-            else:
+            if self.optimize is False:
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
-                #return model, imputer
 
-        self.feats_to_use = borutashap_opt(self.data_x, self.data_y)
+        self.feats_to_use = borutashap_opt(data, self.data_y)
+        if self.imp_method == 'KNN':
+            self.data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
+        elif self.imp_method == 'MissForest':
+            self.data_x, self.imputer = MissForest_imputation(data=self.data_x[:,self.feats_to_use]), None 
+
         self.model, best_params = hyper_opt(self.data_x[:,self.feats_to_use], self.data_y, clf=self.clf, n_iter=self.n_iter)
         print("Fitting and returning final model...")
         self.model.fit(self.data_x[:,self.feats_to_use], self.data_y)
@@ -150,7 +151,6 @@ class classifier:
             joblib.dump(self.model, path)
         print('Optimization complete!')
         return
-        #return model, imputer, features_index
 
     def predict(self, time, mag, magerr, convert=True, zp=24):
         """
