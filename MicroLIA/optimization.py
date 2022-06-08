@@ -118,8 +118,8 @@ class objective_rf(object):
     def __call__(self, trial):
         n_estimators = trial.suggest_int('n_estimators', 100, 3000)
         criterion = trial.suggest_categorical('criterion', ['gini', 'entropy'])
-        max_depth = trial.suggest_int('max_depth', 1, 25)
-        min_samples_split = trial.suggest_int('min_samples_split', 1, 25)
+        max_depth = trial.suggest_int('max_depth', 2, 25)
+        min_samples_split = trial.suggest_int('min_samples_split', 2, 25)
         min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 15)
         max_features = trial.suggest_int('max_features', 1, self.data_x.shape[1])
         bootstrap = trial.suggest_categorical('bootstrap', [True, False])

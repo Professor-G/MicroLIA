@@ -137,14 +137,18 @@ class classifier:
                 return
 
         self.feats_to_use = borutashap_opt(data, self.data_y)
+        #Re-construct the imputer with the selected features as
+        #new predictions will only compute these metrics, need to fit again!
         if self.imp_method == 'KNN':
             self.data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
         elif self.imp_method == 'MissForest':
             self.data_x, self.imputer = MissForest_imputation(data=self.data_x[:,self.feats_to_use]), None 
+        else: 
+            self.data_x = self.data_x[:,self.feats_to_use]
 
-        self.model, best_params = hyper_opt(self.data_x[:,self.feats_to_use], self.data_y, clf=self.clf, n_iter=self.n_iter)
+        self.model, best_params = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter)
         print("Fitting and returning final model...")
-        self.model.fit(self.data_x[:,self.feats_to_use], self.data_y)
+        self.model.fit(self.data_x, self.data_y)
         if self.save_model:
             print("Saving 'MicroLIA_Model' to local home directory.")
             path = str(Path.home())+'/MicroLIA_Model'
