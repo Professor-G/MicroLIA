@@ -196,7 +196,7 @@ class classifier:
             joblib.dump(self.imputer, path+'Imputer')
         if self.feats_to_use is not None:
             joblib.dump(self.feats_to_use, path+'Feats_Index')
-
+        print('Files saved in: {}'.format(path))
         return 
 
     def load(self, path=None):
@@ -286,14 +286,16 @@ class classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, norm=False, pca=False, title='Feature Parameter Space'):
+    def plot_tsne(self, x=None, y=None, norm=False, pca=False, title='Feature Parameter Space'):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
         Args:
-            data_x (ndarray): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features.
-            data_y (ndarray, str): 1D array containing the corresponing labels.
+            x (ndarray, optional): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features. If None then 
+                the data_y attribute will be used. Defaults to None.
+            y (ndarray, optional, str): 1D array containing the corresponing labels.
+                If None then the data_y attribute will be used. Defaults to None.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to False.
             pca (bool): If True the data will be fit to a Principal Component
@@ -303,11 +305,16 @@ class classifier:
         Returns:
             AxesImage. 
         """
+        if x is None:
+            x = self.data_x 
+        if y is None:
+            y = self.data_y
+
         if np.any(np.isnan(self.data_x)):
             print('Automatically imputing NaN values with KNN imputation.')
-            data = KNN_imputation(data=self.data_x)[0]
+            data = KNN_imputation(data=x)[0]
         else:
-            data = self.data_x
+            data = x
 
         if len(data) > 5e3:
             method = 'barnes_hut' #Scales with O(N)
