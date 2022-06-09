@@ -7,7 +7,7 @@ Welcome to MicroLIA's documentation!
 ===============================
 MicroLIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of MicroLIA supports two additional models: Extreme Gradient Boost and Neural Network. 
 
-Below is the outline of the program we have designed:
+You can find information on the program development in the `paper <https://arxiv.org/abs/2004.14347>`_.
 
 Installation
 ==================
