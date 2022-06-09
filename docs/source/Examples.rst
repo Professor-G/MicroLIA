@@ -264,7 +264,11 @@ The two features overlap, meaning our simulated microlensing lightcurves are cha
 
 Important Note
 -----------
-To re-iterate the importance of finely tuning the creation of the training data, below code used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated lightcurve with the real OGLE II microlensing events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne:
+To re-iterate the importance of finely tuning the creation of the training data, see the code below used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated lightcurve with the real OGLE II microlensing events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne:
+
+.. figure:: _static/tsne.png
+    :align: center
+|
 
 .. code-block:: python
 
@@ -324,12 +328,15 @@ To re-iterate the importance of finely tuning the creation of the training data,
      ogle_data_x.append(stats)
      ogle_data_y.append('OGLE ML')
 
+   ogle_data_x = np.array(ogle_data_x)
+   ogle_data_y = np.array(ogle_data_y)
+
    #Combine data again
    x = np.concatenate((data_x, ogle_data_x))
    y = np.r_[data_y, ogle_data_y]
 
    #Create model object
-   model = models.classifier(x[index], y[index])
+   model = models.classifier(x, y)
 
    #Call plot_tsne attribute
    model.plot_tsne()
