@@ -334,7 +334,7 @@ class classifier:
             perplexity=35, init='random').fit_transform(data)
         x, y = feats[:,0], feats[:,1]
      
-        markers = ['o', '+', '*', 's', 'v', '.', 'x', 'h', 'p', '<', '>']
+        markers = ['o', '+', 's', '*', 'v', '.', 'x', 'h', 'p', '<', '>']
         feats = np.unique(self.data_y)
 
         for count, feat in enumerate(feats):
