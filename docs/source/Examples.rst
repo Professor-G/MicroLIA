@@ -252,23 +252,13 @@ We can also plot a two-dimensional t-SNE projection, which requires only the dat
 
    model.plot_tsne(norm=True)
 
-It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE II' and will append to the data_y array.
 
-.. code-block:: python
-
-   from MicroLIA.extract_features import extract_all
-
-   model.plot_tsne(x=x, y=y, norm=True)
-
-The two features overlap, meaning our simulated microlensing lightcurves are characteristic of the real OGLE II microlensing events. 
+It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE ML' and will append to the data_y array. See following example.
 
 Important Note
 -----------
-To re-iterate the importance of finely tuning the creation of the training data, see the code below used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated lightcurve with the real OGLE II microlensing events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne:
+To re-iterate the importance of finely tuning the creation of the training data, see the code below used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated microlensing lightcurves with the real OGLE II events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne. If the parameters of our simulations and the true events inhabit the same parameter space, then this would indicate that our simulations are characteristic of what would be new, unseen data. 
 
-.. figure:: _static/tsne.png
-    :align: center
-|
 
 .. code-block:: python
 
@@ -342,6 +332,16 @@ To re-iterate the importance of finely tuning the creation of the training data,
    model.plot_tsne()
 
 
+.. figure:: _static/tsne_214.png
+    :align: center
+|
 
+In the above example n_class was set to 214 for both simulations, so as to match the number of true samples that we have. Given the randommness of the simulations, it is not surprising to see regions of no feature overlap. If we create new training sets with a higher n_class argument, we will more generally capture the microlensing parameter space and we would expect the OGLE microlensing to be completely encapsulated by the larger sample.
 
+If we run above code again with n_class=1000, the feature space looks like this:
 
+.. figure:: _static/tsne_1000.png
+    :align: center
+|
+
+Unlike simulations, real data can be messy and difficult to properly preprocess. If you notice a lot of misclassifications, it would be because the simulations don't reflect the real data; therefore it is good to double check by visualizing the high-dimensional feature space of our simulated and target lightcurves.
