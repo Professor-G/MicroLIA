@@ -210,9 +210,34 @@ The false-positive rate in this instance is ~0.03, very nice! But what if we now
 
 The best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. Sure enough, upon creating a new model with this new training data, the microlensing accuracy went back up to 0.96, and the false-alert rate among variables went back down to 0.03.
 
-WARNING: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
+IMPORTANT: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
 
-Misc: Visualizations
+Saving Models
+-----------
+Once a model is created we can save it with the save attribute, which can save the model, imputer, and feats_to_use. Unless a path argument is specified, the files are saved to a folder in the local home directory, which will print upon saving. 
+
+.. code-block:: python
+
+   model.save()
+
+To use the model in the future:
+
+.. code-block:: python
+   
+   model = models.classifier(data_x, data_y)
+   model.load()
+
+The load() attribute also takes an optional path argument, as by default it will look for the data in local home directory as well. Once loaded, the model object will contain the attributes that were saved
+
+.. code-block:: python"
+
+   print(model.model)
+   print(model.imputer)
+   print(model.feats_to_use)
+
+With these attributes set, we can run model.predict(), or any of the visualization methods described below.
+
+Data Visualization
 -----------
 The training set consists of only simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the k_fold parameter:
 
@@ -240,16 +265,14 @@ It would be nice to include the parameter space of the real OGLE II microlensing
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
       stats = extract_all(time, mag, magerr, feats_to_use=model.feats_to_use, zp=22)
 
-      ogle_stats.append(stats)
+      ogle_data_x.append(stats)
       ogle_data_y.append('OGLE II')
 
-   data_x = np.concatenate((data_x, ogle_data_x))
-   data_y = np.r_[data_y, ogle_data_y]
+   x = np.concatenate((data_x[:,model.feats_to_use], ogle_data_x))
+   y = np.r_[data_y, ogle_data_y]
 
-   models.plot_tsne(norm=True)
+   model.plot_tsne(x=x, y=y, norm=True)
 
-
-   
-
+The two features overlap, meaning our simulated microlensing lightcurves are characteristic of the real OGLE II microlensing events. 
 
 
