@@ -8,7 +8,7 @@ Each file contains three columns: time, mag, magerr
 
 We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we successfully recover.
 
-OGLE II: Training Set
+Training Set
 -----------
 Adaptive cadence is important as this allows MicroLIA to detect microlensing events even if the survey footprint is sparse. In this example we need to train MicroLIA using OGLE IV cadence, which we can take to be the timestamps of these 214 lightcurves. We will append the time array of each lightcurve to a list.
 
@@ -66,7 +66,7 @@ This will simulate the lightcurves for our training set, all of which will be sa
 There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
 
 
-OGLE II: Classification Engine
+Classification Engine
 -----------
 We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
@@ -118,7 +118,7 @@ There has been particular interest in the XGBoost algorithm, which can outperfor
 `For details please refer to the function documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_.
 
 
-OGLE II: Classification Accuracy
+Classification Accuracy
 -----------
 With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
 
@@ -200,6 +200,7 @@ Finally, we will create a new model and re-predict the class of these variables:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
       prediction = new_model.predict(time, mag, magerr, zp=22)
+
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    predictions = np.array(predictions)
@@ -212,7 +213,7 @@ The best course of action is to re-create the training set using the timestamps 
 
 IMPORTANT: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
 
-Saving Models
+Saving & Loading Models
 -----------
 Once a model is created we can save it with the save attribute, which can save the model, imputer, and feats_to_use. Unless a path argument is specified, the files are saved to a folder in the local home directory, which will print upon saving. 
 
@@ -257,22 +258,83 @@ It would be nice to include the parameter space of the real OGLE II microlensing
 
    from MicroLIA.extract_features import extract_all
 
+   model.plot_tsne(x=x, y=y, norm=True)
+
+The two features overlap, meaning our simulated microlensing lightcurves are characteristic of the real OGLE II microlensing events. 
+
+Important Note
+-----------
+To re-iterate the importance of finely tuning the creation of the training data, below code used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated lightcurve with the real OGLE II microlensing events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne:
+
+.. code-block:: python
+
+   import os
+   import numpy as np 
+   from MicroLIA import training_set, models, noise_models
+   from MicroLIA.extract_features import extract_all
+
+   #Save the filename of the 214 lightcurves (.dat extension)
+   path = '/Users/daniel/Desktop/Backups/OGLE_II/'
+   filenames = [file for file in os.listdir(path) if '.dat' in file]
+
+   #Load each file and append timestamps
+   timestamps = []
+   for name in filenames:
+     timestamps.append(np.loadtxt(path+name)[:,0])
+
+   #Calculate rms vs median mag for noise model
+   rms_mag = []
+   median_mag = []
+   for name in filenames:
+     mag = np.loadtxt(path+name)[:,1]
+     rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
+
+     rms_mag.append(rms)
+     median_mag.append(np.median(mag))
+
+   #Create noise model using MicroLIA.noise_models.create_noise()
+   ogle_noise = noise_models.create_noise(median_mag, rms_mag)
+
+   #Create basic training set using timestamps only, each class simulated 214 times
+   data_x, data_y = training_set.create(timestamps, n_class=len(filenames))
+
+   #Index for only microlensing for better tSNE projection 
+   index = np.where(data_y == 'ML')[0]
+
+   #Create better training set using noise model and zp, exp time, & min/max mag.
+   data_x_better, data_y_better = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=len(filenames), save_file=False)
+   
+   #Add word "BETTER" to the labels 
+   data_y_better = [label+'_BETTER' for label in data_y_better]
+
+   #Combine data of basic and better training sets
+   data_x = np.concatenate((data_x[index], data_x_better[index]))
+   data_y = np.r_[data_y[index], data_y_better[index]]
+
+   #Construct data_x for OGLE II microlensing events
+   #Can extract features manually using MicroLIA.extract_features.extract_all()
    ogle_data_x=[]
    ogle_data_y=[]
 
    for name in filenames:
-      data = np.loadtxt(path+name)
-      time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      stats = extract_all(time, mag, magerr, feats_to_use=model.feats_to_use, zp=22)
+     data = np.loadtxt(path+name)
+     time, mag, magerr = data[:,0], data[:,1], data[:,2]
+     stats = extract_all(time, mag, magerr, zp=22)
 
-      ogle_data_x.append(stats)
-      ogle_data_y.append('OGLE II')
+     ogle_data_x.append(stats)
+     ogle_data_y.append('OGLE ML')
 
-   x = np.concatenate((data_x[:,model.feats_to_use], ogle_data_x))
+   #Combine data again
+   x = np.concatenate((data_x, ogle_data_x))
    y = np.r_[data_y, ogle_data_y]
 
-   model.plot_tsne(x=x, y=y, norm=True)
+   #Create model object
+   model = models.classifier(x[index], y[index])
 
-The two features overlap, meaning our simulated microlensing lightcurves are characteristic of the real OGLE II microlensing events. 
+   #Call plot_tsne attribute
+   model.plot_tsne()
+
+
+
 
 
