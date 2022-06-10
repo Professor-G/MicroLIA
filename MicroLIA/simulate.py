@@ -172,7 +172,6 @@ def cv(timestamps, baseline):
     lc = lc+baseline 
     return np.array(lc), np.array(start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
 
-
 def constant(timestamps, baseline):
     """Simulates a constant source displaying no variability.  
 

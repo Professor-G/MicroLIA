@@ -14,8 +14,8 @@ import scipy.signal as ssignal
 import scipy.stats as sstats
 
 import warnings
-
 warnings.filterwarnings("ignore")
+#import numba
 
 def shannon_entropy(time, mag, magerr):
     """
@@ -83,6 +83,7 @@ def shannon_entropy(time, mag, magerr):
 
     return total_entropy
 
+#@numba.njit
 def con(time, mag, magerr):
     """
     Con is defined as the number of clusters containing three or more
@@ -144,6 +145,7 @@ def kurtosis(time, mag, magerr):
    
     return kurtosis
 
+
 def skewness(time, mag, magerr):
     """
     Skewness measures the assymetry of a lightcurve, with a positive skewness
@@ -162,6 +164,7 @@ def skewness(time, mag, magerr):
 
     return skewness
 
+#@numba.njit
 def vonNeumannRatio(time, mag, magerr):
     """
     The von Neumann ratio η was defined in 1941 by John von Neumann and serves as the
@@ -181,13 +184,11 @@ def vonNeumannRatio(time, mag, magerr):
     n = np.float(len(mag))
     delta = sum((mag[1:] - mag[:-1])**2 / (n-1.))
     sample_variance = np.std(mag)**2
-    try:
-        vonNeumannRatio = delta / sample_variance
-    except ZeroDivisionError:
-        vonNeumannRatio = 0.0
+    vonNeumannRatio = delta / sample_variance
     
     return vonNeumannRatio
 
+#@numba.njit
 def stetsonJ(time, mag, magerr):
     """
     The variability index J was first suggested by Peter B. Stetson and serves as a
@@ -220,6 +221,7 @@ def stetsonJ(time, mag, magerr):
 
     return stetj
 
+#@numba.njit
 def stetsonK(time, mag, magerr):
     """
     The variability index K was first suggested by Peter B. Stetson and serves as a
@@ -238,18 +240,15 @@ def stetsonK(time, mag, magerr):
     
     n = np.float(len(mag))
     mean = np.median(mag)
-    try:
-        delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
-    except ZeroDivisionError:
-        delta = 0.0
+    delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
+    
 
-    try:
-        stetsonK = ((1./n)*sum(abs(delta)))/(np.sqrt((1./n)*sum(delta**2)))
-    except ZeroDivisionError:
-        stetsonK = 0.0
+    stetsonK = ((1./n)*sum(abs(delta)))/(np.sqrt((1./n)*sum(delta**2)))
+
             
     return np.nan_to_num(stetsonK)
 
+#@numba.njit
 def stetsonL(time, mag, magerr):
     """
     The variability index L was first suggested by Peter B. Stetson and serves as a
@@ -274,6 +273,7 @@ def stetsonL(time, mag, magerr):
 
     return stetL
 
+#@numba.njit
 def median_buffer_range(time, mag, magerr):
     """
     This function returns the ratio of points that are between plus or minus 10% of the
@@ -297,6 +297,7 @@ def median_buffer_range(time, mag, magerr):
     
     return len(np.argwhere((mag > a) & (mag < b))) / n
 
+#@numba.njit
 def std_over_mean(time, mag, magerr):
     """
     A measure of the ratio of standard deviation and mean.
@@ -315,6 +316,7 @@ def std_over_mean(time, mag, magerr):
 
     return std/mean
 
+#@numba.njit
 def amplitude(time, mag, magerr):
     """
     This amplitude metric is defined as the difference between the maximum magnitude
@@ -332,6 +334,7 @@ def amplitude(time, mag, magerr):
 
     return (np.percentile(mag, 98) - np.percentile(mag, 2)) / 2.0
 
+#@numba.njit
 def median_distance(time, mag,magerr):
     """
     This function calculates the median eucledian distance between each photometric 
@@ -352,6 +355,7 @@ def median_distance(time, mag,magerr):
     
     return np.median(np.sqrt(delta_mag + delta_t))
 
+#@numba.njit
 def above1(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 1 standard deviation
@@ -372,6 +376,7 @@ def above1(time, mag, magerr):
 
     return above1
 
+#@numba.njit
 def above3(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 3 standard deviations
@@ -391,6 +396,7 @@ def above3(time, mag, magerr):
     
     return above3
 
+#@numba.njit
 def above5(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 5 standard deviations
@@ -410,6 +416,7 @@ def above5(time, mag, magerr):
 
     return above5
 
+#@numba.njit
 def below1(time,mag, magerr):
     """
     This function measures the ratio of data points that are below 1 standard deviations
@@ -429,6 +436,7 @@ def below1(time,mag, magerr):
 
     return below1
 
+#@numba.njit
 def below3(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 3 standard deviations
@@ -448,6 +456,7 @@ def below3(time, mag, magerr):
 
     return below3
 
+#@numba.njit
 def below5(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 5 standard deviations
@@ -467,6 +476,7 @@ def below5(time, mag, magerr):
 
     return below5
 
+#@numba.njit
 def medianAbsDev(time, mag, magerr):
     """"
     A measure of the mean average distance between each magnitude value
@@ -486,6 +496,7 @@ def medianAbsDev(time, mag, magerr):
     
     return np.median(np.abs(array - med))
 
+#@numba.njit
 def root_mean_squared(time, mag, magerr):
     """
     A measure of the root mean square deviation.
@@ -501,6 +512,7 @@ def root_mean_squared(time, mag, magerr):
 
     return np.sqrt(np.median(mag)**2)
 
+#@numba.njit
 def meanMag(time,mag, magerr):
     """
     Calculates mean magnitude, weighted by the errors.
@@ -517,6 +529,7 @@ def meanMag(time,mag, magerr):
             
     return sum(mag/magerr**2)/sum(1./magerr**2)
 
+#@numba.njit
 def integrate(time, mag, magerr):
     """
     Integrate magnitude using the trapezoidal rule.
@@ -533,6 +546,7 @@ def integrate(time, mag, magerr):
 
     return np.trapz(mag,time)
 
+#@numba.njit
 def auto_corr(time, mag, magerr):
     """
     Similarity between observations as a function of a time lag between them.
@@ -550,7 +564,6 @@ def auto_corr(time, mag, magerr):
     auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
 
     return auto_corr
-
 
 def peak_detection(time, mag, magerr):
     """
@@ -574,8 +587,9 @@ def peak_detection(time, mag, magerr):
 
     return len(indices)/len(mag)
 
-#Below stats from Richards et al (2011)
+#Below stats used by Richards et al (2011)
 
+#@numba.njit
 def MaxSlope(time, mag,magerr):
     """
     Examining successive (time-sorted) magnitudes, the maximal first difference
@@ -605,6 +619,7 @@ def LinearTrend(time, mag,magerr):
 
     return regression_slope
 
+#@numba.njit
 def PairSlopeTrend(time, mag, magerr):
     """
     Considering the last 30 (time-sorted) measurements of source magnitude,
@@ -627,6 +642,7 @@ def PairSlopeTrend(time, mag, magerr):
 
     return PST
 
+#@numba.njit
 def FluxPercentileRatioMid20(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -658,6 +674,7 @@ def FluxPercentileRatioMid20(time, mag, magerr):
 
     return F_mid20
 
+#@numba.njit
 def FluxPercentileRatioMid35(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -687,6 +704,7 @@ def FluxPercentileRatioMid35(time, mag, magerr):
 
     return F_mid35
 
+#@numba.njit
 def FluxPercentileRatioMid50(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -716,6 +734,7 @@ def FluxPercentileRatioMid50(time, mag, magerr):
 
     return F_mid50
 
+#@numba.njit
 def FluxPercentileRatioMid65(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -745,6 +764,7 @@ def FluxPercentileRatioMid65(time, mag, magerr):
 
     return F_mid65
 
+#@numba.njit
 def FluxPercentileRatioMid80(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -774,6 +794,7 @@ def FluxPercentileRatioMid80(time, mag, magerr):
 
     return F_mid80
 
+#@numba.njit
 def PercentAmplitude(time, mag, magerr):
     """
     The largest absolute departure from the median flux, divided by the median flux
@@ -794,6 +815,7 @@ def PercentAmplitude(time, mag, magerr):
 
     return max_distance / median
 
+#@numba.njit
 def PercentDifferenceFluxPercentile(time, mag, magerr):
     """
     Ratio of F5,95 over the median flux.
@@ -822,6 +844,7 @@ def PercentDifferenceFluxPercentile(time, mag, magerr):
 #Below stats from Kim (2015), used in Upsilon
 #https://arxiv.org/pdf/1512.01611.pdf
 
+#@numba.njit
 def half_mag_amplitude_ratio(time, mag, magerr):
     """
     The ratio of the squared sum of residuals of magnitudes
@@ -844,28 +867,19 @@ def half_mag_amplitude_ratio(time, mag, magerr):
     index = np.argwhere(mag > avg)
     lower_mag = mag[index]
 
-    try:
-        lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
-    except ZeroDivisionError:
-        lower_weighted_std = 0
+    lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
+    
 
     # For brighter magnitude than average.
     index = np.argwhere(mag <= avg)
     higher_mag = mag[index]
-    try:
-        higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
-    except ZeroDivisionError:
-        higher_weighted_std = 0
+    higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
 
-    # Return ratio.
-    try:
-        ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
-    except ZeroDivisionError:
-        ratio = 0
+    ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
             
     return ratio
 
-
+#@numba.njit
 def cusum(time, mag, magerr):
     """
     Range of cumulative sum
@@ -931,6 +945,7 @@ def AndersonDarling(time, mag, magerr):
 
 
 
+#@numba.njit
 def Gskew(time, mag, magerr):
     """
     Median-based measure of the skew
@@ -960,6 +975,7 @@ def Gskew(time, mag, magerr):
 # The following features are derived using the Python package tsfresh.
 # Please see: http://tsfresh.readthedocs.io/en/latest/
 
+#@numba.njit
 def abs_energy(time, mag, magerr):
     """
     Returns the absolute energy of the time series, defined to be the sum over the squared
@@ -976,6 +992,7 @@ def abs_energy(time, mag, magerr):
 
     return np.dot(mag, mag)
 
+#@numba.njit
 def abs_sum_changes(time, mag, magerr):
     """
     Returns sum over the abs value of consecutive changes in mag.
@@ -991,6 +1008,7 @@ def abs_sum_changes(time, mag, magerr):
 
     return np.sum(np.abs(np.diff(mag)))
 
+#@numba.njit
 def benford_correlation(time, mag, magerr):
     """
     Useful for anomaly detection applications. Returns the 
@@ -1019,6 +1037,7 @@ def benford_correlation(time, mag, magerr):
 
     return benford_corr
 
+#@numba.njit
 def c3(time, mag, magerr, lag=1):
     """
     A measure of non-linearity.
@@ -1042,6 +1061,7 @@ def c3(time, mag, magerr, lag=1):
     else:
         return np.mean((np.roll(mag, 2 * -lag) * np.roll(mag, -lag) * mag)[0 : (n - 2 * lag)])
 
+#@numba.njit
 def complexity(time, mag, magerr):
     """
     This function calculator is an estimate for a time series complexity.
@@ -1062,6 +1082,7 @@ def complexity(time, mag, magerr):
 
     return np.sqrt(np.dot(mag, mag))
 
+#@numba.njit
 def count_above(time, mag, magerr):
     """
     Number of values higher than the median
@@ -1077,6 +1098,7 @@ def count_above(time, mag, magerr):
 
     return (np.where(mag > np.median(mag))[0].size)/len(mag)
 
+#@numba.njit
 def count_below(time, mag, magerr):
     """
     Number of values below the median
@@ -1092,6 +1114,7 @@ def count_below(time, mag, magerr):
 
     return (np.where(mag < np.median(mag))[0].size)/len(mag)
 
+#@numba.njit
 def first_loc_max(time, mag, magerr):
     """
     Returns location of maximum mag relative to the 
@@ -1108,6 +1131,7 @@ def first_loc_max(time, mag, magerr):
 
     return np.argmax(mag) / len(mag) if len(mag) > 0 else np.NaN
 
+#@numba.njit
 def first_loc_min(time, mag, magerr):
     """
     Returns location of minimum mag relative to the 
@@ -1124,6 +1148,7 @@ def first_loc_min(time, mag, magerr):
     
     return np.argmin(mag) / len(mag) if len(mag) > 0 else np.NaN
 
+#@numba.njit
 def check_for_duplicate(time, mag, magerr):
     """
     Checks if any val in mag repeats.
@@ -1143,6 +1168,7 @@ def check_for_duplicate(time, mag, magerr):
     else:     
         return 0
 
+#@numba.njit
 def check_for_max_duplicate(time, mag, magerr):
     """
     Checks if the maximum value in mag repeats.
@@ -1162,6 +1188,7 @@ def check_for_max_duplicate(time, mag, magerr):
     else:     
          return 0
 
+#@numba.njit
 def check_for_min_duplicate(time, mag, magerr):
     """
     Checks if the minimum value in mag repeats.
@@ -1181,6 +1208,7 @@ def check_for_min_duplicate(time, mag, magerr):
     else:     
         return 0
 
+#@numba.njit
 def check_max_last_loc(time, mag, magerr):
     """
     Returns position of last maximum mag relative to
@@ -1197,6 +1225,7 @@ def check_max_last_loc(time, mag, magerr):
 
     return 1.0 - np.argmax(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
 
+#@numba.njit
 def check_min_last_loc(time, mag, magerr):
     """
     Returns position of last minimum mag relative to
@@ -1214,6 +1243,7 @@ def check_min_last_loc(time, mag, magerr):
     return 1.0 - np.argmin(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
 
 
+#@numba.njit
 def longest_strike_above(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in 
@@ -1233,6 +1263,7 @@ def longest_strike_above(time, mag, magerr):
 
     return val/len(mag)
 
+#@numba.njit
 def longest_strike_below(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in mag 
@@ -1251,6 +1282,7 @@ def longest_strike_below(time, mag, magerr):
 
     return val/len(mag)
 
+#@numba.njit
 def mean_change(time, mag, magerr):
     """
     Returns mean over the differences between subsequent observations.
@@ -1266,6 +1298,7 @@ def mean_change(time, mag, magerr):
 
     return (mag[-1] - mag[0]) / (len(mag) - 1) if len(mag) > 1 else np.NaN
 
+#@numba.njit
 def mean_abs_change(time, mag, magerr):
     """
     Returns mean over the abs differences between subsequent observations.
@@ -1281,6 +1314,7 @@ def mean_abs_change(time, mag, magerr):
 
     return np.mean(np.abs(np.diff(mag)))
 
+#@numba.njit
 def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
     """
     Calculates the arithmetic mean of the n absolute maximum values of the time series, n = 1.
@@ -1299,6 +1333,7 @@ def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
 
     return np.mean(n_absolute_maximum_values) if len(mag) > number_of_maxima else np.NaN
 
+#@numba.njit
 def mean_second_derivative(time, mag, magerr):
     """
     Returns the mean value of a central approximation of the second derivative.
@@ -1314,6 +1349,7 @@ def mean_second_derivative(time, mag, magerr):
 
     return (mag[-1] - mag[-2] - mag[1] + mag[0]) / (2 * (len(mag) - 2)) if len(mag) > 2 else np.NaN
 
+#@numba.njit
 def number_of_crossings(time, mag, magerr):
     """
     Calculates the number of crossings of x on the median, m. A crossing is defined as two 
@@ -1333,6 +1369,7 @@ def number_of_crossings(time, mag, magerr):
 
     return (np.where(np.diff(positive))[0].size)/len(mag)
 
+#@numba.njit
 def number_of_peaks(time, mag, magerr, n=7):
     """
     Calculates the number of peaks of at least support n in the time series x. 
@@ -1377,6 +1414,7 @@ def number_of_peaks(time, mag, magerr, n=7):
 
     return np.sum(res)/len(mag)
 
+#@numba.njit
 def ratio_recurring_points(time, mag, magerr):
     """
     Returns the ratio of unique values, that are present in the time 
@@ -1398,6 +1436,7 @@ def ratio_recurring_points(time, mag, magerr):
 
     return np.sum(counts > 1) / float(counts.shape[0])
 
+#@numba.njit
 def sample_entropy(time, mag, magerr):
     """
     Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
@@ -1436,6 +1475,7 @@ def sample_entropy(time, mag, magerr):
 
     return SampEn
 
+#@numba.njit
 def sum_values(time, mag, magerr):
     """
     Sums over all mag values.
@@ -1451,6 +1491,7 @@ def sum_values(time, mag, magerr):
 
     return np.sum(mag)/len(mag)
 
+#@numba.njit
 def time_reversal_asymmetry(time, mag, magerr, lag=1):
     """
     Derives a feature introduced by Fulcher.
@@ -1477,6 +1518,7 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1):
         two_lag = np.roll(mag, 2 * -lag)
         return np.mean((two_lag * two_lag * one_lag - one_lag * mag * mag)[0 : (n - 2 * lag)])
 
+#@numba.njit
 def variance(time, mag, magerr):
     """
     Returns the variance.
@@ -1492,6 +1534,7 @@ def variance(time, mag, magerr):
 
     return np.var(mag)
 
+#@numba.njit
 def variance_larger_than_standard_deviation(time, mag, magerr):
     """
     This feature denotes if the variance of x is greater than its standard deviation. 
@@ -1515,6 +1558,7 @@ def variance_larger_than_standard_deviation(time, mag, magerr):
     else:
         return 0
 
+#@numba.njit
 def variation_coefficient(time, mag, magerr):
     """
     Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
@@ -1535,6 +1579,7 @@ def variation_coefficient(time, mag, magerr):
     else:
         return np.nan
 
+#@numba.njit
 def large_standard_deviation(time, mag, magerr, r=.3):
     """
     Does time series have "large" standard deviation?
@@ -1557,6 +1602,7 @@ def large_standard_deviation(time, mag, magerr, r=.3):
     else:
         return 0
 
+#@numba.njit
 def symmetry_looking(time, mag, magerr, r=0.5):
     """
     Check to see if the distribution of the mag "looks symmetric". This is the case if:
@@ -1583,6 +1629,7 @@ def symmetry_looking(time, mag, magerr, r=0.5):
     else:
         return 0
   
+#@numba.njit
 def index_mass_quantile(time, mag, magerr, r=0.5):
     """
     Calculates the relative index i of time series x where r% of the mass of x lies left of i.
@@ -1626,6 +1673,7 @@ def number_cwt_peaks(time, mag, magerr, n=30):
 
     return val/len(mag)
 
+#@numba.njit
 def permutation_entropy(time, mag, magerr, tau=1, dimension=3):
     """
     Calculate the permutation entropy.
@@ -1659,6 +1707,7 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3):
 
     return -np.sum(probs * np.log(probs))
 
+#@numba.njit
 def quantile(time, mag, magerr, r=0.75):
     """
     Calculates the r quantile of the mag. This is the value of mag greater than r% of the ordered values.
@@ -1675,5 +1724,3 @@ def quantile(time, mag, magerr, r=0.75):
 
     return np.quantile(mag, r)
 
-
-    

@@ -65,12 +65,17 @@ class classifier:
             algorithm. Defaults to 'KNN'.
         n_iter (int, optional): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
+        balance (bool, optional): If True, a weights array will be calculated and used
+            when fitting the classifier. This can improve classification when classes
+            are imbalanced. This is only applied if the classification is a binary task. 
+            Defaults to True.        
     
     Returns:
         Trained machine learning model.
 
     """
-    def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', n_iter=25):
+    def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
+        n_iter=25, balance=True):
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
@@ -78,10 +83,11 @@ class classifier:
         self.impute = impute
         self.imp_method = imp_method
         self.n_iter = n_iter
-
+        self.balance = balance
         self.model = None
         self.imputer = None
         self.feats_to_use = None
+
 
     def create(self):
         """
@@ -139,6 +145,9 @@ class classifier:
                 return
 
         self.feats_to_use = borutashap_opt(data, self.data_y)
+        if len(self.feats_to_use) == 0:
+            print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
+            self.feats_to_use = np.arange(data.shape[1])
         #Re-construct the imputer with the selected features as
         #ngoing  will only compute these metrics, so need to fit again!
         if self.imp_method == 'KNN':
@@ -148,7 +157,7 @@ class classifier:
         else: 
             self.data_x = self.data_x[:,self.feats_to_use]
 
-        self.model, best_params = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter)
+        self.model, best_params = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance)
         print("Fitting and returning final model...")
         self.model.fit(self.data_x, self.data_y)
         print('Optimization complete!')

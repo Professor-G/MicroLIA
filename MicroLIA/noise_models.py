@@ -75,7 +75,7 @@ def add_noise(mag, fn, zp=24, exptime=60):
     magerr = (2.5/np.log(10))*(delta_fobs/f_obs)
         
     return np.array(mag_obs), np.array(magerr)
-    
+ 
 def add_gaussian_noise(mag, zp=24, exptime=60):
     """Adds noise to lightcurve given the magnitudes.
 

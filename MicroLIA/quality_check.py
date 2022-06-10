@@ -13,7 +13,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import classification_report
-   
+
 def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7):
     """Test to ensure proper microlensing signal.
     This requires 7 measurements with a magnification of at least 1.34, imposing
