@@ -12,3 +12,4 @@ boruta == 0.3
 xgboost == 1.6.1
 BorutaShap == 1.0.16
 scikit-plot == 0.3.7
+#numba == 0.55.2
