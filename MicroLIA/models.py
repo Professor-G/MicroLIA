@@ -27,6 +27,7 @@ from MicroLIA import extract_features
 from xgboost import XGBClassifier
 import scikitplot as skplt
 
+
 class classifier:
     """
     Creates a machine learning classifier object.
@@ -63,19 +64,21 @@ class classifier:
         imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
             neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
             algorithm. Defaults to 'KNN'.
-        n_iter (int, optional): The maximum number of iterations to perform during 
+        n_iter (int): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
+        boruta_trials (int): The number of trials to run when running Boruta for
+            feature selection. Set to 0 for no feature selection. Defaults to 50.
         balance (bool, optional): If True, a weights array will be calculated and used
             when fitting the classifier. This can improve classification when classes
             are imbalanced. This is only applied if the classification is a binary task. 
             Defaults to True.        
-    
+        
     Returns:
         Trained machine learning model.
 
     """
     def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
-        n_iter=25, balance=True):
+        n_iter=25, boruta_trials=50, balance=True):
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
@@ -83,27 +86,32 @@ class classifier:
         self.impute = impute
         self.imp_method = imp_method
         self.n_iter = n_iter
-        self.balance = balance
+        self.boruta_trials = boruta_trials
+        self.balance = balance 
+
         self.model = None
         self.imputer = None
         self.feats_to_use = None
 
-
-    def create(self):
+    def create(self, save_model=False):
         """
-        Creates the machine learning engine.
+        Creates the machine learning engine, current options are either a
+        Random Forest, XGBoost, or a Neural Network classifier. 
         
         Args:
             save_model (bool, optional): If True the machine learning model will be saved to the
                 local home directory. Defaults to False.
-
+    
         Returns:
             Trained and optimized classifier.
         """
+        if self.optimize is False:
+            if len(np.unique(self.data_y)) == 2:
+                counter = Counter(self.data_y)
+                if counter[np.unique(self.data_y)[0]] != counter[np.unique(self.data_y)[1]]:
+                    if self.balance:
+                        print('Unbalanced dataset detected, to apply weights set optimize=True.')
 
-        if self.data_x.shape[0] >= 5e3 and self.optimize is True:
-            warn('Large dataset detected, optimization may take days...')
-            
         if self.clf == 'rf':
             model = RandomForestClassifier()
         elif self.clf == 'nn':
@@ -139,17 +147,19 @@ class classifier:
             else:
                 raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
             
-            if self.optimize is False:
+            if self.optimize:
+                self.data_x = data
+            else:
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
 
-        self.feats_to_use = borutashap_opt(data, self.data_y)
+        self.feats_to_use = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials)
         if len(self.feats_to_use) == 0:
             print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
             self.feats_to_use = np.arange(data.shape[1])
         #Re-construct the imputer with the selected features as
-        #ngoing  will only compute these metrics, so need to fit again!
+        #new predictions will only compute these metrics, need to fit again!
         if self.imp_method == 'KNN':
             self.data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
         elif self.imp_method == 'MissForest':
@@ -160,7 +170,11 @@ class classifier:
         self.model, best_params = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance)
         print("Fitting and returning final model...")
         self.model.fit(self.data_x, self.data_y)
-        print('Optimization complete!')
+        if save_model:
+            print("Saving 'MicroLIA_Model' to local home directory.")
+            path = str(Path.home())+'/MicroLIA_Model'
+            joblib.dump(self.model, path)
+        print('Process complete.')
         return
 
     def save(self, path=None, overwrite=False):
@@ -251,6 +265,7 @@ class classifier:
         print('Successfully loaded the following class attributes: {}, {}, {}'.format(model, imputer, feats))
         
         return
+
 
     def predict(self, time, mag, magerr, convert=True, zp=24):
         """

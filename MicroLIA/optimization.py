@@ -314,7 +314,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=False, balance=T
         return model, params, study
     return model, params
 
-def borutashap_opt(data_x, data_y, model='rf', n_trials=50):
+def borutashap_opt(data_x, data_y, model='rf', boruta_trials=50):
     """
     Applies a combination of the Boruta algorithm and
     Shapley values, a method developed by Eoghan Keany (2020).
@@ -329,15 +329,18 @@ def borutashap_opt(data_x, data_y, model='rf', n_trials=50):
             the feature importance metric. Only two options are currently
             supported, 'rf' for Random Forest and 'xgb' for Extreme Gradient Boosting.
             Defaults to 'rf'.
-        n_trials (int): The number of trials to run. A larger number is
+        boruta_trials (int): The number of trials to run. A larger number is
             better as the distribution will be more robust to random fluctuations. 
             Defaults to 50.
     Returns:
         1D array containing the indices of the selected features. This can then
         be used to index the columns in the data_x array.
     """
-    if n_trials < 20:
-        print('Results are unstable if n_trials is too low!')
+    if boruta_trials == 0:
+        return np.arange(data_x.shape[1])
+
+    if boruta_trials < 20:
+        print('Results are unstable if boruta_trials is too low!')
     if np.any(np.isnan(data_x)):
         print('NaN values detected, applying Strawman imputation...')
         data_x = Strawman_imputation(data_x)
@@ -363,7 +366,7 @@ def borutashap_opt(data_x, data_y, model='rf', n_trials=50):
 
         feat_selector = BorutaShap(model=classifier, importance_measure='shap', classification=True)
         print('Running feature selection...')
-        feat_selector.fit(X=X, y=y, n_trials=n_trials, verbose=False, random_state=1909)
+        feat_selector.fit(X=X, y=y, n_trials=boruta_trials, verbose=False, random_state=1909)
 
         index = np.array([int(feat) for feat in feat_selector.accepted])
         index.sort()
@@ -400,6 +403,7 @@ def boruta_opt(data_x, data_y):
     feats = np.array([str(feat) for feat in feat_selector.support_])
     index = np.where(feats == 'True')[0]
     print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support)))
+    
     return index
 
 def Strawman_imputation(data):
