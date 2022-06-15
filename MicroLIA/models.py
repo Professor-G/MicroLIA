@@ -28,7 +28,7 @@ from xgboost import XGBClassifier
 import scikitplot as skplt
 
 
-class classifier:
+class Classifier:
     """
     Creates a machine learning classifier object.
     The built-in methods can be used to optimize the engine
@@ -93,6 +93,9 @@ class classifier:
         self.imputer = None
         self.feats_to_use = None
 
+        self.feature_history = None 
+        self.study = None 
+
     def create(self, save_model=False):
         """
         Creates the machine learning engine, current options are either a
@@ -123,7 +126,7 @@ class classifier:
                 print('________________________________')
                 y = np.zeros(len(self.data_y))
                 for i in range(len(np.unique(self.data_y))):
-                    print('{} -----------> {}'.format(np.unique(self.data_y)[i], i))
+                    print(str(np.unique(data_y)[i]).ljust(10)+'  ------------->     '+str(i))
                     index = np.where(self.data_y == np.unique(self.data_y)[i])[0]
                     y[index] = i
                 self.data_y = y 
@@ -154,7 +157,7 @@ class classifier:
                 self.model = model 
                 return
 
-        self.feats_to_use = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials)
+        self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials)
         if len(self.feats_to_use) == 0:
             print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
             self.feats_to_use = np.arange(data.shape[1])
@@ -167,7 +170,7 @@ class classifier:
         else: 
             self.data_x = self.data_x[:,self.feats_to_use]
 
-        self.model, best_params = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance)
+        self.model, best_params, self.study = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True)
         print("Fitting and returning final model...")
         self.model.fit(self.data_x, self.data_y)
         if save_model:

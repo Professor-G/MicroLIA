@@ -199,7 +199,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=False, balance=T
             print('____________________________________')
             y = np.zeros(len(data_y))
             for i in range(len(np.unique(data_y))):
-                print('{} -----------> {}'.format(np.unique(data_y)[i], i))
+                print(str(np.unique(data_y)[i]).ljust(10)+'  ------------->     '+str(i))
                 index = np.where(data_y == np.unique(data_y)[i])[0]
                 y[index] = i
             data_y = y 
@@ -333,8 +333,11 @@ def borutashap_opt(data_x, data_y, model='rf', boruta_trials=50):
             better as the distribution will be more robust to random fluctuations. 
             Defaults to 50.
     Returns:
-        1D array containing the indices of the selected features. This can then
-        be used to index the columns in the data_x array.
+        First output is a 1D array containing the indices of the selected features. 
+        These indices can then be used to select the columns in the data_x array.
+        Second output is the feature selection object, which contains feature selection
+        history information and visualization options.
+
     """
     if boruta_trials == 0:
         return np.arange(data_x.shape[1])
@@ -372,10 +375,10 @@ def borutashap_opt(data_x, data_y, model='rf', boruta_trials=50):
         index.sort()
         print('Feature selection complete, {} selected out of {}!'.format(len(index), data_x.shape[1]))
     except:
-        print('Boruta with Shapley values failed, switching to original Boruta...')
+        print('Boruta with Shapley values failed, switching to original Boruta algorithm...')
         index = boruta_opt(data_x, data_y)
 
-    return index
+    return index, feat_selector
 
 def boruta_opt(data_x, data_y):
     """
