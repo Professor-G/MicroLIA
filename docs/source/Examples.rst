@@ -10,16 +10,15 @@ We will train MicroLIA for OGLE II microlensing detection, and record how many o
 
 Training Set
 -----------
-Adaptive cadence is important as this allows MicroLIA to detect microlensing events even if the survey footprint is sparse. In this example we need to train MicroLIA using OGLE IV cadence, which we can take to be the timestamps of these 214 lightcurves. We will append the time array of each lightcurve to a list.
+Adaptive cadence is important as this allows MicroLIA to detect microlensing events even if the survey footprint is sparse. In this example we need to train the classifier using OGLE II cadence, which we can take to be the timestamps of these 214 lightcurves. To begin the training we need to append the time array of each lightcurve to a list:
 
 .. code-block:: python
 
     import os
     import numpy as np
-    from pathlib import Path
 
-    path = str(Path.home())+'/OGLE_II/' #If folder were saved in home dir
-    filenames = os.listdir(path)
+    path = 'OGLE_II/' 
+    filenames = [file for file in os.listdir(path) if '.dat' in file]
 
     timestamps = []
 
@@ -28,7 +27,7 @@ Adaptive cadence is important as this allows MicroLIA to detect microlensing eve
       timestamps.append(time)
 
 
-This time list will be used to simulate our training data, as each time an event is simulated a random timestamp from the list which will be chosen. We can now create our training data using the training_set module -- in this example we will set the min_mag of the survey to be 15, and the max_mag to be 20. We will also set n_class=500, this is the size of our training classes.
+This time list will be used to simulate our training data, as each time an event is simulated a timestamp from the list which will be chosen at random. In this example we will set the min_mag of the survey to be 15, and the max_mag to be 20. We will also set n_class=500, this is the size of our training classes. The training_set module allows us to simulat our classes:
 
 .. code-block:: python
 
@@ -43,7 +42,7 @@ To be more accurate we will set these optional parameters, and even include a no
 
 .. code-block:: python
 
-   from MicroLIA import training_set, noise_models
+   from MicroLIA import noise_models
 
    rms_mag = []
    median_mag = []
@@ -61,22 +60,26 @@ To be more accurate we will set these optional parameters, and even include a no
 .. figure:: _static/simulation.jpg
     :align: center
 |
-This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file as will be shown in the next step.
+This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file.
 
-There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of data points that must be within the signals, this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be reasonably detectable. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
+There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of measurements that must be within the signals -- this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be properly detected. 
+
+If poor lightcurves are simulated the classifier will be heavily biased, as these signals may appear as noisy constants if the event is not adequately captured. This discrepancy between the assigned class label and the characteristics of the simulated signal will impact the generalization and thus the performance of the classifier. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
 
 
 Classification Engine
 -----------
 We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-We can load this file and create our data_x and data_y arrays, although note above that these variables were created for us when we made our training set, this example is just to show how to generally load the saved training data (if need-be we can always re-compute the statistics using the `extract_features module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_).
+We can load this file and create our data_x and data_y arrays, although note above that these variables were created for us when we made our training set, this example is to demonstrate how to generally load the saved training data (if need-be we can always re-compute the statistics using the `extract_features module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_).
 
 .. code-block:: python
    
-   home = str(Path.home()) #By default the file is saved in the home directory
+   from pathlib import Path
 
+   home = str(Path.home()) #By default the file is saved in the home directory
    data = np.loadtxt(home+'/all_features.txt', dtype=str)
+
    data_x = data[:,2:].astype('float')
    data_y = data[:,0]
    
@@ -84,9 +87,9 @@ With our training data loaded we can create our machine learning engine with Mic
 
 Unless turned off, when creating the model three optimization procedures will automatically run, in the following order:
 
--  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a workaround for the issue of missing data values. 
+-  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a means to address the issue of missing data values. 
 
--  The features that contain information will be selected using `BorutaShap <https://zenodo.org/record/4247618>`_, a procedure based off of the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. This new method improves upon the original approach by coupling the Boruta algorithm's probabilistic approach to feature selection with `Shapley Values <https://christophm.github.io/interpretable-ml-book/shapley.html>`_. While bagging algorithms like the Random Forest are robust to irrelevant features, computation-wise, it is imperative that we compute only the features that are helpful.
+-  The features that contain useful information will be selected using `BorutaShap <https://zenodo.org/record/4247618>`_, a procedure based off of the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. BorutaShap method improves upon the original algorithm by coupling its probabilistic approach to feature selection with `Shapley Values <https://christophm.github.io/interpretable-ml-book/shapley.html>`_. While bagging algorithms like the Random Forest are robust to irrelevant features, computation-wise, it is imperative that we compute only the features that are helpful.
 
 -  Finally, the model hyperparameters will be optimized using the hyperparameter optimization software `Optuna <https://optuna.org/>`_, developed by `Akiba et al 2019 <https://arxiv.org/abs/1907.10902>`_. The default sampler Optuna employs is the Tree Parzen Estimator, a Bayesian optimization approach that effectively reduces the error by narrowing the search space according to the performance of previous iterations, therefore in principle it is best to increase the number of trials to perform.
 
@@ -96,26 +99,16 @@ Since these three methods are run by default, we can create and optimize a Rando
 
    from MicroLIA import models
 
-   model = models.classifier(data_x, data_y, clf='rf')
+   model = models.Classifier(data_x, data_y, clf='rf')
    model.create()
 
 To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. 
 
-Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. Since neural networks require more tuning to properly identify the optimal number of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters:
+Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
 
-.. code-block:: python
+Since neural networks require more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters. Note that there is also a boruta_trials argument which sets the number of iterations to perform when calculating feature importance. If boruta_trials=0, then all the features will be used. Use model.feature_history.plot(which_features='all') to visualize the feature selection results.
 
-   model = models.classifier(data_x, data_y, clf='nn', n_iter=100)
-   model.create()
-
-There has been particular interest in the XGBoost algorithm, which can outperform the Random Forest:
-
-.. code-block:: python
-
-   model = models.classifier(data_x, data_y, clf='xgb')
-   model.create()
-
-`For details please refer to the function documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_.
+For details on how to set the classifier and optimization parameters, refer to the `module documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_.
 
 
 Classification Accuracy

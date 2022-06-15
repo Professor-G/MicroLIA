@@ -39,7 +39,7 @@ With the lightcurves simulated and the feature matrix saved, we can create our c
       
       from MicroLIA import models
 
-      model = models.classifier(data_x, data_y)
+      model = models.Classifier(data_x, data_y)
       model.create()
       
 .. figure:: _static/optimize.png
