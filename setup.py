@@ -9,7 +9,7 @@ from setuptools import setup, find_packages, Extension
 
 setup(
     name="MicroLIA",
-    version="1.8.1",
+    version="1.8.2",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
