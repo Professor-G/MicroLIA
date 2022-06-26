@@ -94,16 +94,12 @@ class Classifier:
         self.feats_to_use = None
 
         self.feature_history = None 
-        self.study = None 
+        self.optimization_results = None 
 
-    def create(self, save_model=False):
+    def create(self):
         """
         Creates the machine learning engine, current options are either a
         Random Forest, XGBoost, or a Neural Network classifier. 
-        
-        Args:
-            save_model (bool, optional): If True the machine learning model will be saved to the
-                local home directory. Defaults to False.
     
         Returns:
             Trained and optimized classifier.
@@ -170,14 +166,10 @@ class Classifier:
         else: 
             self.data_x = self.data_x[:,self.feats_to_use]
 
-        self.model, best_params, self.study = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True)
+        self.model, best_params, self.optimization_results = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True)
         print("Fitting and returning final model...")
         self.model.fit(self.data_x, self.data_y)
-        if save_model:
-            print("Saving 'MicroLIA_Model' to local home directory.")
-            path = str(Path.home())+'/MicroLIA_Model'
-            joblib.dump(self.model, path)
-        print('Process complete.')
+        
         return
 
     def save(self, path=None, overwrite=False):
@@ -216,12 +208,14 @@ class Classifier:
                 raise ValueError('Tried to create "MicroLIA_models" directory in specified path but folder already exists! If you wish to overwrite set overwrite=True.')
         
         path += 'MicroLIA_models/'
-        if self.model is not None:
+         if self.model is not None:
             joblib.dump(self.model, path+'Model')
         if self.imputer is not None:
             joblib.dump(self.imputer, path+'Imputer')
         if self.feats_to_use is not None:
             joblib.dump(self.feats_to_use, path+'Feats_Index')
+        if self.optimization_results is not None:
+            joblib.dump(self.optimization_results, path+'HyperOpt_Results')
         print('Files saved in: {}'.format(path))
         return 
 
@@ -255,17 +249,24 @@ class Classifier:
             self.imputer = joblib.load(path+'Imputer')
             imputer = 'imputer'
         except FileNotFoundError:
-            pass
-            imputer = '' 
+            imputer = ''
+            pass 
 
         try:
             self.feats_to_use = joblib.load(path+'Feats_Index')
-            feats = 'feats_to_use'
+            feats_to_use = 'feats_to_use'
         except FileNotFoundError:
             feats = ''
             pass
 
-        print('Successfully loaded the following class attributes: {}, {}, {}'.format(model, imputer, feats))
+        try:
+            self.optimization_results = joblib.load(path+'HyperOpt_Results')
+            optimization_results = 'optimization_results'
+        except FileNotFoundError:
+            optimization_results = '' 
+            pass
+
+        print('Successfully loaded the following class attributes: {}, {}, {}, {}'.format(model, imputer, feats_to_use, optimization_results))
         
         return
 
@@ -370,8 +371,8 @@ class Classifier:
             mask = np.where(self.data_y == feat)[0]
             plt.scatter(x[mask], y[mask], marker=markers[count], label=str(feat), alpha=0.7)
 
-        plt.legend(loc='upper right', prop={'size': 8})
-        plt.title(title)
+        plt.legend(loc='upper right', prop={'size': 16})
+        plt.title(title, size=18)
         plt.show()
 
     def plot_conf_matrix(self, norm=False, pca=False, k_fold=10, normalize=True, title='Confusion matrix'):
@@ -524,6 +525,52 @@ class Classifier:
         plt.title(label=title,fontsize=18)
         plt.show()
 
+    def plot_hyper_opt(xlog=True, ylog=False):
+        """
+        Plots the hyperparameter optimization history.
+    
+        Args:
+            xlog (boolean): If True the x-axis will be log-scaled.
+                Defaults to True.
+            ylog (boolean): If True the y-axis will be log-scaled.
+                Defaults to False.
+
+        Returns:
+            AxesImage
+        """
+
+        fig = optuna.visualization.matplotlib.plot_optimization_history(self.optimization_results)
+        if xlog:
+            plt.xscale('log')
+        if ylog:
+            plt.yscale('log')
+        plt.xlabel('Trial #', size=16)
+        plt.ylabel('10-fold CV Accuracy', size=16)
+        plt.title(('Hyperparameter Optimization History'), size=18)
+        plt.xlim((1,1e4))
+        plt.ylim((0.9, 0.935))
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.grid(True, color='k', alpha=0.35, linewidth=1.5, linestyle='--')
+        plt.legend(prop={'size': 16})
+        plt.show()
+
+    def plot_feature_opt(feats='all'):
+        """
+        Returns whisker plot displaying the z-score distribution of each feature
+        across all trials.
+
+        Args:
+            feats (str): Defines what features to show, can either be
+                'accepted', 'rejected', or 'all'.
+
+        Returns:
+            AxesImage
+        """
+
+        self.feat_selector.plot(which_features=feats, X_size=14)
+
+
 #Helper functions below to generate confusion matrix
 def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
     """
@@ -611,19 +658,19 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     plt.colorbar()
 
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    plt.xticks(tick_marks, classes, rotation=45, fontsize=14)
+    plt.yticks(tick_marks, classes, fontsize=14)
 
     fmt = '.2f' if normalize is True else 'd'
     thresh = conf_matrix.max() / 2.
 
     for i, j in itertools.product(range(conf_matrix.shape[0]), range(conf_matrix.shape[1])):
-        plt.text(j, i, format(conf_matrix[i, j], fmt), horizontalalignment="center",
+        plt.text(j, i, format(conf_matrix[i, j], fmt), fontsize=14, horizontalalignment="center",
                  color="white" if conf_matrix[i, j] > thresh else "black")
 
     plt.tight_layout()
-    plt.ylabel('True label',fontsize=16)
-    plt.xlabel('Predicted label',fontsize=16)
+    plt.ylabel('True label',fontsize=18)
+    plt.xlabel('Predicted label',fontsize=18)
 
     return conf_matrix
 

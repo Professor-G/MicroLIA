@@ -133,7 +133,7 @@ class objective_rf(object):
 
         return final_score
 
-def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=False, balance=True):
+def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=True):
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
     This function uses Bayesian Optimizattion and should only be used for
@@ -337,8 +337,8 @@ def borutashap_opt(data_x, data_y, model='rf', boruta_trials=50):
         These indices can then be used to select the columns in the data_x array.
         Second output is the feature selection object, which contains feature selection
         history information and visualization options.
-
     """
+    
     if boruta_trials == 0:
         return np.arange(data_x.shape[1])
 
