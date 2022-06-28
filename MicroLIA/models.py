@@ -208,7 +208,7 @@ class Classifier:
                 raise ValueError('Tried to create "MicroLIA_models" directory in specified path but folder already exists! If you wish to overwrite set overwrite=True.')
         
         path += 'MicroLIA_models/'
-         if self.model is not None:
+        if self.model is not None:
             joblib.dump(self.model, path+'Model')
         if self.imputer is not None:
             joblib.dump(self.imputer, path+'Imputer')
