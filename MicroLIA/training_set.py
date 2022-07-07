@@ -406,8 +406,7 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
 
     Note:
-        If a file cannot be loaded it will be printed and skipped. 
-        Note that if a file cannot be loaded with the standard numpy.loadtxt() function
+        If a file cannot be loaded with the standard numpy.loadtxt() function
         it will be printed and skipped, therefore no strings allowed, only the columns with the float numbers (nan ok)
 
     
