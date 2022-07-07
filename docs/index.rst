@@ -41,9 +41,6 @@ will be taken to be the subdirectory name.
 
    data_x, data_y = training_set.load_all(path='/Users/daniel/Desktop/dummy')
 
-.. figure:: _static/load_all.jpg
-   :aling: center
-|
 With the lightcurves simulated or loaded, and the feature matrix saved as data_x, we can create our classifier object:
 
 .. code-blocK:: python
