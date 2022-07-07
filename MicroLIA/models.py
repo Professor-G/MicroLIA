@@ -79,8 +79,8 @@ class Classifier:
     """
     def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
         n_iter=25, boruta_trials=50, balance=True):
-        self.data_x = data_x
-        self.data_y = data_y
+       # self.data_x = data_x
+       # self.data_y = data_y
         self.clf = clf
         self.optimize = optimize 
         self.impute = impute
@@ -95,6 +95,9 @@ class Classifier:
 
         self.feature_history = None 
         self.optimization_results = None 
+
+        mask = random.sample(range(len(data_x)), len(data_x)) 
+        self.data_x, self.data_y = data_x[mask], data_y[mask]
 
     def create(self):
         """
@@ -122,12 +125,11 @@ class Classifier:
                 print('________________________________')
                 y = np.zeros(len(self.data_y))
                 for i in range(len(np.unique(self.data_y))):
-                    print(str(np.unique(data_y)[i]).ljust(10)+'  ------------->     '+str(i))
+                    print(str(np.unique(self.data_y)[i]).ljust(10)+'  ------------->     '+str(i))
                     index = np.where(self.data_y == np.unique(self.data_y)[i])[0]
                     y[index] = i
                 self.data_y = y 
                 print('--------------------------------')
-
         else:
             raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
         
@@ -256,7 +258,7 @@ class Classifier:
             self.feats_to_use = joblib.load(path+'Feats_Index')
             feats_to_use = 'feats_to_use'
         except FileNotFoundError:
-            feats = ''
+            feats_to_use = ''
             pass
 
         try:
@@ -269,7 +271,6 @@ class Classifier:
         print('Successfully loaded the following class attributes: {}, {}, {}, {}'.format(model, imputer, feats_to_use, optimization_results))
         
         return
-
 
     def predict(self, time, mag, magerr, convert=True, zp=24):
         """
@@ -297,8 +298,8 @@ class Classifier:
         if len(mag) < 30:
             warn('The number of data points is low -- results may be unstable')
 
-        classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
-
+        #classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
+        classes = self.model.classes_
         stat_array=[]
         
         if self.imputer is None and self.feats_to_use is None:
@@ -448,7 +449,7 @@ class Classifier:
         Returns:
             AxesImage
         """
-        if np.any(np.isnan(self.data_x)):
+        if np.any(np.isnan(self.data_x)) == True:
             print('Automatically imputing NaN values with KNN imputation.')
             data = KNN_imputation(data=self.data_x)[0]
         else:
@@ -581,7 +582,7 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
         classifier: The machine learning classifier to optimize.
         data_x (ndarray): 2D array of size (n x m), where n is the
             number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
+        data_y (ndarray, str): 1D array containing the corresponding labels.
         k_fold (int, optional): The number of cross-validations to perform.
             The output confusion matrix will display the mean accuracy across
             all k_fold iterations. Defaults to 10.
