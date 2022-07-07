@@ -33,7 +33,18 @@ With our timestamps saved we can simulate our training data and generate an opti
 .. figure:: _static/simulation.jpg
     :align: center
 |
-With the lightcurves simulated and the feature matrix saved, we can create our classifier object:
+Alternatively, if you wish to use your own lightcurves, use the load_all function which takes as input 
+the path to a directory containing one subdirectory for each class in your training set. The class name
+will be taken to be the subdirectory name.
+
+..code-block:: python
+
+   data_x, data_y = training_set.load_all(path='/Users/daniel/Desktop/dummy')
+
+.. figure:: _static/load_all.png
+   :aling: center
+|
+With the lightcurves simulated or loaded, and the feature matrix saved as data_x, we can create our classifier object:
 
 .. code-blocK:: python
       
