@@ -29,13 +29,24 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
     a noise model either defined using the create_noise
-    function, or Gaussian by default
+    function, or Gaussian by default.
 
     Note:
-        To input your own microlensing lightcurves, you can input the load_microlensing parameter, which
-        takes the path to a directory containing the lightcurve text files (3 columns: time,mag,magerr), or
-        it can be a 3-D list or array containing the individual lightcurves (3 columns per lightcurve: time,mag,magerr)
-    
+        To input your own microlensing lightcurves, you can set the load_microlensing parameter, which
+        takes the path to a directory containing the lightcurve text files (3 columns: time,mag,magerr).
+
+        Instead of a path, another valid input is a 3-dimensional array or list. This will be parsed one 
+        element at a time along the 0th axis. Example:
+
+        >>> lightcurves = []
+        >>> lightcurve_1 = np.c_[time1,mag1,magerr1]
+        >>> lightcurve_2 = np.c_[time2,mag2,magerr2]
+        >>>
+        >>> lightcurves.append(lightcurve_1)
+        >>> lightcurves.append(lightcurve_2)
+        >>>
+        >>> create(timestamps, load_microlensing=lightcurves)
+        
     Parameters
     __________
     timestamps : list of arrays
@@ -108,7 +119,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     if len(getmembers(features, isfunction))*2 > n_class*5:
         raise ValueError("Parameter n_class must be at least "+str(int(1+len(getmembers(features, isfunction))*2//5))+" for principal components to be computed.")
-    
+
     while True:
         try:
             len(timestamps[0])
@@ -304,7 +315,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                     raise RuntimeError('Unable to simulate proper ML in 100 tries with current cadence -- inspect cadence and/or noise model and try again.')
         progess_bar.finish()
     else:
-        try:
+        try: #If load_microlensing is a list
             progess_bar = bar.FillingSquaresBar('Loading microlensing......', max=len(load_microlensing)) 
             for i in range(len(load_microlensing)):
                 time, mag, magerr = load_microlensing[i][:,0], load_microlensing[i][:,1], load_microlensing[i][:,2]
@@ -324,12 +335,15 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                 stats_list.append(stats) 
                 progess_bar.next()  
             progess_bar.finish()
-        except:
+            
+        except: #If load_microlensing is a path 
+            if load_microlensing[-1] != '/':
+                load_microlensing+='/'
             filenames = [name for name in os.listdir(load_microlensing)]
             progess_bar = bar.FillingSquaresBar('Loading microlensing......', max=len(filenames)) 
             for i in range(len(load_microlensing)):
                 try:
-                    lightcurve = np.loadtxt(filenames[i])
+                    lightcurve = np.loadtxt(load_microlensing+filenames[i])
                     time, mag, magerr = lightcurve[:,0], lightcurve[:,1], lightcurve[:,2]
                 except:
                     print('WARNING: File {} could not be loaded, skipping...'.format(filenames[i]))
@@ -385,16 +399,6 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     data_y = data[:,0].astype(str)
 
     return data_x, data_y
-
-    """
-    if test == True:
-        print("")
-        print("------------------------------")
-        print("Creating testing data set...")
-        print("------------------------------")
-        quality_check.create_test(timestamps, min_mag, max_mag, noise, zp, exptime, n_class, ml_n1, cv_n1, cv_n2, t0_dist, u0_dist, tE_dist, 
-            'all_features'+filename+'.txt', 'pca_features'+filename+'.txt')
-    """
 
 def load_all(path, convert=True, zp=24, filename='', save_file=True):
     """
@@ -495,7 +499,7 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
              data = data.replace("]", "")
              outfile.write(data)
         os.remove(path+'feats.txt')
-    print("Simulation complete!")
+    print("Complete!")
 
     data = np.array(stats_list)
     data_x = data[:,2:].astype('float')

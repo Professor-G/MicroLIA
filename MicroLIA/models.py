@@ -79,8 +79,8 @@ class Classifier:
     """
     def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
         n_iter=25, boruta_trials=50, balance=True):
-       # self.data_x = data_x
-       # self.data_y = data_y
+        self.data_x = data_x
+        self.data_y = data_y
         self.clf = clf
         self.optimize = optimize 
         self.impute = impute
@@ -95,9 +95,6 @@ class Classifier:
 
         self.feature_history = None 
         self.optimization_results = None 
-
-        mask = random.sample(range(len(data_x)), len(data_x)) 
-        self.data_x, self.data_y = data_x[mask], data_y[mask]
 
     def create(self):
         """
