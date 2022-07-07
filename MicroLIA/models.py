@@ -65,7 +65,7 @@ class Classifier:
             neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
             algorithm. Defaults to 'KNN'.
         n_iter (int): The maximum number of iterations to perform during 
-            the hyperparameter search. Defaults to 25. 
+            the hyperparameter search. Defaults to 100. 
         boruta_trials (int): The number of trials to run when running Boruta for
             feature selection. Set to 0 for no feature selection. Defaults to 50.
         balance (bool, optional): If True, a weights array will be calculated and used
@@ -78,7 +78,7 @@ class Classifier:
 
     """
     def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
-        n_iter=25, boruta_trials=50, balance=True):
+        n_iter=100, boruta_trials=50, balance=True):
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
@@ -337,7 +337,7 @@ class Classifier:
             y = self.data_y
 
         if np.any(np.isnan(self.data_x)):
-            print('Automatically imputing NaN values with KNN imputation.')
+            print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=x)[0]
         else:
             data = x
@@ -402,7 +402,7 @@ class Classifier:
         """
         classes = [str(label) for label in np.unique(self.data_y)]
         if np.any(np.isnan(self.data_x)):
-            print('Automatically imputing NaN values with KNN imputation.')
+            print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=self.data_x)[0]
         else:
             data = self.data_x
@@ -447,7 +447,7 @@ class Classifier:
             AxesImage
         """
         if np.any(np.isnan(self.data_x)) == True:
-            print('Automatically imputing NaN values with KNN imputation.')
+            print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=self.data_x)[0]
         else:
             data = self.data_x
