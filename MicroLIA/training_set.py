@@ -409,6 +409,8 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
         If a file cannot be loaded it will be printed and skipped.
     
     Args:
+        path: str
+            Path to the root directory containing the lightcurve subdirectories
         convert: bool
             If True the magnitudes will be converted to flux using the input zeropoint.
             If the lightcurves are already in flux, set convert=False. Defaults to True.
@@ -466,7 +468,7 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
             mag_list.append(mag)
             magerr_list.append(magerr)
             
-            stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+            stats = extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp)
             stats = [i for i in stats]
             stats = [dir_name] + [j] + stats
             stats_list.append(stats) 
