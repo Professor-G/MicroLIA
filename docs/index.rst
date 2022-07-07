@@ -37,7 +37,7 @@ Alternatively, if you wish to use your own lightcurves, use the load_all functio
 the path to a directory containing one subdirectory for each class in your training set. The class name
 will be taken to be the subdirectory name.
 
-..code-block:: python
+.. code-block:: python
 
    data_x, data_y = training_set.load_all(path='/Users/daniel/Desktop/dummy')
 
