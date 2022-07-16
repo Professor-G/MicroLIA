@@ -3,14 +3,14 @@
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/LGPL-3.0)
 [![arXiv](https://img.shields.io/badge/arXiv-2004.14347-b31b1b.svg)](https://arxiv.org/abs/2004.14347)
 
-# MicroLIA: MicroLensing Identification Algorithm
-MicroLIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. 
+# LIA: Lens Identification Algorithm
+LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. 
 <img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
 # Installation
 
 ```
-    $ pip install MicroLIA
+    $ pip install LIA
 ```
 
 # [Documentation](https://microlia.readthedocs.io/en/latest/?)
