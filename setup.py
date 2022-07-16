@@ -14,7 +14,7 @@ setup(
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
     license='GPL-3.0',
-    url = "https://github.com/Professor-G/LIA",
+    url = "https://github.com/Professor-G/DeepLIA",
     classifiers=[
 		'Development Status :: 5 - Production/Stable',
 		'Intended Audience :: Developers',
