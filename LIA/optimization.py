@@ -243,7 +243,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
                 max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
                 min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], 
-                bootstrap=params['bootstrap'], sample_weight=sample_weight)
+                bootstrap=params['bootstrap'], class_weight=sample_weight)
         except:
             print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
             params = {
@@ -297,11 +297,11 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
                 max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
                 sample_type=params['sample_type'], normalize_type=params['normalize_type'],rate_drop=params['rate_drop'], 
-                skip_drop=params['skip_drop'], sample_weight=sample_weight)
+                skip_drop=params['skip_drop'], scale_pos_weight=sample_weight)
         elif params['booster'] == 'gbtree':
             model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
                 max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
-                subsample=params['subsample'], sample_weight=sample_weight)
+                subsample=params['subsample'], scale_pos_weight=sample_weight)
        
     final_score = study.best_value
 
