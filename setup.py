@@ -8,13 +8,13 @@ from setuptools import setup, find_packages, Extension
 
 
 setup(
-    name="LIA",
-    version="1.9.5",
+    name="MicroLIA",
+    version="1.9.6",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
     license='GPL-3.0',
-    url = "https://github.com/Professor-G/LIA",
+    url = "https://github.com/Professor-G/MicroLIA",
     classifiers=[
 		'Development Status :: 5 - Production/Stable',
 		'Intended Audience :: Developers',
