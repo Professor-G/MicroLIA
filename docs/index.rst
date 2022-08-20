@@ -1,11 +1,11 @@
-.. LIA documentation master file, created by
+.. MicroLIA documentation master file, created by
    sphinx-quickstart on Thu Mar 24 11:15:14 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to LIA's documentation!
+Welcome to MicroLIA's documentation!
 ===============================
-LIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of LIA supports two additional models: Extreme Gradient Boost and Neural Network. 
+MicroLIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of MicroLIA supports two additional models: Extreme Gradient Boost and Neural Network. 
 
 You can find information on the program development in the `paper <https://arxiv.org/abs/2004.14347>`_.
 
@@ -15,18 +15,18 @@ The current stable version can be installed via pip:
 
 .. code-block:: bash
 
-    pip install LIA
+    pip install MicroLIA
 
 
-Importing LIA
+Importing MicroLIA
 ==================
-The most important variable to set when employing LIA is the cadence of the survey -- we can construct this by appending timestamp arrays to an empty list. When a lightcurve is simulated, a timestamp from the list will be selected at random.
+The most important variable to set when employing MicroLIA is the cadence of the survey -- we can construct this by appending timestamp arrays to an empty list. When a lightcurve is simulated, a timestamp from the list will be selected at random.
 
 With our timestamps saved we can simulate our training data and generate an optimal machine learning model with the following imports:
 
 .. code-block:: python
 
-   from LIA import training_set
+   from MicroLIA import training_set
 
    data_x, data_y = training_set.create(timestamps)
 
@@ -45,7 +45,7 @@ With the lightcurves simulated or loaded, and the feature matrix saved as data_x
 
 .. code-blocK:: python
       
-      from LIA import models
+      from MicroLIA import models
 
       model = models.Classifier(data_x, data_y)
       model.create()
@@ -63,11 +63,11 @@ When the final model is output, we can predict new, unseen data, but note that i
 
 Example
 ==================
-To learn about LIA's functionality please refer to the `example page <https://lia.readthedocs.io/en/latest/source/Examples.html>`_, which covers in detail the options we have when simulating our training data and creating the classifiers. 
+To learn about MicroLIA's functionality please refer to the `example page <https://microlia.readthedocs.io/en/latest/source/Examples.html>`_, which covers in detail the options we have when simulating our training data and creating the classifiers. 
 
 Science
 ==================
-To learn about Gravitational Microlensing, including how to derive the magnification equation, please visit the `science page <https://lia.readthedocs.io/en/latest/source/Gravitational%20Microlensing.html>`_. 
+To learn about Gravitational Microlensing, including how to derive the magnification equation, please visit the `science page <https://microlia.readthedocs.io/en/latest/source/Gravitational%20Microlensing.html>`_. 
 
 
 Pages
@@ -85,4 +85,4 @@ Here is the documentation for all the modules:
 .. toctree::
    :maxdepth: 1
 
-   source/LIA
+   source/MicroLIA

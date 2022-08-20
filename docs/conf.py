@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'LIA'
+project = 'MicroLIA'
 copyright = '2022, Daniel Godines'
 author = 'Daniel Godines'
 
@@ -51,7 +51,7 @@ extensions = [
 
 autosummary_generate = True
 autoapi_type = 'python'
-autoapi_dirs = ['../LIA', './source']
+autoapi_dirs = ['../MicroLIA', './source']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -61,7 +61,7 @@ templates_path = ['_templates']
 #
 # source_suffix = ['.rst', '.md']
 source_suffix = '.rst'
-exclude_patterns = ['../LIA/test/*']
+exclude_patterns = ['../MicroLIA/test/*']
 # The master toctree document.
 master_doc = 'index'
 
@@ -116,7 +116,7 @@ html_theme_options = {"logo_only": True}
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'LIAdoc'
+htmlhelp_basename = 'MicroLIAdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -143,7 +143,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'LIA.tex', 'LIA Documentation',
+    (master_doc, 'MicroLIA.tex', 'MicroLIA Documentation',
      'Daniel Godines', 'manual'),
 ]
 
@@ -153,7 +153,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'lia', 'LIA Documentation',
+    (master_doc, 'microlia', 'MicroLIA Documentation',
      [author], 1)
 ]
 
@@ -164,8 +164,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'LIA', 'LIA Documentation',
-     author, 'LIA', 'Microlensing Detectiong Algorithm',
+    (master_doc, 'MicroLIA', 'MicroLIA Documentation',
+     author, 'MicroLIA', 'Microlensing Detectiong Algorithm',
      'Miscellaneous'),
 ]
 
