@@ -5,7 +5,7 @@
     @author: danielgodinez
 """
 import numpy as np
-from LIA import features
+from MicroLIA import features
 from inspect import getmembers, isfunction
 
 def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):

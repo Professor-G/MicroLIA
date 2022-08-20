@@ -17,11 +17,11 @@ from progress import bar
 from astropy.io.votable import parse_single_table
 from sklearn import decomposition
 
-from LIA import simulate
-from LIA import noise_models
-from LIA import quality_check
-from LIA import extract_features
-from LIA import features
+from MicroLIA import simulate
+from MicroLIA import noise_models
+from MicroLIA import quality_check
+from MicroLIA import extract_features
+from MicroLIA import features
 
 def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
     n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, filename='', save_file=True):

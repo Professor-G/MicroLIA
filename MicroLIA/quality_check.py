@@ -6,8 +6,8 @@ Created on Thu Jun 28 20:30:11 2018
 """
 from __future__ import division
 import numpy as np
-from LIA import simulate
-from LIA import training_set
+from MicroLIA import simulate
+from MicroLIA import training_set
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier

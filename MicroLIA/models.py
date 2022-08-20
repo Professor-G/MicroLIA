@@ -22,8 +22,8 @@ from sklearn.metrics import confusion_matrix, auc, RocCurveDisplay
 from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 from sklearn.manifold import TSNE
 
-from LIA.optimization import hyper_opt, borutashap_opt, KNN_imputation, MissForest_imputation
-from LIA import extract_features
+from MicroLIA.optimization import hyper_opt, borutashap_opt, KNN_imputation, MissForest_imputation
+from MicroLIA import extract_features
 from xgboost import XGBClassifier
 import scikitplot as skplt
 
