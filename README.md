@@ -10,7 +10,7 @@ LIA is an open-source program for detecting microlensing events in wide-field su
 # Installation
 
 ```
-    $ pip install LIA
+    $ pip install MicroLIA
 ```
 
 # [Documentation](https://microlia.readthedocs.io/en/latest/?)
