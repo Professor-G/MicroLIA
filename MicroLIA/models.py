@@ -161,9 +161,10 @@ class Classifier:
                 
         else:
             data = self.data_x[:]
-            if data.max() > 1e7:
-                print('NOTE: Data values higher than 1e7 will be set to this maximum.')
-                data[data>1e7]=1e7
+            if data.max() > 1e7 or data.min() < 1e-7:
+                print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
+                data[data>1e7] = 1e7
+                data[data<1e-7] = 1e-7
 
         self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
         if len(self.feats_to_use) == 0:
@@ -367,7 +368,7 @@ class Classifier:
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
 
-        if data.max() > 1e7:
+        if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
             data[data>1e7] = 1e7
             data[data<1e-7] = 1e-7
@@ -448,7 +449,7 @@ class Classifier:
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
 
-        if data.max() > 1e7:
+        if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
             data[data>1e7] = 1e7
             data[data<1e-7] = 1e-7
@@ -507,10 +508,10 @@ class Classifier:
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
         
-        if data.max() > 1e7:
+        if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
-                data[data>1e7] = 1e7
-                data[data<1e-7] = 1e-7
+            data[data>1e7] = 1e7
+            data[data<1e-7] = 1e-7
 
         model0 = self.model
         if len(np.unique(self.data_y)) != 2:
