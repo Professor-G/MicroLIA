@@ -154,6 +154,7 @@ class Classifier:
                 if data.max() > 1e7 or data.min() < 1e-7:
                     print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
                     data[data>1e7], data[data<1e-7] = 1e7, 1e-7
+                print("Returning base {} model...".format(self.clf))
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
