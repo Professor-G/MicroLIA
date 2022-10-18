@@ -58,6 +58,10 @@ class Classifier:
         optimize (bool): If True the Boruta algorithm will be run to identify the features
             that contain useful information, after which the optimal Random Forest hyperparameters
             will be calculated using Bayesian optimization. 
+        opt_cv (int): Cross-validations to perform when assesing the performance at each
+            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
+            will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
+            NOTE: The higher this number, the longer the optimization will take.
         impute (bool): If False no data imputation will be performed. Defaults to True,
             which will result in two outputs, the classifier and the imputer to save
             for future transformations. 
@@ -77,13 +81,14 @@ class Classifier:
         Trained machine learning model.
 
     """
-    def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
+    def __init__(self, data_x, data_y, clf='rf', optimize=True, opt_cv=10, impute=True, imp_method='KNN', 
         n_iter=100, boruta_trials=50, boruta_model='rf', balance=True, limit_search=True):
 
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
         self.optimize = optimize 
+        self.opt_cv = opt_cv
         self.impute = impute
         self.imp_method = imp_method
         self.n_iter = n_iter
@@ -179,7 +184,7 @@ class Classifier:
             data_x = self.data_x[:,self.feats_to_use]
 
         self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
-            balance=self.balance, limit_search=self.limit_search, return_study=True)
+            balance=self.balance, limit_search=self.limit_search, return_study=True, opt_cv=self.opt_cv)
         print("Fitting and returning final model...")
         self.model.fit(data_x, self.data_y)
         
@@ -365,7 +370,10 @@ class Classifier:
 
         if np.any(np.isnan(data)):
             print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=data)[0]
+            if self.imputer is not None and self.imp_method == 'KNN':
+                data = KNN_imputation(data=data, imputer=self.imputer)
+            else:
+                data = KNN_imputation(data=data)[0]
 
         if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
@@ -445,7 +453,10 @@ class Classifier:
 
         if np.any(np.isnan(data)):
             print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=data)[0]
+            if self.imputer is not None and self.imp_method == 'KNN':
+                data = KNN_imputation(data=data, imputer=self.imputer)
+            else:
+                data = KNN_imputation(data=data)[0]
 
         if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
@@ -503,9 +514,12 @@ class Classifier:
 
         if np.any(np.isnan(data)):
             print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=data)[0]
-        
-       if data.max() > 1e7 or data.min() < 1e-7:
+            if self.imputer is not None and self.imp_method == 'KNN':
+                data = KNN_imputation(data=data, imputer=self.imputer)
+            else:
+                data = KNN_imputation(data=data)[0]
+
+        if data.max() > 1e7 or data.min() < 1e-7:
             print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
             data[data>1e7], data[data<1e-7] = 1e7, 1e-7
 

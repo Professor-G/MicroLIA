@@ -38,10 +38,11 @@ class objective_xgb(object):
     2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
     """
 
-    def __init__(self, data_x, data_y, limit_search=False):
+    def __init__(self, data_x, data_y, limit_search=False, opt_cv=10):
         self.data_x = data_x
         self.data_y = data_y
         self.limit_search = limit_search
+        self.opt_cv = opt_cv
 
     def __call__(self, trial):
 
@@ -70,7 +71,7 @@ class objective_xgb(object):
                 clf = XGBClassifier(booster=booster, n_estimators=n_estimators, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
                     gamma=gamma, grow_policy=grow_policy, subsample=subsample)#, tree_method='hist')
 
-            cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+            cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
             final_score = np.mean(cv['test_score'])
 
             return final_score
@@ -104,7 +105,7 @@ class objective_xgb(object):
                 reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, gamma=gamma, grow_policy=grow_policy, min_child_weight=min_child_weight,
                 max_delta_step=max_delta_step, subsample=subsample)#, tree_method='hist')
 
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
         final_score = np.mean(cv['test_score'])
 
         return final_score
@@ -118,9 +119,10 @@ class objective_nn(object):
     See Optuna examples: https://github.com/optuna/optuna-examples 
     """
 
-    def __init__(self, data_x, data_y):
+    def __init__(self, data_x, data_y, opt_cv=10):
         self.data_x = data_x
         self.data_y = data_y
+        self.opt_cv = opt_cv
 
     def __call__(self, trial):
         learning_rate_init= trial.suggest_float('learning_rate_init', 1e-6, 1)
@@ -138,7 +140,7 @@ class objective_nn(object):
         clf = MLPClassifier(hidden_layer_sizes=tuple(layers),learning_rate_init=learning_rate_init, 
             solver=solver, activation=activation, alpha=alpha, batch_size=batch_size, max_iter=2500)
         
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=3)
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
         final_score = np.round(np.mean(cv['test_score']), 6)
 
         return final_score
@@ -153,6 +155,7 @@ class objective_rf(object):
     def __init__(self, data_x, data_y):
         self.data_x = data_x
         self.data_y = data_y
+        self.opt_cv = opt_cv
 
     def __call__(self, trial):
         n_estimators = trial.suggest_int('n_estimators', 100, 3000)
@@ -171,12 +174,12 @@ class objective_rf(object):
             print("Invalid hyperparameter combination, skipping trial")
             return 0.0
 
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
         final_score = np.mean(cv['test_score'])
 
         return final_score
 
-def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=True):
+def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=True, opt_cv=10):
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
     This function uses Bayesian Optimizattion and should only be used for
@@ -224,6 +227,10 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             when fitting the classifier. This can improve classification when classes
             are imbalanced. This is only applied if the classification is a binary task. 
             Defaults to True.        
+        opt_cv (int): Cross-validations to perform when assesing the performance at each
+            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
+            will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
+            NOTE: The higher this number, the longer the optimization will take.
             
     Returns:
         The first output is the classifier with the optimal hyperparameters.
@@ -250,7 +257,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     else:
         raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
 
-    cv = cross_validate(model_0, data_x, data_y, cv=10)
+    cv = cross_validate(model_0, data_x, data_y, cv=opt_cv)
     initial_score = np.round(np.mean(cv['test_score']), 6)
 
     sampler = optuna.samplers.TPESampler(seed=1909) 
@@ -280,7 +287,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
 
     if clf == 'rf':
         try:
-            objective = objective_rf(data_x, data_y)
+            objective = objective_rf(data_x, data_y, opt_cv)
             study.optimize(objective, n_trials=n_iter, show_progress_bar=True)
             params = study.best_trial.params
             model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
@@ -300,7 +307,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 'bootstrap': [True,False]   
             }
             gs = BayesSearchCV(n_iter=n_iter, estimator=RandomForestClassifier(), search_spaces=params, 
-                optimizer_kwargs={'base_estimator': 'RF'}, cv=10)
+                optimizer_kwargs={'base_estimator': 'RF'}, cv=opt_cv)
             gs.fit(data_x, data_y)
             best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
             print('Highest mean accuracy: {}'.format(best_score))
@@ -308,7 +315,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
 
     elif clf == 'nn':
         try:
-            objective = objective_nn(data_x, data_y)
+            objective = objective_nn(data_x, data_y, opt_cv)
             study.optimize(objective, n_trials=n_iter, show_progress_bar=True)
             params = study.best_trial.params
             layers = [param for param in params if 'n_units_' in param]
@@ -326,14 +333,14 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 'solver': ['sgd', 'adam'],
                 'max_iter': [100, 150, 200] 
             }
-            gs = BayesSearchCV(n_iter=n_iter, estimator=MLPClassifier(), search_spaces=params, cv=10)
+            gs = BayesSearchCV(n_iter=n_iter, estimator=MLPClassifier(), search_spaces=params, cv=opt_cv)
             gs.fit(data_x, data_y)
             best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 6)
             print('Highest mean accuracy: {}'.format(best_score))
             return gs.best_estimator_, gs.best_params_
           
     elif clf == 'xgb':
-        objective = objective_xgb(data_x, data_y, limit_search=limit_search)
+        objective = objective_xgb(data_x, data_y, limit_search=limit_search, opt_cv=opt_cv)
         if limit_search:
             print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True)
