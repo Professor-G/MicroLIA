@@ -141,6 +141,7 @@ class Classifier:
             return
 
         if self.impute:
+            print("Imputing data...")
             if self.imp_method == 'KNN':
                 data, self.imputer = KNN_imputation(data=self.data_x, imputer=None)
             elif self.imp_method == 'MissForest':
@@ -150,12 +151,18 @@ class Classifier:
                 raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
             
             if self.optimize is False:
+                if data.max() > 1e7:
+                    print('NOTE: Data values higher than 1e7 will be set to this maximum.')
+                    data[data>1e7]=1e7
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
                 
         else:
-            data = self.data_x[::]
+            data = self.data_x[:]
+            if data.max() > 1e7:
+                print('NOTE: Data values higher than 1e7 will be set to this maximum.')
+                data[data>1e7]=1e7
 
         self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
         if len(self.feats_to_use) == 0:
@@ -358,8 +365,11 @@ class Classifier:
         if np.any(np.isnan(data)):
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
-       
 
+        if data.max() > 1e7:
+            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
+            data[data>1e7]=1e7
+       
         if len(data) > 5e3:
             method = 'barnes_hut' #Scales with O(N)
         else:
@@ -435,6 +445,10 @@ class Classifier:
         if np.any(np.isnan(data)):
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
+
+        if data.max() > 1e7:
+            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
+            data[data>1e7]=1e7
        
         if norm:
             scaler = MinMaxScaler()
@@ -490,6 +504,10 @@ class Classifier:
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=data)[0]
         
+        if data.max() > 1e7:
+            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
+            data[data>1e7]=1e7
+
         model0 = self.model
         if len(np.unique(self.data_y)) != 2:
             X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=0.2, random_state=0)
