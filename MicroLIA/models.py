@@ -78,7 +78,8 @@ class Classifier:
 
     """
     def __init__(self, data_x, data_y, clf='rf', optimize=True, impute=True, imp_method='KNN', 
-        n_iter=100, boruta_trials=50, balance=True):
+        n_iter=100, boruta_trials=50, boruta_model='rf', balance=True, limit_search=True):
+
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
@@ -87,14 +88,17 @@ class Classifier:
         self.imp_method = imp_method
         self.n_iter = n_iter
         self.boruta_trials = boruta_trials
+        self.boruta_model = boruta_model
         self.balance = balance 
+        self.limit_search = limit_search
 
         self.model = None
         self.imputer = None
         self.feats_to_use = None
 
-        self.feature_history = None 
+        self.feature_history = None  
         self.optimization_results = None 
+        self.best_params = None 
 
     def create(self):
         """
@@ -131,7 +135,7 @@ class Classifier:
             raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
         
         if self.impute is False and self.optimize is False:
-            print("Returning base model...")
+            print("Returning base {} model...".format(self.clf))
             model.fit(self.data_x, self.data_y)
             self.model = model
             return
@@ -145,29 +149,31 @@ class Classifier:
             else:
                 raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
             
-            if self.optimize:
-                self.data_x = data
-            else:
+            if self.optimize is False:
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
+                
+        else:
+            data = self.data_x[::]
 
-        self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials)
+        self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
         if len(self.feats_to_use) == 0:
-            print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
+            print('No features selected, increase the number of n_trials when running pyBIA.optimization.borutashap_opt(). Using all features...')
             self.feats_to_use = np.arange(data.shape[1])
         #Re-construct the imputer with the selected features as
         #new predictions will only compute these metrics, need to fit again!
         if self.imp_method == 'KNN':
-            self.data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
+            data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
         elif self.imp_method == 'MissForest':
-            self.data_x, self.imputer = MissForest_imputation(data=self.data_x[:,self.feats_to_use]), None 
+            data_x, self.imputer = MissForest_imputation(data=self.data_x[:,self.feats_to_use]), None 
         else: 
-            self.data_x = self.data_x[:,self.feats_to_use]
+            data_x = self.data_x[:,self.feats_to_use]
 
-        self.model, best_params, self.optimization_results = hyper_opt(self.data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True)
+        self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
+            balance=self.balance, return_study=True, limit_search=self.limit_search)
         print("Fitting and returning final model...")
-        self.model.fit(self.data_x, self.data_y)
+        self.model.fit(data_x, self.data_y)
         
         return
 
@@ -215,6 +221,10 @@ class Classifier:
             joblib.dump(self.feats_to_use, path+'Feats_Index')
         if self.optimization_results is not None:
             joblib.dump(self.optimization_results, path+'HyperOpt_Results')
+        if self.best_params is not None:
+            joblib.dump(self.best_params, path+'Best_Params')
+        if self.feature_history is not None:
+            joblib.dump(self.feature_history, path+'FeatureOpt_Results')
         print('Files saved in: {}'.format(path))
         return 
 
@@ -240,20 +250,27 @@ class Classifier:
         try:
             self.model = joblib.load(path+'Model')
             model = 'model'
-        except FileNotFoundError:
+        except:
             model = ''
             pass
 
         try:
             self.imputer = joblib.load(path+'Imputer')
             imputer = 'imputer'
-        except FileNotFoundError:
+        except:
             imputer = ''
             pass 
 
         try:
             self.feats_to_use = joblib.load(path+'Feats_Index')
             feats_to_use = 'feats_to_use'
+        except:
+            feats_to_use = ''
+            pass
+
+        try:
+            self.feature_history = joblib.load(path+'FeatureOpt_Results')
+            feature_opt_results = 'feature_selection_results'
         except FileNotFoundError:
             feats_to_use = ''
             pass
@@ -261,11 +278,11 @@ class Classifier:
         try:
             self.optimization_results = joblib.load(path+'HyperOpt_Results')
             optimization_results = 'optimization_results'
-        except FileNotFoundError:
+        except:
             optimization_results = '' 
             pass
 
-        print('Successfully loaded the following class attributes: {}, {}, {}, {}'.format(model, imputer, feats_to_use, optimization_results))
+        print('Successfully loaded the following class attributes: {}, {}, {}, {}, {}'.format(model, imputer, feats_to_use, feature_opt_results, optimization_results))
         
         return
 
@@ -312,16 +329,11 @@ class Classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, x=None, y=None, norm=False, pca=False, title='Feature Parameter Space'):
+    def plot_tsne(self, norm=False, pca=False, title='Feature Parameter Space'):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
         Args:
-            x (ndarray, optional): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features. If None then 
-                the data_y attribute will be used. Defaults to None.
-            y (ndarray, optional, str): 1D array containing the corresponing labels.
-                If None then the data_y attribute will be used. Defaults to None.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to False.
             pca (bool): If True the data will be fit to a Principal Component
@@ -331,16 +343,18 @@ class Classifier:
         Returns:
             AxesImage. 
         """
-        if x is None:
-            x = self.data_x 
-        if y is None:
-            y = self.data_y
-
+       
         if np.any(np.isnan(self.data_x)):
             print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=x)[0]
+            data = KNN_imputation(data=self.data_x)[0]
         else:
-            data = x
+            data = self.data_x[:]
+
+        if self.feats_to_use is not None:
+            if len(data.shape) == 1:
+                data = data[self.feats_to_use].reshape(1,-1)
+            else:
+                data = data[:,self.feats_to_use]
 
         if len(data) > 5e3:
             method = 'barnes_hut' #Scales with O(N)
@@ -405,11 +419,17 @@ class Classifier:
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=self.data_x)[0]
         else:
-            data = self.data_x
+            data = self.data_x[:]
      
         if norm:
             scaler = MinMaxScaler()
             scaler.fit_transform(data)
+        
+        if self.feats_to_use is not None:
+            if len(data.shape) == 1:
+                data = data[self.feats_to_use].reshape(1,-1)
+            else:
+                data = data[:,self.feats_to_use]
         
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
@@ -446,11 +466,11 @@ class Classifier:
         Returns:
             AxesImage
         """
-        if np.any(np.isnan(self.data_x)) == True:
+        if np.any(np.isnan(self.data_x)):
             print('Automatically imputing NaN values with KNN imputation...')
             data = KNN_imputation(data=self.data_x)[0]
         else:
-            data = self.data_x
+            data = self.data_x[:]
         
         model0 = self.model
         if len(np.unique(self.data_y)) != 2:
@@ -523,11 +543,14 @@ class Classifier:
         plt.title(label=title,fontsize=18)
         plt.show()
 
-    def plot_hyper_opt(xlog=True, ylog=False):
+    def plot_hyper_opt(self, xlim=None, ylim=None, xlog=True, ylog=False, 
+        savefig=False):
         """
         Plots the hyperparameter optimization history.
     
         Args:
+            xlim: Limits for the x-axis. Ex) xlim = (0, 1000)
+            ylim: Limits for the y-axis. Ex) ylim = (0.9, 0.94)
             xlog (boolean): If True the x-axis will be log-scaled.
                 Defaults to True.
             ylog (boolean): If True the y-axis will be log-scaled.
@@ -537,23 +560,30 @@ class Classifier:
             AxesImage
         """
 
-        fig = optuna.visualization.matplotlib.plot_optimization_history(self.optimization_results)
+        fig = plot_optimization_history(self.optimization_results)
         if xlog:
             plt.xscale('log')
         if ylog:
             plt.yscale('log')
         plt.xlabel('Trial #', size=16)
-        plt.ylabel('10-fold CV Accuracy', size=16)
+        plt.ylabel('10-Fold CV Accuracy', size=16)
         plt.title(('Hyperparameter Optimization History'), size=18)
-        plt.xlim((1,1e4))
-        plt.ylim((0.9, 0.935))
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.grid(True, color='k', alpha=0.35, linewidth=1.5, linestyle='--')
-        plt.legend(prop={'size': 16})
-        plt.show()
+        plt.legend(prop={'size': 16}, loc=2)
+        if xlim is not None:
+            plt.xlim(xlim)
+        if ylim is not None:
+            plt.ylim(ylim)
+        plt.tight_layout()
+        if savefig:
+            plt.savefig('Ensemble_Hyperparameter_Optimization.png', bbox_inches='tight', dpi=300)
+            plt.clf()
+        else:
+            plt.show()
 
-    def plot_feature_opt(feats='all'):
+    def plot_feature_opt(self, feats='all'):
         """
         Returns whisker plot displaying the z-score distribution of each feature
         across all trials.
@@ -566,8 +596,7 @@ class Classifier:
             AxesImage
         """
 
-        self.feat_selector.plot(which_features=feats, X_size=14)
-
+        self.feature_history.plot(which_features=feats, X_size=14)
 
 #Helper functions below to generate confusion matrix
 def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):

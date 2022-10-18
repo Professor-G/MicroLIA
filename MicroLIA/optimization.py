@@ -33,40 +33,79 @@ from xgboost import XGBClassifier
 
 class objective_xgb(object):
     """
-    The Optuna objective function for the tree-based XGBoost classifier. 
+    Optimization objective function for the tree-based XGBoost classifier. 
     The Optuna software for hyperparameter optimization was published in 
     2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
     """
-    def __init__(self, data_x, data_y):
+
+    def __init__(self, data_x, data_y, limit_search=False):
         self.data_x = data_x
         self.data_y = data_y
+        self.limit_search = limit_search
 
     def __call__(self, trial):
+
+        if self.limit_search:
+            n_estimators = trial.suggest_int('n_estimators', 100, 500)
+            booster = trial.suggest_categorical('booster', ['gbtree', 'dart'])
+            reg_lambda = trial.suggest_loguniform('reg_lambda', 1e-8, 1)
+            reg_alpha = trial.suggest_loguniform('reg_alpha', 1e-8, 1)
+            max_depth = trial.suggest_int('max_depth', 2, 25)
+            eta = trial.suggest_loguniform('eta', 1e-8, 1)
+            gamma = trial.suggest_loguniform('gamma', 1e-8, 1)
+            grow_policy = trial.suggest_categorical('grow_policy', ['depthwise', 'lossguide'])
+
+            if booster == "dart":
+                sample_type = trial.suggest_categorical('sample_type', ['uniform', 'weighted'])
+                normalize_type = trial.suggest_categorical('normalize_type', ['tree', 'forest'])
+                rate_drop = trial.suggest_loguniform('rate_drop', 1e-8, 1)
+                skip_drop = trial.suggest_loguniform('skip_drop', 1e-8, 1)
+
+                clf = XGBClassifier(booster=booster, n_estimators=n_estimators, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
+                    gamma=gamma, grow_policy=grow_policy, sample_type=sample_type, normalize_type=normalize_type,rate_drop=rate_drop, 
+                    skip_drop=skip_drop)#, tree_method='hist')
+            
+            elif booster == 'gbtree':
+                subsample = trial.suggest_loguniform('subsample', 1e-6, 1.0)
+                clf = XGBClassifier(booster=booster, n_estimators=n_estimators, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
+                    gamma=gamma, grow_policy=grow_policy, subsample=subsample)#, tree_method='hist')
+
+            cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+            final_score = np.mean(cv['test_score'])
+
+            return final_score
+
         booster = trial.suggest_categorical('booster', ['gbtree', 'dart'])
-        reg_lambda = trial.suggest_loguniform('reg_lambda', 1e-8, 1)
-        reg_alpha = trial.suggest_loguniform('reg_alpha', 1e-8, 1)
+        n_estimators = trial.suggest_int('n_estimators', 100, 500)
+        reg_lambda = trial.suggest_float('reg_lambda', 0, 100)
+        reg_alpha = trial.suggest_int('reg_alpha', 0, 100)
         max_depth = trial.suggest_int('max_depth', 2, 25)
-        eta = trial.suggest_loguniform('eta', 1e-8, 1)
-        gamma = trial.suggest_loguniform('gamma', 1e-8, 1)
+        eta = trial.suggest_float('eta', 1e-8, 1)
+        gamma = trial.suggest_int('gamma', 1, 100)
         grow_policy = trial.suggest_categorical('grow_policy', ['depthwise', 'lossguide'])
+        min_child_weight = trial.suggest_int('min_child_weight', 1, 100)
+        max_delta_step = trial.suggest_int('max_delta_step', 1, 100)
+        subsample = trial.suggest_float('subsample', 0.5, 1.0)
+        colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 1)
 
         if booster == "dart":
             sample_type = trial.suggest_categorical('sample_type', ['uniform', 'weighted'])
             normalize_type = trial.suggest_categorical('normalize_type', ['tree', 'forest'])
-            rate_drop = trial.suggest_loguniform('rate_drop', 1e-8, 1)
-            skip_drop = trial.suggest_loguniform('skip_drop', 1e-8, 1)
+            rate_drop = trial.suggest_float('rate_drop', 1e-8, 1)
+            skip_drop = trial.suggest_float('skip_drop', 1e-8, 1)
 
-            clf = XGBClassifier(booster=booster, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
-                gamma=gamma, grow_policy=grow_policy, sample_type=sample_type, normalize_type=normalize_type,rate_drop=rate_drop, 
-                skip_drop=skip_drop, tree_method='hist')
-        
+            clf = XGBClassifier(booster=booster, n_estimators=n_estimators, colsample_bytree=colsample_bytree, reg_lambda=reg_lambda, 
+                reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, gamma=gamma, grow_policy=grow_policy, min_child_weight=min_child_weight, 
+                max_delta_step=max_delta_step, subsample=subsample, sample_type=sample_type, normalize_type=normalize_type, rate_drop=rate_drop, 
+                skip_drop=skip_drop)#, tree_method='hist')
+
         elif booster == 'gbtree':
-            subsample = trial.suggest_loguniform('subsample', 1e-6, 1.0)
-            clf = XGBClassifier(booster=booster, reg_lambda=reg_lambda, reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, 
-                gamma=gamma, grow_policy=grow_policy, subsample=subsample, tree_method='hist')
+            clf = XGBClassifier(booster=booster, n_estimators=n_estimators, colsample_bytree=colsample_bytree,  reg_lambda=reg_lambda, 
+                reg_alpha=reg_alpha, max_depth=max_depth, eta=eta, gamma=gamma, grow_policy=grow_policy, min_child_weight=min_child_weight,
+                max_delta_step=max_delta_step, subsample=subsample)#, tree_method='hist')
 
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=3)
-        final_score = np.round(np.mean(cv['test_score']), 6)
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+        final_score = np.mean(cv['test_score'])
 
         return final_score
         
@@ -106,7 +145,7 @@ class objective_nn(object):
 
 class objective_rf(object):
     """
-    The Optuna objective function for the scikit-learn implementatin of the
+    Optimization objective function for the scikit-learn implementatin of the
     Random Forest classifier. The Optuna software for hyperparameter optimization
     was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
     """
@@ -124,12 +163,16 @@ class objective_rf(object):
         max_features = trial.suggest_int('max_features', 1, self.data_x.shape[1])
         bootstrap = trial.suggest_categorical('bootstrap', [True, False])
         
-        clf = RandomForestClassifier(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth,
-                                    min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
-                                    max_features=max_features, bootstrap=bootstrap)
-        
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=3)
-        final_score = np.round(np.mean(cv['test_score']), 6)
+        try:
+            clf = RandomForestClassifier(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth,
+                min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
+                max_features=max_features, bootstrap=bootstrap)
+        except:
+            print("Invalid hyperparameter combination, skipping trial")
+            return 0.0
+
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=10)
+        final_score = np.mean(cv['test_score'])
 
         return final_score
 
@@ -207,7 +250,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     else:
         raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
 
-    cv = cross_validate(model_0, data_x, data_y, cv=3)
+    cv = cross_validate(model_0, data_x, data_y, cv=10)
     initial_score = np.round(np.mean(cv['test_score']), 6)
 
     sampler = optuna.samplers.TPESampler(seed=1909) 
@@ -257,7 +300,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 'bootstrap': [True,False]   
             }
             gs = BayesSearchCV(n_iter=n_iter, estimator=RandomForestClassifier(), search_spaces=params, 
-                optimizer_kwargs={'base_estimator': 'RF'}, cv=3)
+                optimizer_kwargs={'base_estimator': 'RF'}, cv=10)
             gs.fit(data_x, data_y)
             best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
             print('Highest mean accuracy: {}'.format(best_score))
@@ -283,32 +326,47 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 'solver': ['sgd', 'adam'],
                 'max_iter': [100, 150, 200] 
             }
-            gs = BayesSearchCV(n_iter=n_iter, estimator=MLPClassifier(), search_spaces=params, cv=3)
+            gs = BayesSearchCV(n_iter=n_iter, estimator=MLPClassifier(), search_spaces=params, cv=10)
             gs.fit(data_x, data_y)
-            best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
+            best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 6)
             print('Highest mean accuracy: {}'.format(best_score))
             return gs.best_estimator_, gs.best_params_
           
     elif clf == 'xgb':
-        objective = objective_xgb(data_x, data_y)
+        objective = objective_xgb(data_x, data_y, limit_search=limit_search)
+        if limit_search:
+            print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True)
         params = study.best_trial.params
-        if params['booster'] == 'dart':
-            model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
-                max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
-                sample_type=params['sample_type'], normalize_type=params['normalize_type'],rate_drop=params['rate_drop'], 
-                skip_drop=params['skip_drop'], scale_pos_weight=sample_weight)
-        elif params['booster'] == 'gbtree':
-            model = XGBClassifier(booster=params['booster'], reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], 
-                max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'],
-                subsample=params['subsample'], scale_pos_weight=sample_weight)
+        if limit_search:
+            if params['booster'] == 'dart':
+                model = XGBClassifier(booster=params['booster'],  n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
+                    reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
+                    grow_policy=params['grow_policy'], sample_type=params['sample_type'], normalize_type=params['normalize_type'],
+                    rate_drop=params['rate_drop'], skip_drop=params['skip_drop'], scale_pos_weight=sample_weight)
+            elif params['booster'] == 'gbtree':
+                model = XGBClassifier(booster=params['booster'],  n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
+                    reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
+                    grow_policy=params['grow_policy'], subsample=params['subsample'], scale_pos_weight=sample_weight)
+        else:
+            if params['booster'] == 'dart':
+                model = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'], 
+                    reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
+                    grow_policy=params['grow_policy'], sample_type=params['sample_type'], normalize_type=params['normalize_type'],rate_drop=params['rate_drop'], 
+                    skip_drop=params['skip_drop'], min_child_weight=params['min_child_weight'], max_delta_step=params['max_delta_step'], subsample=params['subsample'],
+                    scale_pos_weight=sample_weight)
+            elif params['booster'] == 'gbtree':
+                model = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'], 
+                    reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
+                    grow_policy=params['grow_policy'], subsample=params['subsample'], min_child_weight=params['min_child_weight'], max_delta_step=params['max_delta_step'],
+                    scale_pos_weight=sample_weight)
        
     final_score = study.best_value
 
     if initial_score > final_score:
-        print('Hyperparameter optimization complete! 3-fold CV accuracy of {} is lower than the base accuracy of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 4), np.round(initial_score, 4)))
+        print('Hyperparameter optimization complete! 10-fold CV accuracy of {} is lower than the base accuracy of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 6), np.round(initial_score, 6)))
     else:
-        print('Hyperparameter optimization complete! 3-fold CV accuracy of {} is higher than the base accuracy of {}.'.format(np.round(final_score, 4), np.round(initial_score, 4)))
+        print('Hyperparameter optimization complete! 10-fold CV accuracy of {} is higher than the base accuracy of {}.'.format(np.round(final_score, 6), np.round(initial_score, 6)))
 
     if return_study:
         return model, params, study
@@ -351,7 +409,7 @@ def borutashap_opt(data_x, data_y, model='rf', boruta_trials=50):
     if model == 'rf':
         classifier = RandomForestClassifier()
     elif model == 'xgb':
-        classifier = XGBClassifier()
+        classifier = XGBClassifier(tree_method='exact', max_depth=20)
     else:
         raise ValueError('Model argument must either be "rf" or "xgb".')
     
