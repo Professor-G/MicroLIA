@@ -108,6 +108,7 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
     stats[np.isinf(stats)] = np.NaN
     #stats[np.isnan(stats)] = 0
     #stats[(stats<1e-6) * (stats>0)] = 1e-6
+    stats[stats<1e-7] = 1e-7
     stats[stats>1e7] = 1e7
     return stats
 

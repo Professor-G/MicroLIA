@@ -152,8 +152,9 @@ class Classifier:
             
             if self.optimize is False:
                 if data.max() > 1e7:
-                    print('NOTE: Data values higher than 1e7 will be set to this maximum.')
-                    data[data>1e7]=1e7
+                    print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
+                    data[data>1e7] = 1e7
+                    data[data<1e-7] = 1e-7
                 model.fit(data, self.data_y)
                 self.model = model 
                 return
@@ -367,9 +368,10 @@ class Classifier:
             data = KNN_imputation(data=data)[0]
 
         if data.max() > 1e7:
-            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
-            data[data>1e7]=1e7
-       
+            print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
+            data[data>1e7] = 1e7
+            data[data<1e-7] = 1e-7
+           
         if len(data) > 5e3:
             method = 'barnes_hut' #Scales with O(N)
         else:
@@ -447,8 +449,9 @@ class Classifier:
             data = KNN_imputation(data=data)[0]
 
         if data.max() > 1e7:
-            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
-            data[data>1e7]=1e7
+            print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
+            data[data>1e7] = 1e7
+            data[data<1e-7] = 1e-7
        
         if norm:
             scaler = MinMaxScaler()
@@ -505,8 +508,9 @@ class Classifier:
             data = KNN_imputation(data=data)[0]
         
         if data.max() > 1e7:
-            print('NOTE: Data values higher than 1e7 will be set to this maximum.')
-            data[data>1e7]=1e7
+            print('NOTE: Data values higher than 1e7 or lower than 1e-7 will be set to these limits.')
+                data[data>1e7] = 1e7
+                data[data<1e-7] = 1e-7
 
         model0 = self.model
         if len(np.unique(self.data_y)) != 2:
