@@ -171,7 +171,7 @@ class Classifier:
             data_x = self.data_x[:,self.feats_to_use]
 
         self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
-            balance=self.balance, return_study=True, limit_search=self.limit_search)
+            balance=self.balance, limit_search=self.limit_search, return_study=True)
         print("Fitting and returning final model...")
         self.model.fit(data_x, self.data_y)
         
@@ -343,18 +343,22 @@ class Classifier:
         Returns:
             AxesImage. 
         """
-       
-        if np.any(np.isnan(self.data_x)):
-            print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=self.data_x)[0]
+
+        if self.model is None:
+            raise ValueError('No model has been created! Run model.create() first.')
+
+        if self.feats_to_use is not None:
+            if len(self.data_x.shape) == 1:
+                data = self.data_x[self.feats_to_use].reshape(1,-1)
+            else:
+                data = self.data_x[:,self.feats_to_use]
         else:
             data = self.data_x[:]
 
-        if self.feats_to_use is not None:
-            if len(data.shape) == 1:
-                data = data[self.feats_to_use].reshape(1,-1)
-            else:
-                data = data[:,self.feats_to_use]
+        if np.any(np.isnan(data)):
+            print('Automatically imputing NaN values with KNN imputation...')
+            data = KNN_imputation(data=data)[0]
+       
 
         if len(data) > 5e3:
             method = 'barnes_hut' #Scales with O(N)
@@ -414,22 +418,27 @@ class Classifier:
         Returns:
             AxesImage.
         """
+        
+        if self.model is None:
+            raise ValueError('No model has been created! Run model.create() first.')
+
         classes = [str(label) for label in np.unique(self.data_y)]
-        if np.any(np.isnan(self.data_x)):
-            print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=self.data_x)[0]
+
+        if self.feats_to_use is not None:
+            if len(self.data_x.shape) == 1:
+                data = self.data_x[self.feats_to_use].reshape(1,-1)
+            else:
+                data = self.data_x[:,self.feats_to_use]
         else:
             data = self.data_x[:]
-     
+
+        if np.any(np.isnan(data)):
+            print('Automatically imputing NaN values with KNN imputation...')
+            data = KNN_imputation(data=data)[0]
+       
         if norm:
             scaler = MinMaxScaler()
             scaler.fit_transform(data)
-        
-        if self.feats_to_use is not None:
-            if len(data.shape) == 1:
-                data = data[self.feats_to_use].reshape(1,-1)
-            else:
-                data = data[:,self.feats_to_use]
         
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
@@ -466,11 +475,20 @@ class Classifier:
         Returns:
             AxesImage
         """
-        if np.any(np.isnan(self.data_x)):
-            print('Automatically imputing NaN values with KNN imputation...')
-            data = KNN_imputation(data=self.data_x)[0]
+        if self.model is None:
+            raise ValueError('No model has been created! Run model.create() first.')
+
+        if self.feats_to_use is not None:
+            if len(self.data_x.shape) == 1:
+                data = self.data_x[self.feats_to_use].reshape(1,-1)
+            else:
+                data = self.data_x[:,self.feats_to_use]
         else:
             data = self.data_x[:]
+
+        if np.any(np.isnan(data)):
+            print('Automatically imputing NaN values with KNN imputation...')
+            data = KNN_imputation(data=data)[0]
         
         model0 = self.model
         if len(np.unique(self.data_y)) != 2:
