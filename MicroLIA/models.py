@@ -342,7 +342,8 @@ class Classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, norm=False, pca=False, title='Feature Parameter Space'):
+    def plot_tsne(self, norm=False, pca=False, title='Feature Parameter Space',
+        savefig=False):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
@@ -406,11 +407,18 @@ class Classifier:
             mask = np.where(self.data_y == feat)[0]
             plt.scatter(x[mask], y[mask], marker=markers[count], label=str(feat), alpha=0.7)
 
-        plt.legend(loc='upper right', prop={'size': 16})
+        plt.legend(prop={'size': 16})
         plt.title(title, size=18)
-        plt.show()
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        if savefig:
+            plt.savefig('tSNE_Projection.png', bbox_inches='tight', dpi=300)
+            plt.clf()
+        else:
+            plt.show()
 
-    def plot_conf_matrix(self, norm=False, pca=False, k_fold=10, normalize=True, title='Confusion matrix'):
+    def plot_conf_matrix(self, data_y=None, norm=False, pca=False, k_fold=10, normalize=True, title='Confusion matrix',
+        savefig=False):
         """
         Returns a confusion matrix with k-fold validation.
 
@@ -430,8 +438,10 @@ class Classifier:
             normalize (bool, optional): If False the confusion matrix will display the
                 total number of objects in the sample. Defaults to True, in which case
                 the values are normalized between 0 and 1.
-            classes (list): A list containing the label of the two training bags. This
-                will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
+            data_y (list): A list containing the labels of the training bags. This
+                will be used to set the matrix axis. Defaults to None, in which case
+                the data_y will be used. This is useful if you wish to include class
+                labels that are not numerical, since XGB requires numerical labels.
             title (str, optional): The title of the output plot. 
 
         Returns:
@@ -441,7 +451,10 @@ class Classifier:
         if self.model is None:
             raise ValueError('No model has been created! Run model.create() first.')
 
-        classes = [str(label) for label in np.unique(self.data_y)]
+        if data_y is None:
+            classes = [str(label) for label in np.unique(self.data_y)]
+        else:
+            classes = [str(label) for label in np.unique(data_y)]
 
         if self.feats_to_use is not None:
             if len(self.data_x.shape) == 1:
@@ -473,9 +486,10 @@ class Classifier:
             data = np.asarray(pca_data).astype('float64')
 
         predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
-        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title)
+        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig)
 
-    def plot_roc_curve(self, k_fold=10, title="Receiver Operating Characteristic Curve"):
+    def plot_roc_curve(self, k_fold=10, title="Receiver Operating Characteristic Curve",
+        savefig=False):
         """
         Plots ROC curve with k-fold cross-validation, as such the 
         standard deviation variations are plotted.
@@ -592,7 +606,11 @@ class Classifier:
         plt.ylabel('True Positive Rate', size=14)
         plt.xlabel('False Positive Rate', size=14)
         plt.title(label=title,fontsize=18)
-        plt.show()
+        if savefig:
+            plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
+            plt.clf()
+        else:
+            plt.show()
 
     def plot_hyper_opt(self, xlim=None, ylim=None, xlog=True, ylog=False, 
         savefig=False):
@@ -685,7 +703,8 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
 
     return predicted_targets, actual_targets
 
-def generate_matrix(predicted_labels_list, actual_targets, normalize=True, classes=["DIFFUSE","OTHER"], title='Confusion matrix'):
+def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=True, title='Confusion matrix',
+    savefig=False):
     """
     Generates the confusion matrix using the output from the evaluate_model() function.
 
@@ -710,7 +729,12 @@ def generate_matrix(predicted_labels_list, actual_targets, normalize=True, class
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
     elif normalize == False:
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
-    plt.show()
+
+    if savefig:
+        plt.savefig('Ensemble_Confusion_Matrix.png', bbox_inches='tight', dpi=300)
+        plt.clf()
+    else:
+        plt.show()
 
 def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix'):
     """
