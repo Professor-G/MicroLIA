@@ -285,7 +285,7 @@ class Classifier:
             self.feature_history = joblib.load(path+'FeatureOpt_Results')
             feature_opt_results = 'feature_selection_results'
         except FileNotFoundError:
-            feats_to_use = ''
+            feature_opt_results = ''
             pass
 
         try:
@@ -423,9 +423,10 @@ class Classifier:
         Returns a confusion matrix with k-fold validation.
 
         Args:
-            data_x (ndarray): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features.
-            data_y (ndarray, str): 1D array containing the corresponing labels.
+            data_y (ndarray, str, optional): 1D array containing the corresponing labels.
+                Only use if using XGB algorithm as this method converts labels to numerical,
+                in which case it may be desired to input the original label array using
+                this parameter. Defaults to None, which uses the data_y attribute.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to False.
             pca (bool): If True the data will be fit to a Principal Component
@@ -763,13 +764,14 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     plt.xticks(tick_marks, classes, rotation=45, fontsize=14)
     plt.yticks(tick_marks, classes, fontsize=14)
 
-    fmt = '.2f' if normalize is True else 'd'
+    fmt = '.4f' if normalize is True else 'd'
     thresh = conf_matrix.max() / 2.
 
     for i, j in itertools.product(range(conf_matrix.shape[0]), range(conf_matrix.shape[1])):
         plt.text(j, i, format(conf_matrix[i, j], fmt), fontsize=14, horizontalalignment="center",
                  color="white" if conf_matrix[i, j] > thresh else "black")
 
+    plt.grid(False)
     plt.tight_layout()
     plt.ylabel('True label',fontsize=18)
     plt.xlabel('Predicted label',fontsize=18)
