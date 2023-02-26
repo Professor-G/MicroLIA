@@ -751,14 +751,14 @@ class Classifier:
             else:
                 if include_other is False:
                     if include_shadow is False:
-                        x_names = self.csv_file.columns[x[:-1]]
+                        x_names = self.self.csv_file.columns[x[:-1]]
                     else:
-                        x_names = np.r_[self.csv_file.columns.iloc[x[:-1]], ['Max Shadow']]
+                        x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
                 else:
                     if include_shadow is False:
-                        x_names = np.r_[self.csv_file.columns.iloc[x[:-1]], ['Max Shadow']]
+                        x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
                     else:
-                        x_names = np.r_[self.csv_file.columns.iloc[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+                        x_names = np.r_[self.csv_file.columns[x[:-2]], ['Other Accepted'], ['Max Shadow']]
 
 
         if include_rejected:
