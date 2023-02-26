@@ -46,7 +46,7 @@ from MicroLIA import data_processing, cnn_model
 
 class objective_cnn(object):
     """
-    Optimization objective function for pyBIA's convolutional neural network. 
+    Optimization objective function for MicroLIA's convolutional neural network. 
     This is passed through the hyper_opt() function when optimizing with
     Optuna. The Optuna software for hyperparameter optimization was published in 
     2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
@@ -953,13 +953,15 @@ class objective_rf(object):
     Random Forest classifier. The Optuna software for hyperparameter optimization
     was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
     """
-
+    
     def __init__(self, data_x, data_y, opt_cv):
+
         self.data_x = data_x
         self.data_y = data_y
         self.opt_cv = opt_cv
 
     def __call__(self, trial):
+
         n_estimators = trial.suggest_int('n_estimators', 100, 3000)
         criterion = trial.suggest_categorical('criterion', ['gini', 'entropy'])
         max_depth = trial.suggest_int('max_depth', 2, 25)
@@ -1045,8 +1047,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             when fitting the classifier. This can improve classification when classes
             are imbalanced. This is only applied if the classification is a binary task. 
             Defaults to True. Argument is ignored if clf='cnn'.
-        img_num_channels (int): The number of filters used. Defaults to 1, as pyBIA version 1
-            has been trained with only blue broadband data. Only used when clf = 'cnn'.
+        img_num_channels (int): The number of filters. Only used when clf = 'cnn'.
         normalize (bool, optional): If True the data will be min-max normalized using the 
             input min and max pixels. Defaults to True. Only used when clf = 'cnn'.
         min_pixel (int, optional): The minimum pixel count, defaults to 0. Pixels with counts 

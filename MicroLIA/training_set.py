@@ -12,6 +12,7 @@ from warnings import warn
 from inspect import getmembers, isfunction
 
 import numpy as np
+from pandas import DataFrame
 from astropy.io import fits
 from progress import bar
 from astropy.io.votable import parse_single_table
@@ -398,10 +399,10 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     data_x = data[:,2:].astype('float')
     data_y = data[:,0].astype(str)
 
-    df = pd.DataFrame(data_x, columns=feature_names[1:])
+    df = DataFrame(data_x, columns=feature_names)
     df['label'] = data_y
-    df.to_csv('MicroLIA_Training_Set.csv', index=False)
-    print("Simulation complete!")
+    df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
+    print("Complete! Files saved in: {}".format(path))
 
     return data_x, data_y
 
@@ -513,10 +514,10 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
     data_x = data[:,2:].astype('float')
     data_y = data[:,0].astype(str)
 
-    df = pd.DataFrame(data_x, columns=feature_names[1:])
+    df = DataFrame(data_x, columns=feature_names[1:])
     df['label'] = data_y
-    df.to_csv('MicroLIA_Training_Set.csv', index=False)
-    print("Complete!")
+    df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
+    print("Complete! Files saved in: {}".format(path))
 
     return data_x, data_y
 

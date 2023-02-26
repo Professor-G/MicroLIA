@@ -43,6 +43,22 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
         All features to use for classification
     """
 
+    if isinstance(time, np.ndarray) is False:
+        if type(time) == list:
+            time = np.array(time)
+        else:
+            raise ValueError('time argument must be a list or array.')
+    if isinstance(mag, np.ndarray) is False:
+        if type(mag) == list:
+            mag = np.array(mag)
+        else:
+            raise ValueError('mag argument must be a list or array.')
+    if isinstance(magerr, np.ndarray) is False:
+        if type(magerr) == list:
+            magerr = np.array(magerr)
+        else:
+            raise ValueError('magerr argument must be a list or array.')
+        
     if convert is True:
         flux = 10**(-(mag-zp)/2.5)
         flux_err = (magerr*flux)/(2.5)*np.log(10)
@@ -66,21 +82,21 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        #try:
-        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
-            feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-        else:
-            feature = func[1](time, norm_flux, norm_fluxerr)
+        try:
+            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+                feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
+            else:
+                feature = func[1](time, norm_flux, norm_fluxerr)
 
-        feature_names.append(func[0])
+            feature_names.append(func[0])
 
-        if np.isfinite(feature):
-            stats.append(feature)
-        else:
+            if np.isfinite(feature):
+                stats.append(feature)
+            else:
+                stats.append(np.nan)
+
+        except (ZeroDivisionError, ValueError):
             stats.append(np.nan)
-
-        #except:
-         #   stats.append(np.nan)
 
         counter += 1
             
@@ -96,21 +112,21 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        #try:
-        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
-            feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-        else:
-            feature = func[1](time, norm_flux, norm_fluxerr)
+        try:
+            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+                feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
+            else:
+                feature = func[1](time, norm_flux, norm_fluxerr)
 
-        feature_names.append(func[0]+'_deriv')
+            feature_names.append(func[0]+'_deriv')
 
-        if np.isfinite(feature):
-            stats.append(feature)
-        else:
+            if np.isfinite(feature):
+                stats.append(feature)
+            else:
+                stats.append(np.nan)
+
+        except (ZeroDivisionError, ValueError):
             stats.append(np.nan)
-
-        #except:
-         #   stats.append(np.nan)
             
         counter += 1
 

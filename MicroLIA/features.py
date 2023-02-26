@@ -890,7 +890,6 @@ def half_mag_amplitude_ratio(time, mag, magerr):
     lower_mag = mag[index]
 
     lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
-    
 
     # For brighter magnitude than average.
     index = np.argwhere(mag <= avg)
@@ -1293,7 +1292,6 @@ def longest_strike_above(time, mag, magerr):
     -------     
     rtype: int
     """
-
 
     val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
 
