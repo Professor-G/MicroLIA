@@ -12,3 +12,6 @@ boruta == 0.3
 xgboost == 1.6.1
 BorutaShap == 1.0.16
 scikit-plot == 0.3.7
+tensorflow == 2.9.1
+pandas == 1.4.1
+opencv-python == 4.7.0.68

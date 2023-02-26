@@ -9,7 +9,7 @@ from setuptools import setup, find_packages, Extension
 
 setup(
     name="MicroLIA",
-    version="1.9.7",
+    version="1.9.8",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
@@ -24,7 +24,8 @@ setup(
 ],
     packages=find_packages('.'),
     install_requires = ['numpy','scikit-learn', 'scikit-optimize', 'astropy','scipy','peakutils',
-        'progress', 'matplotlib', 'missingpy', 'optuna', 'boruta', 'BorutaShap', 'xgboost', 'scikit-plot'],
+        'progress', 'matplotlib', 'missingpy', 'optuna', 'boruta', 'BorutaShap', 'xgboost', 'scikit-plot',
+        'tensorflow', 'pandas', 'dill', 'opencv-python'],
     python_requires='>=3.7,<4',
     include_package_data=True,
     test_suite="nose.collector",
