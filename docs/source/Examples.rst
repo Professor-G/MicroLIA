@@ -6,7 +6,7 @@ The lightcurves for 214 OGLE II microlensing events can be :download:`downloaded
 
 Each file contains three columns: time, mag, magerr
 
-We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we successfully recover.
+We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we successfully recover using a leave-one-out cross-validatoion routine.
 
 Training Set
 -----------
@@ -26,23 +26,20 @@ Adaptive cadence is important as this allows MicroLIA to detect microlensing eve
       time = np.loadtxt(path+name)[:,0]
       timestamps.append(time)
 
-
-This time list will be used to simulate our training data, as each time an event is simulated a timestamp from the list which will be chosen at random. In this example we will set the min_mag of the survey to be 15, and the max_mag to be 20. We will also set n_class=500, this is the size of our training classes. The training_set module allows us to simulat our classes:
+This timestamps list will be used to simulate our training data, as each time an event is simulated a timestamp from the list which will be chosen at random. In this example we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class``=50, this is the size of our training classes. The ``training_set`` module allows us to simulate our classes:
 
 .. code-block:: python
 
    from MicroLIA import training_set
 
-   data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=500)
+   data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=50)
 
 
-There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. 
-
-To be more accurate we will set these optional parameters, and even include a noise model using the rms and median mag of our OGLE IV data.
+There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters, and even include a noise model using the rms and median mag of our OGLE IV data.**
 
 .. code-block:: python
 
-   from MicroLIA import noise_models
+   from MicroLIA import training_set, noise_models
 
    rms_mag = []
    median_mag = []
@@ -60,32 +57,31 @@ To be more accurate we will set these optional parameters, and even include a no
 .. figure:: _static/simulation.jpg
     :align: center
 |
-This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve. The first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. Even though this file saves by default, this function will return two outputs: the statistical metrics (data_x), and the corresponding class labels (data_y), which can always be loaded directly from the 'all_features.txt' file.
+This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve, with the first line containing a '#' comment with the feature names of each column, although please note that the first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. 
 
-There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable classes. These parameters control the number of measurements that must be within the signals -- this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be properly detected. 
+**As of version 2.0, a pandas dataframe will automatically be saved for easier access to the individual metrics, titled 'MicroLIA_Training_Set.csv'.**
 
-If poor lightcurves are simulated the classifier will be heavily biased, as these signals may appear as noisy constants if the event is not adequately captured. This discrepancy between the assigned class label and the characteristics of the simulated signal will impact the generalization and thus the performance of the classifier. `Please refer to the API documentation for more information on these parameters <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_.
+Even though these files are saved by default, this function will also return two outputs: the statistical metrics (``data_x``), and the corresponding class labels (``data_y``), which can always be loaded directly from the 'all_features.txt' file. There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable lightcurves. These parameters control the number of measurements that must be within the signals -- this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be properly detected. 
+
+If poor lightcurves are simulated the classifier will be heavily biased, as these signals may appear as noisy constants if the event is not adequately captured. This discrepancy between the assigned class label and the characteristics of the simulated signal will impact the generalization and thus the performance of the classifier. Please refer to the  `API documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_ for more information on tuning these parameters.
 
 
-Classification Engine
+Ensemble Classification Engine
 -----------
-We will create our machine learning model using the statistical features of the lightcurves, which are saved by default in the 'all_features.txt' file when we created our training set. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
+We will create our ensemble machine learning model using the statistical features of the lightcurves, which are saved in the 'all_features.txt' file when the training set was genereated. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-We can load this file and create our data_x and data_y arrays, although note above that these variables were created for us when we made our training set, this example is to demonstrate how to generally load the saved training data (if need-be we can always re-compute the statistics using the `extract_features module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_).
+In this example we will load this file from which we can create our data_x and data_y arrays, although note above that the training set routine returns ``data_x`` and ``data_y`` as outputs, therefore this example is to simply demonstrate how to generally load the saved training data post-generation (if need-be we can always re-compute the statistics using the `extract_features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_) module.
 
 .. code-block:: python
    
    from pathlib import Path
 
-   home = str(Path.home()) #By default the file is saved in the home directory
-   data = np.loadtxt(home+'/all_features.txt', dtype=str)
+   data = np.loadtxt(str(Path.home()) + '/all_features.txt', dtype=str, comments='#') #By default the file is saved in the home directory
 
    data_x = data[:,2:].astype('float')
    data_y = data[:,0]
    
-With our training data loaded we can create our machine learning engine with MicroLIA's `models module <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html>`_.
-
-Unless turned off, when creating the model three optimization procedures will automatically run, in the following order:
+With our training data loaded we can create our machine learning engine with MicroLIA's `models <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html>`_ module. By default, when training the model three optimization procedures will automatically run, in the following order:
 
 -  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a means to address the issue of missing data values. 
 
@@ -93,27 +89,94 @@ Unless turned off, when creating the model three optimization procedures will au
 
 -  Finally, the model hyperparameters will be optimized using the hyperparameter optimization software `Optuna <https://optuna.org/>`_, developed by `Akiba et al 2019 <https://arxiv.org/abs/1907.10902>`_. The default sampler Optuna employs is the Tree Parzen Estimator, a Bayesian optimization approach that effectively reduces the error by narrowing the search space according to the performance of previous iterations, therefore in principle it is best to increase the number of trials to perform.
 
-Since these three methods are run by default, we can create and optimize a Random Forest classifier using the following:
+As these three methods are executed by default, we can create and optimize an XGBoost classifier using the following code:
 
 .. code-block:: python
 
-   from MicroLIA import models
+   from MicroLIA import ensemble_model
 
-   model = models.Classifier(data_x, data_y, clf='rf')
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb')
    model.create()
 
-To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. 
+To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. This setting can be tuned using the ``opt_cv`` argument.
 
-Note that MicroLIA currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While clf='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
+Note that the ``ensemble_model`` module currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While ``clf``='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
 
-Since neural networks require more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set n_iter to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters. Note that there is also a boruta_trials argument which sets the number of iterations to perform when calculating feature importance. If boruta_trials=0, then all the features will be used. Use model.feature_history.plot(which_features='all') to visualize the feature selection results.
+Since our neural network implemtation requires more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set ``n_iter`` to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters. Note that there is also a ``boruta_trials`` argument which sets the number of iterations to perform when calculating feature importance. If ``boruta_trials``=0, then all the features will be used. Use ``model.plot_feature_opt()`` to visualize the feature selection results.
 
-For details on how to set the classifier and optimization parameters, refer to the `module documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_.
+For details on how to set the classifier and the accompanying optimization parameters, refer to the `ensemble_model <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_ API reference.
 
 
-Classification Accuracy
+Saving & Loading Models
 -----------
-With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() function. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
+Once a model is created we can save the model file alongside any additional attributes using the save class method, which saves the model, imputer, feats_to_use, optimization_results, best_params, and feature_history, if applicable. Unless a ``path`` argument is specified when saving, the files are saved to a folder in the local home directory, which will print upon saving. This folder will be titled 'MicroLIA_ensemble_model'.
+
+.. code-block:: python
+
+   model.save()
+
+To load the model in the future:
+
+.. code-block:: python
+   
+   model = models.classifier()
+   model.load()
+
+The load() attribute also takes an optional path argument, as by default it will look for the data in local home directory as well. Once loaded, the model object will contain the attributes that were initially saved as well as the trained model, which is used when calling the predict and/or any of the visualization methods described below.
+
+Data Visualization
+-----------
+The training set consists of only simulated lightcurves, to see the classification accuracies among the simulations we can create a confusion matrix using the built-in function in the class object. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the ``k_fold`` parameter. 
+
+.. code-block:: python
+
+   model.plot_conf_matrix()
+
+When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels we can load the saved pandas DataFrame and load the appropriate ``data_y`` labels directly:
+
+.. code-block:: python
+
+   import pandas as pd
+
+   stats = pd.read_csv('MicroLIA_Training_Set.csv')
+   data_y = stats.labels
+
+   model.plot_conf_matrix(data_y=data_y, savefig=True)
+
+From this csv file we can also load the feature names corresponding to the the data_x array, which can be used when plotting the feture selection history:
+
+.. code-block:: python
+
+   feat_names = stats.columns[:-1] #The last column is the label
+
+   model.plot_feature_opt(feat_names=feat_names, top=10, include_other=True, include_shadow=True, include_rejected=True, flip_axes=True, save_data=True, savefig=True)
+
+In addition to the feature selection history, the hyperparameter optimization results, including the importance of each hyperparameter in terms of its contribution to classification accuracy and training time, can be visualized using the following methods:
+
+.. code-block:: python
+
+   #Plot the hyperparameter optimization history
+   model.plot_hyper_opt(xlim=(1,25), xlog=True)
+
+   #Need to save the importances first, must run once the first time!
+   model.save_hyper_importance()
+
+   #Plot the hyperparameter importances
+   model.plot_hyper_param_importance()
+   model.plot_hyper_param_importance(plot_time=True)
+
+Finally, we can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space when using the eucledian distance metric, we will set norm=True so as to min-max normalize all the features for proper scaling:
+
+.. code-block:: python
+
+   model.plot_tsne(data_y=data_y, norm=True, savefig=True)
+
+It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we can save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we can label these 'OGLE ML' which will also be appended to the data_y array. For this excervise see the example discussed in the Important Note section of this page.
+
+
+Model Performance
+-----------
+With the optimized model saved, as well as our imputer and indices of features to use, we can begin classifying any lightcurve using the predict() class method. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
 
 .. code-block:: python
 
@@ -122,7 +185,7 @@ With the optimized model saved, as well as our imputer and indices of features t
 
    prediction = model.predict(time, mag, magerr, convert=True, zp=22)
 
-Note that by default convert=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example zp=22. 
+Note that by default ``convert``=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example ``zp``=22. 
 
 The prediction output is the label and probability prediction of each class, ordered in alphabetical order. The predicted class in this case is 'ML', as the corresponding classification accuracy of is higher than all the others. Finally, let's load all 214 lightcurves and check the overall prediction accuracy:
 
@@ -185,7 +248,7 @@ Finally, we will create a new model and re-predict the class of these variables:
 
 .. code-block:: python
    
-   new_model = models.classifier(data_x, data_y, optimize=False, n_iter=1)
+   new_model = ensemble_model.Classifier(data_x, data_y, optimize=False, n_iter=1)
    new_model.create()
 
    predictions=[]
@@ -206,47 +269,6 @@ The best course of action is to re-create the training set using the timestamps 
 
 IMPORTANT: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
 
-Saving & Loading Models
------------
-Once a model is created we can save it with the save attribute, which can save the model, imputer, and feats_to_use. Unless a path argument is specified, the files are saved to a folder in the local home directory, which will print upon saving. 
-
-.. code-block:: python
-
-   model.save()
-
-To use the model in the future:
-
-.. code-block:: python
-   
-   model = models.classifier(data_x, data_y)
-   model.load()
-
-The load() attribute also takes an optional path argument, as by default it will look for the data in local home directory as well. Once loaded, the model object will contain the attributes that were saved
-
-.. code-block:: python"
-
-   print(model.model)
-   print(model.imputer)
-   print(model.feats_to_use)
-
-With these attributes set, we can run model.predict(), or any of the visualization methods described below.
-
-Data Visualization
------------
-The training set consists of only simulated lightcurves, to see the accuracy breakdown we can create a confusion matrix using the built-in function in the models module. By default the matrix displays mean accuracy after 10-fold cross-validation, but this can be controlled with the k_fold parameter:
-
-.. code-block:: python
-
-   model.plot_conf_matrix(k_fold=3)
-
-We can also plot a two-dimensional t-SNE projection, which requires only the dataset. To properly visualize the feature space when using the eucledian distance metric, we will set norm=True so as to min-max normalize all the features:
-
-.. code-block:: python
-
-   model.plot_tsne(norm=True)
-
-
-It would be nice to include the parameter space of the real OGLE II microlensing lightcurves, to visualize how representative of real data our training set is. To include these in the t-SNE projection we will save the statistics of the OGLE II lightcurves and append them to the data_x array. As for the label, we will label these 'OGLE ML' and will append to the data_y array. See following example.
 
 Important Note
 -----------
