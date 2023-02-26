@@ -1127,6 +1127,8 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 sample_weight = None
         else:
             sample_weight = None
+    else:
+        sample_weight = None
 
     if clf == 'rf':
         try:
