@@ -190,7 +190,7 @@ With the optimized model saved, as well as our imputer and indices of features t
 
 .. code-block:: python
 
-   data = np.loadtxt(filenames[0])
+   data = np.loadtxt('OGLE_II/'+filenames[0])
    time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
    prediction = model.predict(time, mag, magerr, convert=True, zp=22)
