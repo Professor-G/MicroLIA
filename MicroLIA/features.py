@@ -12,10 +12,8 @@ import peakutils
 import scipy.integrate as sintegrate
 import scipy.signal as ssignal
 import scipy.stats as sstats
-
 import warnings
 warnings.filterwarnings("ignore")
-#import numba
 
 def shannon_entropy(time, mag, magerr):
     """
@@ -28,8 +26,9 @@ def shannon_entropy(time, mag, magerr):
      
     Parameters
     ----------   
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------  
@@ -83,7 +82,6 @@ def shannon_entropy(time, mag, magerr):
 
     return total_entropy
 
-#@numba.njit
 def con(time, mag, magerr):
     """
     Con is defined as the number of clusters containing three or more
@@ -94,9 +92,11 @@ def con(time, mag, magerr):
     of the measurements in the largest bin.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-   
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------  
     rtype: float       
@@ -133,9 +133,11 @@ def kurtosis(time, mag, magerr):
     to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------     
     rtype: float
@@ -145,15 +147,16 @@ def kurtosis(time, mag, magerr):
    
     return kurtosis
 
-
 def skewness(time, mag, magerr):
     """
     Skewness measures the assymetry of a lightcurve, with a positive skewness
     indicating a skew to the right, and a negative skewness indicating a skew to the left.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------        
@@ -164,7 +167,7 @@ def skewness(time, mag, magerr):
 
     return skewness
 
-#@numba.njit
+
 def vonNeumannRatio(time, mag, magerr):
     """
     The von Neumann ratio η was defined in 1941 by John von Neumann and serves as the
@@ -173,9 +176,11 @@ def vonNeumannRatio(time, mag, magerr):
     data points. See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------  
     rtype: float
@@ -188,7 +193,6 @@ def vonNeumannRatio(time, mag, magerr):
     
     return vonNeumannRatio
 
-#@numba.njit
 def stetsonJ(time, mag, magerr):
     """
     The variability index J was first suggested by Peter B. Stetson and serves as a
@@ -197,9 +201,10 @@ def stetsonJ(time, mag, magerr):
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     ------- 
@@ -221,7 +226,6 @@ def stetsonJ(time, mag, magerr):
 
     return stetj
 
-#@numba.njit
 def stetsonK(time, mag, magerr):
     """
     The variability index K was first suggested by Peter B. Stetson and serves as a
@@ -230,8 +234,9 @@ def stetsonK(time, mag, magerr):
 
     Parameters
     ----------   
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------    
@@ -248,7 +253,6 @@ def stetsonK(time, mag, magerr):
             
     return np.nan_to_num(stetsonK)
 
-#@numba.njit
 def stetsonL(time, mag, magerr):
     """
     The variability index L was first suggested by Peter B. Stetson and serves as a
@@ -261,8 +265,10 @@ def stetsonL(time, mag, magerr):
         
     Parameters
     ----------   
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
 
     Returns
     -------    
@@ -273,16 +279,17 @@ def stetsonL(time, mag, magerr):
 
     return stetL
 
-#@numba.njit
 def median_buffer_range(time, mag, magerr):
     """
     This function returns the ratio of points that are between plus or minus 10% of the
     amplitude value over the mean.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------     
     rtype: float
@@ -297,15 +304,16 @@ def median_buffer_range(time, mag, magerr):
     
     return len(np.argwhere((mag > a) & (mag < b))) / n
 
-#@numba.njit
 def std_over_mean(time, mag, magerr):
     """
     A measure of the ratio of standard deviation and mean.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------     
     rtype: float
@@ -316,7 +324,6 @@ def std_over_mean(time, mag, magerr):
 
     return std/mean
 
-#@numba.njit
 def amplitude(time, mag, magerr):
     """
     This amplitude metric is defined as the difference between the maximum magnitude
@@ -324,9 +331,11 @@ def amplitude(time, mag, magerr):
     removing the upper and lower 2% of magnitudes.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+ 
     Returns
     ------- 
     rtype: float
@@ -334,17 +343,17 @@ def amplitude(time, mag, magerr):
 
     return (np.percentile(mag, 98) - np.percentile(mag, 2)) / 2.0
 
-#@numba.njit
 def median_distance(time, mag,magerr):
     """
     This function calculates the median eucledian distance between each photometric 
     measurement, helpful metric for detecting overlapped lightcurves.
     
     Parameters
-    ----------
-    time : time of observations.
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
     Returns
     -------     
     rtype: float    
@@ -355,16 +364,16 @@ def median_distance(time, mag,magerr):
     
     return np.median(np.sqrt(delta_mag + delta_t))
 
-#@numba.njit
 def above1(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 1 standard deviation
     from the median magnitude.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -376,16 +385,16 @@ def above1(time, mag, magerr):
 
     return above1
 
-#@numba.njit
 def above3(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 3 standard deviations
     from the median magnitude.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -396,7 +405,6 @@ def above3(time, mag, magerr):
     
     return above3
 
-#@numba.njit
 def above5(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 5 standard deviations
@@ -404,8 +412,9 @@ def above5(time, mag, magerr):
         
     Parameters
     ----------   
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------    
@@ -416,16 +425,16 @@ def above5(time, mag, magerr):
 
     return above5
 
-#@numba.njit
 def below1(time,mag, magerr):
     """
     This function measures the ratio of data points that are below 1 standard deviations
     from the median magnitude.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -436,16 +445,16 @@ def below1(time,mag, magerr):
 
     return below1
 
-#@numba.njit
 def below3(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 3 standard deviations
     from the median magnitude.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -456,16 +465,16 @@ def below3(time, mag, magerr):
 
     return below3
 
-#@numba.njit
 def below5(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 5 standard deviations
     from the median magnitude.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -476,15 +485,16 @@ def below5(time, mag, magerr):
 
     return below5
 
-#@numba.njit
 def medianAbsDev(time, mag, magerr):
     """"
     A measure of the mean average distance between each magnitude value
     and the mean magnitude. https://en.wikipedia.org/wiki/Median_absolute_deviation 
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -496,14 +506,15 @@ def medianAbsDev(time, mag, magerr):
     
     return np.median(np.abs(array - med))
 
-#@numba.njit
 def root_mean_squared(time, mag, magerr):
     """
     A measure of the root mean square deviation.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -512,15 +523,15 @@ def root_mean_squared(time, mag, magerr):
 
     return np.sqrt(np.median(mag)**2)
 
-#@numba.njit
 def meanMag(time,mag, magerr):
     """
     Calculates mean magnitude, weighted by the errors.
         
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -529,15 +540,16 @@ def meanMag(time,mag, magerr):
             
     return sum(mag/magerr**2)/sum(1./magerr**2)
 
-#@numba.njit
 def integrate(time, mag, magerr):
     """
     Integrate magnitude using the trapezoidal rule.
     See: http://en.wikipedia.org/wiki/Trapezoidal_rule
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -546,15 +558,15 @@ def integrate(time, mag, magerr):
 
     return np.trapz(mag,time)
 
-#@numba.njit
 def auto_corr(time, mag, magerr):
     """
     Similarity between observations as a function of a time lag between them.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -570,8 +582,10 @@ def peak_detection(time, mag, magerr):
     Function to detect number of peaks.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -589,17 +603,16 @@ def peak_detection(time, mag, magerr):
 
 #Below stats used by Richards et al (2011)
 
-#@numba.njit
 def MaxSlope(time, mag,magerr):
     """
     Examining successive (time-sorted) magnitudes, the maximal first difference
     (value of delta magnitude over delta time)
 
     Parameters
-    ----------
-    time: time of observations. Must be an array.
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    magerr: photometric error for the intensity. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -619,7 +632,6 @@ def LinearTrend(time, mag,magerr):
 
     return regression_slope
 
-#@numba.njit
 def PairSlopeTrend(time, mag, magerr):
     """
     Considering the last 30 (time-sorted) measurements of source magnitude,
@@ -628,8 +640,10 @@ def PairSlopeTrend(time, mag, magerr):
     Percentage of all pairs of consecutive flux measurements that have positive slope
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -642,7 +656,6 @@ def PairSlopeTrend(time, mag, magerr):
 
     return PST
 
-#@numba.njit
 def FluxPercentileRatioMid20(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -650,8 +663,10 @@ def FluxPercentileRatioMid20(time, mag, magerr):
     Ratio of flux percentiles (60th - 40th) over (95th - 5th)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -674,7 +689,6 @@ def FluxPercentileRatioMid20(time, mag, magerr):
 
     return F_mid20
 
-#@numba.njit
 def FluxPercentileRatioMid35(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -682,8 +696,10 @@ def FluxPercentileRatioMid35(time, mag, magerr):
     Ratio of flux percentiles (67.5th - 32.5th) over (95th - 5th)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -704,7 +720,6 @@ def FluxPercentileRatioMid35(time, mag, magerr):
 
     return F_mid35
 
-#@numba.njit
 def FluxPercentileRatioMid50(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -712,8 +727,10 @@ def FluxPercentileRatioMid50(time, mag, magerr):
     Ratio of flux percentiles (75th - 25th) over (95th - 5th)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -734,7 +751,6 @@ def FluxPercentileRatioMid50(time, mag, magerr):
 
     return F_mid50
 
-#@numba.njit
 def FluxPercentileRatioMid65(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -742,8 +758,10 @@ def FluxPercentileRatioMid65(time, mag, magerr):
     Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -764,7 +782,6 @@ def FluxPercentileRatioMid65(time, mag, magerr):
 
     return F_mid65
 
-#@numba.njit
 def FluxPercentileRatioMid80(time, mag, magerr):
     """
     In order to caracterize the sorted magnitudes distribution we use percentiles. 
@@ -772,8 +789,10 @@ def FluxPercentileRatioMid80(time, mag, magerr):
     Ratio of flux percentiles (90th - 10th) over (95th - 5th)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -794,15 +813,16 @@ def FluxPercentileRatioMid80(time, mag, magerr):
 
     return F_mid80
 
-#@numba.njit
 def PercentAmplitude(time, mag, magerr):
     """
     The largest absolute departure from the median flux, divided by the median flux
     Largest percentage difference between either the max or min magnitude and the median.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -815,15 +835,16 @@ def PercentAmplitude(time, mag, magerr):
 
     return max_distance / median
 
-#@numba.njit
 def PercentDifferenceFluxPercentile(time, mag, magerr):
     """
     Ratio of F5,95 over the median flux.
     Difference between the 2nd & 98th flux percentiles.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -844,7 +865,6 @@ def PercentDifferenceFluxPercentile(time, mag, magerr):
 #Below stats from Kim (2015), used in Upsilon
 #https://arxiv.org/pdf/1512.01611.pdf
 
-#@numba.njit
 def half_mag_amplitude_ratio(time, mag, magerr):
     """
     The ratio of the squared sum of residuals of magnitudes
@@ -853,8 +873,10 @@ def half_mag_amplitude_ratio(time, mag, magerr):
     than 1
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -879,14 +901,15 @@ def half_mag_amplitude_ratio(time, mag, magerr):
             
     return ratio
 
-#@numba.njit
 def cusum(time, mag, magerr):
     """
     Range of cumulative sum
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -904,8 +927,10 @@ def shapiro_wilk(time, mag, magerr):
     data was drawn from a normal distribution.
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -931,8 +956,10 @@ def AndersonDarling(time, mag, magerr):
     (Doi:10.1111/j.1365-2966.2009.14967.x.)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -943,9 +970,6 @@ def AndersonDarling(time, mag, magerr):
 
     return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
 
-
-
-#@numba.njit
 def Gskew(time, mag, magerr):
     """
     Median-based measure of the skew
@@ -955,8 +979,10 @@ def Gskew(time, mag, magerr):
     2m is 2 times the median magnitude.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -971,19 +997,16 @@ def Gskew(time, mag, magerr):
 
     return gs
 
-
-# The following features are derived using the Python package tsfresh.
-# Please see: http://tsfresh.readthedocs.io/en/latest/
-
-#@numba.njit
 def abs_energy(time, mag, magerr):
     """
     Returns the absolute energy of the time series, defined to be the sum over the squared
     values of the time-series.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -992,14 +1015,15 @@ def abs_energy(time, mag, magerr):
 
     return np.dot(mag, mag)
 
-#@numba.njit
 def abs_sum_changes(time, mag, magerr):
     """
     Returns sum over the abs value of consecutive changes in mag.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1008,7 +1032,6 @@ def abs_sum_changes(time, mag, magerr):
 
     return np.sum(np.abs(np.diff(mag)))
 
-#@numba.njit
 def benford_correlation(time, mag, magerr):
     """
     Useful for anomaly detection applications. Returns the 
@@ -1016,8 +1039,10 @@ def benford_correlation(time, mag, magerr):
     the Newcomb-Benford’s Law distribution
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1037,7 +1062,6 @@ def benford_correlation(time, mag, magerr):
 
     return benford_corr
 
-#@numba.njit
 def c3(time, mag, magerr, lag=1):
     """
     A measure of non-linearity.
@@ -1046,9 +1070,11 @@ def c3(time, mag, magerr, lag=1):
     PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    lag: the lag that should be used in the calculation of the feature.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    lag: The lag to use. Must be an integer.
 
     Returns
     -------     
@@ -1061,7 +1087,6 @@ def c3(time, mag, magerr, lag=1):
     else:
         return np.mean((np.roll(mag, 2 * -lag) * np.roll(mag, -lag) * mag)[0 : (n - 2 * lag)])
 
-#@numba.njit
 def complexity(time, mag, magerr):
     """
     This function calculator is an estimate for a time series complexity.
@@ -1070,8 +1095,10 @@ def complexity(time, mag, magerr):
     distance for time series. Data Mining and Knowledge Difscovery 28.3 (2014): 634-669.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1082,14 +1109,15 @@ def complexity(time, mag, magerr):
 
     return np.sqrt(np.dot(mag, mag))
 
-#@numba.njit
 def count_above(time, mag, magerr):
     """
     Number of values higher than the median
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1098,14 +1126,15 @@ def count_above(time, mag, magerr):
 
     return (np.where(mag > np.median(mag))[0].size)/len(mag)
 
-#@numba.njit
 def count_below(time, mag, magerr):
     """
     Number of values below the median
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1114,15 +1143,16 @@ def count_below(time, mag, magerr):
 
     return (np.where(mag < np.median(mag))[0].size)/len(mag)
 
-#@numba.njit
 def first_loc_max(time, mag, magerr):
     """
     Returns location of maximum mag relative to the 
     lenght of mag array.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1131,15 +1161,16 @@ def first_loc_max(time, mag, magerr):
 
     return np.argmax(mag) / len(mag) if len(mag) > 0 else np.NaN
 
-#@numba.njit
 def first_loc_min(time, mag, magerr):
     """
     Returns location of minimum mag relative to the 
     lenght of mag array.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1148,15 +1179,16 @@ def first_loc_min(time, mag, magerr):
     
     return np.argmin(mag) / len(mag) if len(mag) > 0 else np.NaN
 
-#@numba.njit
 def check_for_duplicate(time, mag, magerr):
     """
     Checks if any val in mag repeats.
     1 if True, 0 if False
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1168,15 +1200,16 @@ def check_for_duplicate(time, mag, magerr):
     else:     
         return 0
 
-#@numba.njit
 def check_for_max_duplicate(time, mag, magerr):
     """
     Checks if the maximum value in mag repeats.
     1 if True, 0 if False
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1188,15 +1221,16 @@ def check_for_max_duplicate(time, mag, magerr):
     else:     
          return 0
 
-#@numba.njit
 def check_for_min_duplicate(time, mag, magerr):
     """
     Checks if the minimum value in mag repeats.
     1 if True, 0 if False.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1208,15 +1242,16 @@ def check_for_min_duplicate(time, mag, magerr):
     else:     
         return 0
 
-#@numba.njit
 def check_max_last_loc(time, mag, magerr):
     """
     Returns position of last maximum mag relative to
     the length of mag array.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1225,15 +1260,16 @@ def check_max_last_loc(time, mag, magerr):
 
     return 1.0 - np.argmax(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
 
-#@numba.njit
 def check_min_last_loc(time, mag, magerr):
     """
     Returns position of last minimum mag relative to
     the length of mag array.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1242,16 +1278,16 @@ def check_min_last_loc(time, mag, magerr):
 
     return 1.0 - np.argmin(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
 
-
-#@numba.njit
 def longest_strike_above(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in 
     mag that is bigger than the median. 
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1263,15 +1299,16 @@ def longest_strike_above(time, mag, magerr):
 
     return val/len(mag)
 
-#@numba.njit
 def longest_strike_below(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in mag 
     that is smaller than the median.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1282,14 +1319,15 @@ def longest_strike_below(time, mag, magerr):
 
     return val/len(mag)
 
-#@numba.njit
 def mean_change(time, mag, magerr):
     """
     Returns mean over the differences between subsequent observations.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1298,14 +1336,15 @@ def mean_change(time, mag, magerr):
 
     return (mag[-1] - mag[0]) / (len(mag) - 1) if len(mag) > 1 else np.NaN
 
-#@numba.njit
 def mean_abs_change(time, mag, magerr):
     """
     Returns mean over the abs differences between subsequent observations.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1314,14 +1353,15 @@ def mean_abs_change(time, mag, magerr):
 
     return np.mean(np.abs(np.diff(mag)))
 
-#@numba.njit
 def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
     """
     Calculates the arithmetic mean of the n absolute maximum values of the time series, n = 1.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
     number_of_maxima: the number of maxima to be considered
 
     Returns
@@ -1333,14 +1373,15 @@ def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
 
     return np.mean(n_absolute_maximum_values) if len(mag) > number_of_maxima else np.NaN
 
-#@numba.njit
 def mean_second_derivative(time, mag, magerr):
     """
     Returns the mean value of a central approximation of the second derivative.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1349,7 +1390,6 @@ def mean_second_derivative(time, mag, magerr):
 
     return (mag[-1] - mag[-2] - mag[1] + mag[0]) / (2 * (len(mag) - 2)) if len(mag) > 2 else np.NaN
 
-#@numba.njit
 def number_of_crossings(time, mag, magerr):
     """
     Calculates the number of crossings of x on the median, m. A crossing is defined as two 
@@ -1357,8 +1397,10 @@ def number_of_crossings(time, mag, magerr):
     or vice-versa. If you set m to zero, you will get the number of zero crossings.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1369,7 +1411,6 @@ def number_of_crossings(time, mag, magerr):
 
     return (np.where(np.diff(positive))[0].size)/len(mag)
 
-#@numba.njit
 def number_of_peaks(time, mag, magerr, n=7):
     """
     Calculates the number of peaks of at least support n in the time series x. 
@@ -1390,9 +1431,11 @@ def number_of_peaks(time, mag, magerr, n=7):
     and its bigger than 4.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    n: the support of the peak
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    n: The support of the peak. Must be an int.
 
     Returns
     -------     
@@ -1414,15 +1457,16 @@ def number_of_peaks(time, mag, magerr, n=7):
 
     return np.sum(res)/len(mag)
 
-#@numba.njit
 def ratio_recurring_points(time, mag, magerr):
     """
     Returns the ratio of unique values, that are present in the time 
     series more than once, normalized to the number of data points. 
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1436,14 +1480,15 @@ def ratio_recurring_points(time, mag, magerr):
 
     return np.sum(counts > 1) / float(counts.shape[0])
 
-#@numba.njit
 def sample_entropy(time, mag, magerr):
     """
     Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1475,14 +1520,15 @@ def sample_entropy(time, mag, magerr):
 
     return SampEn
 
-#@numba.njit
 def sum_values(time, mag, magerr):
     """
     Sums over all mag values.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1491,7 +1537,6 @@ def sum_values(time, mag, magerr):
 
     return np.sum(mag)/len(mag)
 
-#@numba.njit
 def time_reversal_asymmetry(time, mag, magerr, lag=1):
     """
     Derives a feature introduced by Fulcher.
@@ -1500,9 +1545,11 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1):
     IEEE Transactions on 26, 3026–3037.)
     
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    lag: the lag that should be used in the calculation.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    lag: The lag to use. Must be an integer.
 
     Returns
     -------     
@@ -1518,14 +1565,15 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1):
         two_lag = np.roll(mag, 2 * -lag)
         return np.mean((two_lag * two_lag * one_lag - one_lag * mag * mag)[0 : (n - 2 * lag)])
 
-#@numba.njit
 def variance(time, mag, magerr):
     """
     Returns the variance.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1534,7 +1582,6 @@ def variance(time, mag, magerr):
 
     return np.var(mag)
 
-#@numba.njit
 def variance_larger_than_standard_deviation(time, mag, magerr):
     """
     This feature denotes if the variance of x is greater than its standard deviation. 
@@ -1543,8 +1590,10 @@ def variance_larger_than_standard_deviation(time, mag, magerr):
     1 is True, 0 is False.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1558,14 +1607,15 @@ def variance_larger_than_standard_deviation(time, mag, magerr):
     else:
         return 0
 
-#@numba.njit
 def variation_coefficient(time, mag, magerr):
     """
     Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
@@ -1579,7 +1629,6 @@ def variation_coefficient(time, mag, magerr):
     else:
         return np.nan
 
-#@numba.njit
 def large_standard_deviation(time, mag, magerr, r=.3):
     """
     Does time series have "large" standard deviation?
@@ -1588,9 +1637,11 @@ def large_standard_deviation(time, mag, magerr, r=.3):
     min of x.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    r: the percentage of the range to compare with.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    r: The percentage of the range to compare with. Must be a float between 0 and 1.
 
     Returns
     -------     
@@ -1602,7 +1653,6 @@ def large_standard_deviation(time, mag, magerr, r=.3):
     else:
         return 0
 
-#@numba.njit
 def symmetry_looking(time, mag, magerr, r=0.5):
     """
     Check to see if the distribution of the mag "looks symmetric". This is the case if:
@@ -1612,9 +1662,11 @@ def symmetry_looking(time, mag, magerr, r=0.5):
     where r is the percentage of the range to compare with.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    r: the percentage of the range to compare with.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    r: The percentage of the range to compare with. Must be a float between 0 and 1.
 
     Returns
     -------     
@@ -1629,16 +1681,17 @@ def symmetry_looking(time, mag, magerr, r=0.5):
     else:
         return 0
   
-#@numba.njit
 def index_mass_quantile(time, mag, magerr, r=0.5):
     """
     Calculates the relative index i of time series x where r% of the mass of x lies left of i.
     For example for r = 50% this feature will return the mass center of the time series.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    r: the percentage of the range to compare with.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    r: The percentage of the range to compare with. Must be a float between 0 and 1.
 
     Returns
     -------     
@@ -1660,9 +1713,11 @@ def number_cwt_peaks(time, mag, magerr, n=30):
     Signal-to-Noise-Ratio (SNR)
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array. 
-    param n : maximum time width to consider
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    n : The maximum time width to consider. Must be an integer.
 
     Returns
     -------   
@@ -1673,7 +1728,6 @@ def number_cwt_peaks(time, mag, magerr, n=30):
 
     return val/len(mag)
 
-#@numba.njit
 def permutation_entropy(time, mag, magerr, tau=1, dimension=3):
     """
     Calculate the permutation entropy.
@@ -1684,10 +1738,12 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3):
          Physical review letters 88 17 (2002): 174102 
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array. 
-    tau: the embedded time delay that determines the time separation between the mag values.
-    dimension: the embedding dimension.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array. 
+    tau: The embedded time delay that determines the time separation between the mag values. Must be an integer.
+    dimension: The embedding dimension. Must be an integer.
 
     Returns
     -------   
@@ -1707,15 +1763,16 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3):
 
     return -np.sum(probs * np.log(probs))
 
-#@numba.njit
 def quantile(time, mag, magerr, r=0.75):
     """
     Calculates the r quantile of the mag. This is the value of mag greater than r% of the ordered values.
 
     Parameters
-    ----------
-    mag: the time-varying intensity of the lightcurve. Must be an array.
-    r: the percentage of the range to compare with.
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+    r: The percentage of the range to compare with. Must be a float between 0 and 1.
 
     Returns
     -------     
