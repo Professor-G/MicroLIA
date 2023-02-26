@@ -66,6 +66,9 @@ This will simulate the lightcurves for our training set, all of which will be sa
    from pandas import read_csv
 
    csv_file = read_csv('MicroLIA_Training_Set.csv')
+
+   from MicroLIA import ensemble_model
+   
    model = ensemble_model.Classifier(csv_file=csv_file)
 
 Even though these files are saved by default, this function will also return two outputs: the statistical metrics (``data_x``), and the corresponding class labels (``data_y``), which can always be loaded directly from the 'all_features.txt' file. There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable lightcurves. These parameters control the number of measurements that must be within the signals -- this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be properly detected. 
