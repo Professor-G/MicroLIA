@@ -26,7 +26,7 @@ Adaptive cadence is important as this allows MicroLIA to detect microlensing eve
       time = np.loadtxt(path+name)[:,0]
       timestamps.append(time)
 
-This timestamps list will be used to simulate our training data, as each time an event is simulated a timestamp from the list which will be chosen at random. In this example we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class``=50, this is the size of our training classes. The ``training_set`` module allows us to simulate our classes:
+This timestamps list will be used to simulate our training data, as each time an event is simulated a timestamp from the list which will be chosen at random. In this example we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class`` = 50, this is the size of our training classes. The ``training_set`` module allows us to simulate our classes:
 
 .. code-block:: python
 
@@ -100,9 +100,9 @@ As these three methods are executed by default, we can create and optimize an XG
 
 To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. This setting can be tuned using the ``opt_cv`` argument.
 
-Note that the ``ensemble_model`` module currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While ``clf``='rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
+Note that the ``ensemble_model`` module currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While ``clf`` = 'rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. 
 
-Since our neural network implemtation requires more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set ``n_iter`` to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters. Note that there is also a ``boruta_trials`` argument which sets the number of iterations to perform when calculating feature importance. If ``boruta_trials``=0, then all the features will be used. Use ``model.plot_feature_opt()`` to visualize the feature selection results.
+Since our neural network implemtation requires more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set ``n_iter`` to at least 100, as by default only 25 trials are performed when optimizing the hyperparameters. Note that there is also a ``boruta_trials`` argument which sets the number of iterations to perform when calculating feature importance. If ``boruta_trials`` = 0, then all the features will be used. Use ``model.plot_feature_opt()`` to visualize the feature selection results.
 
 For details on how to set the classifier and the accompanying optimization parameters, refer to the `ensemble_model <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_ API reference.
 
@@ -185,7 +185,7 @@ With the optimized model saved, as well as our imputer and indices of features t
 
    prediction = model.predict(time, mag, magerr, convert=True, zp=22)
 
-Note that by default ``convert``=True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example ``zp``=22. 
+Note that by default ``convert`` = True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This zp must match whatever value was used when creating the training set, in this example ``zp`` = 22. 
 
 The prediction output is the label and probability prediction of each class, ordered in alphabetical order. The predicted class in this case is 'ML', as the corresponding classification accuracy of is higher than all the others. Finally, let's load all 214 lightcurves and check the overall prediction accuracy:
 
