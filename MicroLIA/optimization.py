@@ -8,7 +8,7 @@ Created on Sat Feb  25 10:39:23 2023
 import os, sys
 import copy, gc
 import tensorflow as tf
-os.environ['PYTHONHASHSEED'], os.environ["TF_DETERMINISTIC_OPS"] = '0', '1'
+os.environ['PYTHONHASHSEED']= '0' #, os.environ["TF_DETERMINISTIC_OPS"] =1
 import numpy as np
 import random as python_random
 ##https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development##
@@ -1271,7 +1271,7 @@ def borutashap_opt(data_x, data_y, boruta_trials=50, model='rf', importance_type
     if boruta_trials < 20:
         print('WARNING: Results are unstable if boruta_trials is too low!')
     if np.any(np.isnan(data_x)):
-        print('NaN values detected, applying Strawman imputation...')
+        #print('NaN values detected, applying Strawman imputation...')
         data_x = Strawman_imputation(data_x)
 
     if model == 'rf':

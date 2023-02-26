@@ -5,6 +5,7 @@
     @author: danielgodinez
 """
 import os
+import copy 
 import joblib 
 import random
 import itertools
@@ -95,7 +96,7 @@ class Classifier:
         Trained machine learning model.
     """
 
-    def __init__(self, data_x=None, data_y=None, clf='rf', optimize=True, opt_cv=10, 
+    def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
         test_size=None, limit_search=True, impute=False, imp_method='KNN', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
 
@@ -123,24 +124,28 @@ class Classifier:
         self.best_params = None 
 
         if self.csv_file is not None:
-            self.data_x = csv_file[csv_file.columns[:-1]]
+            self.data_x = np.array(csv_file[csv_file.columns[:-1]])
             self.data_y = csv_file.label
             print('Successfully loaded the data_x and data_y arrays from the input csv_file!')
         else:
             if self.data_x is None or self.data_y is None:
-                print('NOTE: data_x and data_y parameters are required if you wish to output visualizations.')
+                print('NOTE: data_x and data_y parameters are required to output visualizations.')
         
-        if self.clf == 'xgb':
-            if all(isinstance(val, (int, str)) for val in self.data_y):
-                print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
-                print('________________________________')
-                y = np.zeros(len(self.data_y))
-                for i in range(len(np.unique(self.data_y))):
-                    print(str(np.unique(self.data_y)[i]).ljust(10)+'  ------------->     '+str(i))
-                    index = np.where(self.data_y == np.unique(self.data_y)[i])[0]
-                    y[index] = i
-                self.data_y = y 
-                print('________________________________')
+        if self.data_y is not None:
+            self.data_y_ = copy.deepcopy(self.data_y) #For plotting purposes, save the original label array as it will be overwrrite with the numerical labels
+            if self.clf == 'xgb':
+                if all(isinstance(val, (int, str)) for val in self.data_y):
+                    print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
+                    print('________________________________')
+                    y = np.zeros(len(self.data_y))
+                    for i in range(len(np.unique(self.data_y))):
+                        print(str(np.unique(self.data_y)[i]).ljust(10)+'  ------------->     '+str(i))
+                        index = np.where(self.data_y == np.unique(self.data_y)[i])[0]
+                        y[index] = i
+                    self.data_y = y 
+                    print('________________________________')
+        else:
+            self.data_y_ = None 
 
     def create(self):
         """
@@ -178,6 +183,8 @@ class Classifier:
             raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
         
         if self.impute is False and self.optimize is False:
+            if np.any(np.isfinite(self.data_x)==False):
+                raise ValueError('data_x array contains nan values but impute is set to False! Set impute=True and run again.')
             print("Returning base {} model...".format(self.clf))
             model.fit(self.data_x, self.data_y)
             self.model = model
@@ -414,7 +421,7 @@ class Classifier:
             data = self.data_x[:]
 
         if np.any(np.isnan(data)):
-            print('Automatically imputing NaN values with KNN imputation...')
+            #print('Automatically imputing NaN values with KNN imputation...')
             if self.imputer is not None and self.imp_method == 'KNN':
                 data = KNN_imputation(data=data, imputer=self.imputer)
             else:
@@ -444,20 +451,27 @@ class Classifier:
         #color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'b', 'g', 'r', 'c']
         color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf']
 
-        if self.csv_file is None:
-            if data_y is None:
-                feats = np.unique(self.data_y)
-                data_y = self.data_y
-            else:
-                if isinstance(data_y, np.ndarray) is False: 
-                    if type(data_y) == list:
-                        data_y = np.array(data_y)
+        if data_y is None:
+            if self.data_y_ is None:
+                if self.csv_file is None:
+                    if data_y is None:
+                        data_y = self.data_y
+                        feats = np.unique(self.data_y)
                     else:
-                        raise ValueError('data_y argument must either be a list or an array!')
-                feats = np.unique(data_y)
+                        if isinstance(data_y, np.ndarray) is False: 
+                            if type(data_y) == list:
+                                data_y = np.array(data_y)
+                            else:
+                                raise ValueError('data_y argument must either be a list or an array!')
+                        feats = np.unique(data_y)
+                else:
+                    data_y = np.array(self.csv_file.label)
+                    feats = np.unique(data_y)
+            else:
+                data_y = self.data_y_ 
+                feats = np.unique(self.data_y_)
         else:
-            data_y = self.csv_file.label
-            feats = np.unique(data_y)
+            feats = np.unique(data_y) 
 
         for count, feat in enumerate(feats):
             if count+1 > len(markers):
@@ -522,13 +536,16 @@ class Classifier:
         if self.model is None:
             raise ValueError('No model has been created! Run .create() first.')
 
-        if self.csv_file is None:
-            if data_y is None:
-                classes = [str(label) for label in np.unique(self.data_y)]
-            else:
-                classes = [str(label) for label in np.unique(data_y)]
+        if data_y is not None:
+            classes = [str(label) for label in np.unique(data_y)]
         else:
-            classes = [str(label) for label in np.unique(self.csv_file.label)]
+            if self.data_y_ is None:
+                if self.csv_file is None:
+                    classes = [str(label) for label in np.unique(self.data_y)]
+                else:
+                    classes = [str(label) for label in np.unique(np.array(self.csv_file.label))]
+            else:
+                classes = [str(label) for label in np.unique(self.data_y_)]
 
         if self.feats_to_use is not None:
             if len(self.data_x.shape) == 1:
@@ -539,7 +556,7 @@ class Classifier:
             data = self.data_x[:]
 
         if np.any(np.isnan(data)):
-            print('Automatically imputing NaN values with KNN imputation...')
+            #print('Automatically imputing NaN values with KNN imputation...')
             if self.imputer is not None and self.imp_method == 'KNN':
                 data = KNN_imputation(data=data, imputer=self.imputer)
             else:
@@ -614,7 +631,7 @@ class Classifier:
         plt.xlabel('Trial #', alpha=1, color='k')
         plt.ylabel('Accuracy', alpha=1, color='k')
        # if self.clf == 'xgb':
-        plt.title('XGBoost Hyperparameter Optimization')#, size=18) Make this a f" string option!!
+        plt.title('Hyperparameter Optimization')#, size=18) Make this a f" string option!!
         #plt.xticks(fontsize=14)#, color='k')
         #plt.yticks(fontsize=14)#, color='k')
         #plt.grid(True, color='k', alpha=0.35, linewidth=1.5, linestyle='--')
@@ -667,7 +684,11 @@ class Classifier:
         """
 
         fname = str(Path.home())+'/__borutaimportances__' #Temporary file
-        self.feature_history.results_to_csv(filename=fname)
+        try:
+            self.feature_history.results_to_csv(filename=fname)
+        except AttributeError:
+            raise ValueError('No optimization history found for feature selection, run .create() with optimize=True!')
+
         csv_data = pd.read_csv(fname+'.csv')
         #os.remove(fname+'.csv')
         accepted_indices = np.where(csv_data.Decision == 'Accepted')[0]
@@ -716,16 +737,29 @@ class Classifier:
                 else:
                     x_names = np.r_[feat_names[x[:-2]], ['Other Accepted'], ['Max Shadow']]
         else:
-            if include_other is False:
-                if include_shadow is False:
-                    x_names = csv_data.iloc[x].Features
+            if self.csv_file is None:
+                if include_other is False:
+                    if include_shadow is False:
+                        x_names = csv_data.iloc[x].Features
+                    else:
+                        x_names = np.r_[csv_data.iloc[x[:-1]], ['Max Shadow']]
                 else:
-                    x_names = np.r_[feat_names[x[:-1]], ['Max Shadow']]
+                    if include_shadow is False:
+                        x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
+                    else:
+                        x_names = np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Max Shadow']]
             else:
-                if include_shadow is False:
-                    x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
+                if include_other is False:
+                    if include_shadow is False:
+                        x_names = self.csv_file.columns[x[:-1]]
+                    else:
+                        x_names = np.r_[self.csv_file.columns.iloc[x[:-1]], ['Max Shadow']]
                 else:
-                    x_names = np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Max Shadow']]
+                    if include_shadow is False:
+                        x_names = np.r_[self.csv_file.columns.iloc[x[:-1]], ['Max Shadow']]
+                    else:
+                        x_names = np.r_[self.csv_file.columns.iloc[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+
 
         if include_rejected:
             x = []
