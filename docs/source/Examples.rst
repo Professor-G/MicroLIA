@@ -35,7 +35,7 @@ This timestamps list will be used to simulate our training data, as each time an
    data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=50)
 
 
-There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters, and even include a noise model using the rms and median mag of our OGLE IV data.**
+There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters and simulate 500 objects per class, in addition to including a first-order noise model using the rms and median mag of our OGLE II data.**
 
 .. code-block:: python
 
@@ -52,7 +52,7 @@ There are a number of other parameters we can control when creating the training
 
    ogle_noise = noise_models.create_noise(median_mag, rms_mag)
 
-   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=1000)
+   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=500)
 
 .. figure:: _static/simulation.jpg
     :align: center
@@ -60,6 +60,13 @@ There are a number of other parameters we can control when creating the training
 This will simulate the lightcurves for our training set, all of which will be saved by default in the 'lightcurves.fits' file, organized by class and ID. The other file is called 'all_features.txt', and contains the statistical metrics of each lightcurve, with the first line containing a '#' comment with the feature names of each column, although please note that the first column of this file is the class of each simulated object (str), and the second columns is the corresponding unique ID. 
 
 **As of version 2.0, a pandas dataframe will automatically be saved for easier access to the individual metrics, titled 'MicroLIA_Training_Set.csv'.**
+
+.. code-block:: python
+   
+   from pandas import read_csv
+
+   csv_file = read_csv('MicroLIA_Training_Set.csv')
+   model = ensemble_model.Classifier(csv_file=csv_file)
 
 Even though these files are saved by default, this function will also return two outputs: the statistical metrics (``data_x``), and the corresponding class labels (``data_y``), which can always be loaded directly from the 'all_features.txt' file. There are additional parameters that can be controlled when creating the training set, including arguments that control the "quality" of the simulated microlensing and cataclysmic variable lightcurves. These parameters control the number of measurements that must be within the signals -- this is especially important to tune if the cadence of the survey is sparse, as per the random nature of the simulations some signals may contain too few points within the transient event to be properly detected. 
 
@@ -132,7 +139,7 @@ The training set consists of only simulated lightcurves, to see the classificati
 
    model.plot_conf_matrix()
 
-When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels we can load the saved pandas DataFrame and load the appropriate ``data_y`` labels directly:
+When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels for visualization purposes we can load the saved pandas DataFrame and thus the corresponding ``data_y`` labels directly (**if the ``csv_file`` argument is used to load the data, the data_y argument when plotting the confusion matrix is automatically set to the dataframe column names, and thus the below steops are only necessary if you wish to overwrite the default column names (for publication)**):
 
 .. code-block:: python
 
@@ -143,7 +150,7 @@ When using the XGBoost classifier, the class labels are automatically converted 
 
    model.plot_conf_matrix(data_y=data_y, savefig=True)
 
-From this csv file we can also load the feature names corresponding to the the data_x array, which can be used when plotting the feture selection history:
+From this csv file we can also load the feature names corresponding to the the data_x array, which can be used when plotting the feature selection history:
 
 .. code-block:: python
 
