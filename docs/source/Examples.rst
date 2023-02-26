@@ -126,7 +126,7 @@ To load the model in the future:
 
 .. code-block:: python
    
-   model = models.classifier()
+   model = ensemble_model.classifier()
    model.load()
 
 The load() attribute also takes an optional path argument, as by default it will look for the data in local home directory as well. Once loaded, the model object will contain the attributes that were initially saved as well as the trained model, which is used when calling the predict and/or any of the visualization methods described below.
@@ -204,7 +204,7 @@ The prediction output is the label and probability prediction of each class, ord
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
 
-      prediction = models.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
+      prediction = model.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    accuracy = len(np.argwhere(predictions == 'ML'))/len(predictions)
