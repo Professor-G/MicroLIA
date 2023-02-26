@@ -14,6 +14,7 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
     analysis of the OGLE III microlensing survey from Y. Tsapras et al (2016).
     See: The OGLE-III planet detection efficiency from six years of microlensing observations (2003 to 2008).
     (https://arxiv.org/abs/1602.02519)
+
     Parameters
     ----------
     timestamps : array
@@ -35,6 +36,7 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
         considered during the microlensing simulations. The indivial
         tE per simulation will be selected from a uniform distribution
         between these two values.
+
     Returns
     -------
     mag : array
@@ -169,7 +171,8 @@ def cv(timestamps, baseline):
                 elif timestamps[i] > t_end_high and timestamps[i] <= t_end_outburst:
                         lc[i] = -amplitude + ( drop_gradient * (timestamps[i] - t_end_high))
 
-    lc = lc+baseline 
+    lc = lc + baseline 
+
     return np.array(lc), np.array(start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
 
 def constant(timestamps, baseline):
@@ -187,12 +190,13 @@ def constant(timestamps, baseline):
     mag : array
         Simulated magnitudes given the timestamps.
     """
+
     mag = [baseline] * len(timestamps)
 
     return np.array(mag)
 
-def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2018)
-    """Simulates a variable star.  
+def variable(timestamps, baseline, bailey=None):       
+    """Simulates a variable star. Theory from McGill et al. (2018).
 
     Parameters
     ----------
@@ -213,14 +217,16 @@ def variable(timestamps, baseline, bailey=None):       #theory, McGill et al. (2
         Simulated magnitudes given the timestamps.
     amplitude : float
         Amplitude of the signal in mag. 
-    period : float
+    bailey : float
         Period of the signal in days.   
     """
+
     time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
     lightcurve = np.array(baseline)
 
     for idx in range(len(ampl_k)):
         lightcurve = lightcurve + ampl_k[idx] * np.cos(((2*np.pi*(idx+1))/period)*time+phase_k[idx])
+
     amplitude = np.ptp(lightcurve) / 2.0
 
     return np.array(lightcurve), amplitude, period 
@@ -235,12 +241,19 @@ def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp,
         Times at which to simulate the lightcurve.
     baseline : float
         Baseline magnitude at which to simulate the lightcurve.
+    primary_period : 
+    amplitude_pp : 
+    secondary_period :
+    amplitude_sp :
+    tertiary_period :
+    amplitude_tp :
 
     Returns
     -------
     mag : array
         Simulated magnitudes given the timestamps.
     """
+
     amplitudes, periods = random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
     lc = np.array(baseline)
 
@@ -253,6 +266,7 @@ def parametersRR0():
     """
     McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events.
     """
+
     a1=  0.31932222222222223
     ratio12 = 0.4231184105222867 
     ratio13 = 0.3079439089738683 
@@ -260,6 +274,7 @@ def parametersRR0():
     f1 =  3.9621766666666667
     f2 =  8.201326666666667
     f3 =  6.259693777777778
+
     return a1, ratio12, ratio13, ratio14, f1, f2, f3
 
 def parametersRR1():
@@ -270,16 +285,30 @@ def parametersRR1():
     f1 =  4.597792666666666
     f2 =  2.881016
     f3 =  1.9828297333333336
+
     return a1, ratio12, ratio13, ratio14, f1, f2, f3
 
 def uncertainties(time, curve, uncertain_factor):       
     """
     optional, add random uncertainties, controlled by the uncertain_factor
+
+    Parameters
+    ----------
+    timestamps : array
+        Times at which to simulate the lightcurve.
+    curve : 
+    uncertain_factor : 
+
+    Returns
+    -------
+    realcurve : array
+        Real curve with added uncertainties 
     """
+
     N = len(time)
     uncertainty = np.random.normal(0, uncertain_factor/100, N)
     realcurve = []   
-                                       #curve with uncertainties
+    #curve with uncertainties
     for idx in range(N):
         realcurve.append(curve[idx]+uncertainty[idx])
 
@@ -288,7 +317,24 @@ def uncertainties(time, curve, uncertain_factor):
 def setup_parameters(timestamps, bailey=None):   
     """
     Setup of random physical parameters
+    
+    Parameters
+    ----------
+    timestamps : array
+        Times at which to simulate the lightcurve.
+    bailey : int, optional 
+        The type of variable to simulate. A bailey
+        value of 1 simulaes RR Lyrae type ab, a value
+        of 2 simulates RR Lyrae type c, and a value of 
+        3 simulates a Cepheid variable. If not provided
+        it defaults to a random choice between the three. 
+    
+    Returns
+    -------
+    time, amp, phase, period : array
+        Time, amplitude, phase, period.
     """
+
     time = np.array(timestamps) 
     if bailey is None:
         bailey = np.random.randint(1,4)
@@ -317,6 +363,20 @@ def setup_parameters(timestamps, bailey=None):
 def random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
     """
     Setup of random physical parameters
+    
+    Parameters
+    ----------
+    primary_period : 
+    amplitude_pp : 
+    secondary_period :
+    amplitude_sp :
+    tertiary_period :
+    amplitude_tp :
+
+    Returns
+    -------
+    mag : array
+        Simulated magnitudes given the timestamps.
     """
     len_miras = len(primary_period)
     rand_idx = np.random.randint(0,len_miras,1)

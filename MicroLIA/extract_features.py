@@ -8,7 +8,7 @@ import numpy as np
 from MicroLIA import features
 from inspect import getmembers, isfunction
 
-def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
+def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, return_names=False):
     """
     This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the
@@ -32,7 +32,11 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
         defaults to True to convert and compute in flux. 
     zp : float
         Zeropoint of the instrument, defaults to 24.
-  
+    return_names : bool
+        If True the first output will be the stats array, and the second
+        will be the list of corresponding feature names. Defaults to False,
+        in which case only the stats array is returned.
+
     Returns
     -------
     stats : array
@@ -53,6 +57,8 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
     all_features_functions = getmembers(features, isfunction)
 
     stats = []
+    feature_names = [] 
+
     #normal space
     counter = 0
     for func in all_features_functions:
@@ -60,19 +66,21 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        try:
-            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
-                feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-            else:
-                feature = func[1](time, norm_flux, norm_fluxerr)
+        #try:
+        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+            feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
+        else:
+            feature = func[1](time, norm_flux, norm_fluxerr)
 
-            if isinstance(feature, float) or isinstance(feature, int):
-                stats.append(feature)
-            else:
-                stats.append(np.NaN)
+        feature_names.append(func[0])
 
-        except:
-            stats.append(np.NaN)
+        if np.isfinite(feature):
+            stats.append(feature)
+        else:
+            stats.append(np.nan)
+
+        #except:
+         #   stats.append(np.nan)
 
         counter += 1
             
@@ -88,28 +96,30 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24):
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        try:
-            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
-                feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-            else:
-                feature = func[1](time, norm_flux, norm_fluxerr)
+        #try:
+        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+            feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
+        else:
+            feature = func[1](time, norm_flux, norm_fluxerr)
 
-            if isinstance(feature, float) or isinstance(feature, int):
-                stats.append(feature)
-            else:
-                stats.append(np.NaN)
+        feature_names.append(func[0]+'_deriv')
 
-        except:
-            stats.append(np.NaN)
+        if np.isfinite(feature):
+            stats.append(feature)
+        else:
+            stats.append(np.nan)
+
+        #except:
+         #   stats.append(np.nan)
             
         counter += 1
 
     stats = np.array(stats)
-    stats[np.isinf(stats)] = np.NaN
-    #stats[np.isnan(stats)] = 0
-    #stats[(stats<1e-6) * (stats>0)] = 1e-6
-    stats[stats<1e-7] = 1e-7
-    stats[stats>1e7] = 1e7
-    return stats
+    stats[np.isfinite(stats)==False] = np.nan
+    stats[stats>1e7], stats[(stats<1e-7)&(stats>0)], stats[stats<-1e7] = 1e7, 1e-7, -1e7
 
+    if return_names is False:
+        return stats
+    else:
+        return stats, feature_names
 

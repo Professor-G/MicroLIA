@@ -155,7 +155,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+        stats, feature_names = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp, return_names=True)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -385,18 +385,23 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
         np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
         with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
-             data = infile.read()
-             data = data.replace("'", "")
-             data = data.replace(",", "")
-             data = data.replace("[", "")
-             data = data.replace("]", "")
-             outfile.write(data)
+            outfile.write('# FEAT NAMES # || ' + ' || '.join(feature_names) + '\n')
+            data = infile.read()
+            data = data.replace("'", "")
+            data = data.replace(",", "")
+            data = data.replace("[", "")
+            data = data.replace("]", "")
+            outfile.write(data)
         os.remove(path+'feats.txt')
-    print("Simulation complete!")
 
     data = np.array(stats_list)
     data_x = data[:,2:].astype('float')
     data_y = data[:,0].astype(str)
+
+    df = pd.DataFrame(data_x, columns=feature_names[1:])
+    df['label'] = data_y
+    df.to_csv('MicroLIA_Training_Set.csv', index=False)
+    print("Simulation complete!")
 
     return data_x, data_y
 
@@ -409,7 +414,6 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
         If a file cannot be loaded with the standard numpy.loadtxt() function
         it will be printed and skipped, therefore no strings allowed, only the columns with the float numbers (nan ok)
 
-    
     Args:
         path: str
             Path to the root directory containing the lightcurve subdirectories
@@ -469,8 +473,8 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
             times_list.append(time)
             mag_list.append(mag)
             magerr_list.append(magerr)
-            
-            stats = extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp)
+
+            stats, feature_names = extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, return_names=True)
             stats = [i for i in stats]
             stats = [dir_name] + [j] + stats
             stats_list.append(stats) 
@@ -496,18 +500,23 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
 
         np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
         with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
-             data = infile.read()
-             data = data.replace("'", "")
-             data = data.replace(",", "")
-             data = data.replace("[", "")
-             data = data.replace("]", "")
-             outfile.write(data)
+            outfile.write('# ' + ', '.join(feature_names) + '\n')
+            data = infile.read()
+            data = data.replace("'", "")
+            data = data.replace(",", "")
+            data = data.replace("[", "")
+            data = data.replace("]", "")
+            outfile.write(data)
         os.remove(path+'feats.txt')
-    print("Complete!")
 
     data = np.array(stats_list)
     data_x = data[:,2:].astype('float')
     data_y = data[:,0].astype(str)
+
+    df = pd.DataFrame(data_x, columns=feature_names[1:])
+    df['label'] = data_y
+    df.to_csv('MicroLIA_Training_Set.csv', index=False)
+    print("Complete!")
 
     return data_x, data_y
 

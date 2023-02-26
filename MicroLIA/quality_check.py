@@ -15,7 +15,8 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import classification_report
 
 def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7):
-    """Test to ensure proper microlensing signal.
+    """
+    Test to ensure proper microlensing signal.
     This requires 7 measurements with a magnification of at least 1.34, imposing
     additional magnification thresholds to ensure the microlensing signal doesn't 
     mimic a noisy constant.
@@ -41,11 +42,13 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
     n : int, optional
         The mininum number of measurements that should be within the 
         microlensing signal when simulating the lightcurves. 
+
     Returns
     -------
     condition : boolean
         Returns True if microlensing passes the quality test. 
     """
+
     mag = simulate.constant(timestamps, baseline)
     condition = False
     signal_indices = np.argwhere((timestamps >= (t_0 - t_e)) & (timestamps <= (t_0 + t_e))) 
@@ -68,7 +71,8 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
     return condition  
 
 def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times, end_high_times, n1=7, n2=1):
-    """Test to ensure proper CV signal.
+    """
+    Test to ensure proper CV signal.
     This requires 7 measurements within ANY outburst, with at least one 
     occurring within the rise or fall.
 
@@ -96,6 +100,7 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
     condition : boolean
         Returns True if CV passes the quality test. 
     """
+
     signal_measurements = []
     rise_measurements = []
     fall_measurements = []
