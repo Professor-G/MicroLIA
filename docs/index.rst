@@ -17,6 +17,14 @@ The current stable version can be installed via pip:
 
     pip install MicroLIA
 
+You can also clone the development version:    
+
+.. code-block:: bash
+
+    git clone https://github.com/Professor-G/MicroLIA.git
+    cd MicroLIA
+    pip install .
+
 
 Importing MicroLIA
 ==================
@@ -45,7 +53,7 @@ With the lightcurves simulated or loaded, and the feature matrix saved as data_x
 
 .. code-blocK:: python
       
-      from MicroLIA import models
+      from MicroLIA import ensemble_models
 
       model = models.Classifier(data_x, data_y)
       model.create()
@@ -68,7 +76,6 @@ To learn about MicroLIA's functionality please refer to the `example page <https
 Science
 ==================
 To learn about Gravitational Microlensing, including how to derive the magnification equation, please visit the `science page <https://microlia.readthedocs.io/en/latest/source/Gravitational%20Microlensing.html>`_. 
-
 
 Pages
 ==================
