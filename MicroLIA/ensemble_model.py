@@ -27,16 +27,14 @@ from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 from sklearn.manifold import TSNE
 
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
-from MicroLIA.optimization import hyper_opt, borutashap_opt, KNN_imputation, MissForest_imputation
+from MicroLIA.optimization import hyper_opt, borutashap_opt, KNN_imputation
 from MicroLIA import extract_features
 from xgboost import XGBClassifier
 import scikitplot as skplt
 
 class Classifier:
     """
-    Creates a machine learning classifier object.
-    The built-in methods can be used to optimize the engine
-    and output visualizations.
+    Creates a machine learning classifier object. The built-in methods can be used to optimize the engine and output visualizations.
 
     Note:
         test_size is an optional parameter to speed up the XGB optimization training.
@@ -45,20 +43,6 @@ class Classifier:
         optimization procedure. Need more testing to make this more robust, recommended
         option is test_size = None. The opt_cv parameter should be used instead to set
         the number of folds to use when assessing optimization trial performance. 
-
-    Attributes:
-        model (object): The machine learning model that is created
-        
-        imputer (object): The imputer created during model creation
-        
-        feats_to_use (ndarray): Array of indices containing the metrics
-            that contribute to classification accuracy.
-
-        plot_tsne (AxesImage): Plots the data_x parameter space using t-SNE
-
-        plot_conf_matrix (AxesImage): Plots the confusion matrix, assessed with data_x.
-
-        plot_roc_curve (AxesImage): Plots ROC curve, assessed with data_x
 
     Args:
         data_x (ndarray): 2D array of size (n x m), where n is the
@@ -74,12 +58,16 @@ class Classifier:
             hyperparameter optimization trial. For example, if cv=3, then each optimization trial
             will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
             NOTE: The higher this number, the longer the optimization will take.
+        test_size (float, optional): The size of the validation data, will be chosen
+            randomly each trial. Must be between 0 and 1. Defaults to None, in which
+            case the opt_cv parameter will be used instead.
+        limit_search (bool): If True, the search space for the parameters will be expanded,
+            as there are some hyperparameters that can range from 0 to inf. Defaults to False.
         impute (bool): If False no data imputation will be performed. Defaults to True,
             which will result in two outputs, the classifier and the imputer to save
             for future transformations. 
         imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
-            neighbors imputation, or 'MissForest' for the MissForest machine learning imputation
-            algorithm. Defaults to 'KNN'.
+            neighbors imputation, or...?. Defaults to 'KNN'.
         n_iter (int): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
         boruta_trials (int): The number of trials to run when running Boruta for
@@ -91,9 +79,17 @@ class Classifier:
             when fitting the classifier. This can improve classification when classes
             are imbalanced. This is only applied if the classification is a binary task. 
             Defaults to True.        
+        csv_file (DataFrame, optional): The csv file output after generating the training set. This can be
+            input in lieu of the data_x and data_y arguments.
         
-    Returns:
-        Trained machine learning model.
+    Attributes:
+        model (object): The machine learning model that is created
+        imputer (object): The imputer created during model creation
+        feats_to_use (ndarray): Array of indices containing the metrics
+            that contribute to classification accuracy.
+        feature_history (object): The Boruta feature selection history result.
+        optimization_results (object): The Optuna hyperparameter optimization history result.
+        best_params (dict): The best parameters output from the optimization routine.
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
@@ -193,11 +189,8 @@ class Classifier:
         if self.impute:
             if self.imp_method == 'KNN':
                 data, self.imputer = KNN_imputation(data=self.data_x, imputer=None)
-            elif self.imp_method == 'MissForest':
-                warn('MissForest does not create imputer, it re-fits every time therefore cannot be used to impute new data! Returning imputer=None.')
-                data, self.imputer = MissForest_imputation(data=self.data_x), None 
             else:
-                raise ValueError('Invalid imputation method, currently only k-NN and MissForest algorithms are supported.')
+                raise ValueError('Invalid imputation method, currently only k-NN is supported.')
             
             if self.optimize is False:
                 data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
@@ -218,8 +211,6 @@ class Classifier:
         #new predictions will only compute these metrics, need to fit again!
         if self.imp_method == 'KNN':
             data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
-        elif self.imp_method == 'MissForest':
-            data_x, self.imputer = MissForest_imputation(data=self.data_x[:,self.feats_to_use]), None 
         else: 
             data_x = self.data_x[:,self.feats_to_use]
 
@@ -290,8 +281,8 @@ class Classifier:
 
         Args:
             path (str): Path where the directory 'MicroLIA_models' is saved. 
-            Defaults to None, in which case the folder is assumed to be in the 
-            local home directory.
+                Defaults to None, in which case the folder is assumed to be in the 
+                local home directory.
         """
 
         if path is None:
@@ -407,7 +398,11 @@ class Classifier:
             pca (bool): If True the data will be fit to a Principal Component
                 Analysis and all of the corresponding principal components will 
                 be used to generate the t-SNE plot. Defaults to False.
-            title (str): Title 
+            legend_loc (str): Location of legend, using matplotlib style.
+            title (str): Title of the figure.
+            savefig (bool): If True the figure will not disply but will be saved instead.
+                Defaults to False. 
+
         Returns:
             AxesImage. 
         """
@@ -523,10 +518,9 @@ class Classifier:
             normalize (bool, optional): If False the confusion matrix will display the
                 total number of objects in the sample. Defaults to True, in which case
                 the values are normalized between 0 and 1.
-            classes (list): A list containing the label of the two training bags. This
-                will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
-            title (str, optional): The title of the output plot. 
-
+            title (str): Title of the figure.
+            savefig (bool): If True the figure will not disply but will be saved instead.
+                Defaults to False. 
         Returns:
             AxesImage.
         """
@@ -593,6 +587,8 @@ class Classifier:
                 Defaults to True.
             ylog (boolean): If True the y-axis will be log-scaled.
                 Defaults to False.
+            savefig (bool): If True the figure will not disply but will be saved instead.
+                Defaults to False. 
 
         Returns:
             AxesImage
@@ -675,9 +671,18 @@ class Classifier:
             feat_names (ndarry, optional): A list or array containing the names
                 of the features in the data_x matrix, in order. Defaults to None,
                 in which case the respective indices will appear instead.
-            top (float, optional): Designates how many features to plot.
-            save_data (bool):
-            savefig (bool): 
+            top (float, optional): Designates how many features to plot. Defaults to 3, which 
+                will plot the top 3 performing features.
+            include_other (bool): Whether to include the features that are not in the top designation,
+                if True these features will be averaged out and displayed. Defaults to True.
+            include_shadow (bool): Whether to include the max shadow feature that was used as a 
+                baseline for 'random' behavior. Defaults to True.
+            include_rejected (bool): Whether to include the rejected features, if True these features 
+                will be averaged out and displayed.
+            flip_axes (bool): Whether transpose the figure. Defaults to True.
+            save_data (bool): Whether to save the feature importances as a csv file, defaults to False.
+            savefig (bool): If True the figure will not disply but will be saved instead.
+                Defaults to False. 
 
         Returns:
             AxesImage
@@ -818,8 +823,8 @@ class Classifier:
         Plots the hyperparameter optimization history.
     
         Args:
-            plot_tile (bool):
-            savefig (bool): 
+            plot_tile (bool): If True, the importance on the duration will also be included. Defaults to True.
+            savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
 
         Returns:
             AxesImage
@@ -889,6 +894,7 @@ class Classifier:
         Returns:
             Saves two binary files, importance and duration importance.
         """
+        
         print('Calculating and saving importances, this could take up to an hour...')
 
         try:
@@ -952,6 +958,9 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
         data_x (ndarray): 2D array of size (n x m), where n is the
             number of samples, and m the number of features.
         data_y (ndarray, str): 1D array containing the corresponing labels.
+        normalize (bool, optional): If False the confusion matrix will display the
+            total number of objects in the sample. Defaults to True, in which case
+            the values are normalized between 0 and 1. 
         k_fold (int, optional): The number of cross-validations to perform.
             The output confusion matrix will display the mean accuracy across
             all k_fold iterations. Defaults to 10.
@@ -991,6 +1000,7 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
+        savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
 
     Returns:
         AxesImage.
@@ -1061,8 +1071,7 @@ def min_max_norm(data_x):
     to consitently normalize new data.
     
     Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
+        data_x (ndarray): 2D array of size (n x m), where n is the number of samples, and m the number of features.
 
     Returns:
         Normalized data array.
