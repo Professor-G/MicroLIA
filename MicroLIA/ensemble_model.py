@@ -93,7 +93,7 @@ class Classifier:
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        test_size=None, limit_search=True, impute=False, imp_method='KNN', n_iter=25, 
+        test_size=None, limit_search=True, impute=True, imp_method='KNN', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
 
         self.data_x = data_x
