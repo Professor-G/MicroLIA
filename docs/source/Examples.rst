@@ -35,7 +35,7 @@ This timestamps list will be used to simulate our training data, as each time an
    data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=50)
 
 
-There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters and simulate 500 objects per class, in addition to including a first-order noise model using the rms and median mag of our OGLE II data.**
+There are a number of other parameters we can control when creating the training set, including exposure time and zeropoint of the survey telescope. Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters and simulate 100 objects per class, in addition to including a first-order noise model using the rms and median mag of our OGLE II data.**
 
 .. code-block:: python
 
@@ -52,7 +52,7 @@ There are a number of other parameters we can control when creating the training
 
    ogle_noise = noise_models.create_noise(median_mag, rms_mag)
 
-   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=500)
+   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=100)
 
 .. figure:: _static/simulation.jpg
     :align: center
@@ -91,21 +91,21 @@ In this example we will load this file from which we can create our data_x and d
    data_x = data[:,2:].astype('float')
    data_y = data[:,0]
    
-With our training data loaded we can create our machine learning engine with MicroLIA's `models <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html>`_ module. By default, when training the model three optimization procedures will automatically run, in the following order:
+With our training data loaded we can create our machine learning engine with MicroLIA's `models <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html>`_ module. When training the model three optimization procedures can be enabled:
 
 -  Missing values (NaN) will be imputed using the `sklearn implementation of the k Nearest Neighbors imputation algorithm <https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html>`_. The imputer will be saved so that it can be applied to transform new, unseen data, serving as a means to address the issue of missing data values. 
 
--  The features that contain useful information will be selected using `BorutaShap <https://zenodo.org/record/4247618>`_, a procedure based off of the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. BorutaShap method improves upon the original algorithm by coupling its probabilistic approach to feature selection with `Shapley Values <https://christophm.github.io/interpretable-ml-book/shapley.html>`_. While bagging algorithms like the Random Forest are robust to irrelevant features, computation-wise, it is imperative that we compute only the features that are helpful.
+-  The features that contain useful information will be selected using `BorutaShap <https://zenodo.org/record/4247618>`_, a procedure based off of the Boruta algorithm developed by `Kursa and Rudnicki 2011 <https://arxiv.org/pdf/1106.5112.pdf>`_. BorutaShap method improves upon the original algorithm by coupling its probabilistic approach to feature selection with `Shapley Values <https://christophm.github.io/interpretable-ml-book/shapley.html>`_. While bagging algorithms like the Random Forest can be robust to irrelevant features, computation-wise, it is imperative that we compute only the features that are helpful.
 
 -  Finally, the model hyperparameters will be optimized using the hyperparameter optimization software `Optuna <https://optuna.org/>`_, developed by `Akiba et al 2019 <https://arxiv.org/abs/1907.10902>`_. The default sampler Optuna employs is the Tree Parzen Estimator, a Bayesian optimization approach that effectively reduces the error by narrowing the search space according to the performance of previous iterations, therefore in principle it is best to increase the number of trials to perform.
 
-As these three methods are executed by default, we can create and optimize an XGBoost classifier using the following code:
+As these three methods are disabled by default, we can create and optimize an XGBoost classifier using the following code:
 
 .. code-block:: python
 
    from MicroLIA import ensemble_model
 
-   model = ensemble_model.Classifier(data_x, data_y, clf='xgb')
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=25, boruta_trials=25)
    model.create()
 
 To avoid overfitting during the optimization procedure, 3-fold cross-validation is performed to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. This setting can be tuned using the ``opt_cv`` argument.
@@ -206,8 +206,7 @@ The prediction output is the label and probability prediction of each class, ord
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-
-      prediction = model.predict(time, mag, magerr, model=model, imputer=imputer, feats_to_use=feats_to_use, convert=True, zp=22)
+      prediction = model.predict(time, mag, magerr, convert=True, zp=22)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    accuracy = len(np.argwhere(predictions == 'ML'))/len(predictions)
@@ -223,7 +222,7 @@ The accuarcy is over 0.97, that's very good, but to be more certain, let's class
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      prediction = model.predict(time, mag, magerr, zp=22)
+      prediction = model.predict(time, mag, magerr, convert=True, zp=22)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    predictions = np.array(predictions)
@@ -252,20 +251,20 @@ A false-positive rate of ~0.15 is very high, upon visual inspection we can see t
 
    data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), 
          max_mag=np.max(median_mag), noise=ogle_noise, zp=22, 
-         exptime=30, n_class=1000, save_file=False)
+         exptime=30, n_class=100, save_file=False)
 
 Finally, we will create a new model and re-predict the class of these variables:
 
 .. code-block:: python
    
-   new_model = ensemble_model.Classifier(data_x, data_y, optimize=False, n_iter=1)
+   new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', optimize=True, impute=True, n_iter=25, boruta_trials=25)
    new_model.create()
 
    predictions=[]
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      prediction = new_model.predict(time, mag, magerr, zp=22)
+      prediction = new_model.predict(time, mag, magerr, convert=True, zp=22)
 
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
@@ -289,7 +288,7 @@ To re-iterate the importance of finely tuning the creation of the training data,
 
    import os
    import numpy as np 
-   from MicroLIA import training_set, models, noise_models
+   from MicroLIA import training_set, ensemble_model, noise_models
    from MicroLIA.extract_features import extract_all
 
    #Save the filename of the 214 lightcurves (.dat extension)
