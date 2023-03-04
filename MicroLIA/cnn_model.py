@@ -189,7 +189,7 @@ class Classifier:
 
         if self.best_params is None:
             self.best_params, self.optimization_results = optimization.hyper_opt(self.positive_class, self.negative_class, clf='cnn', metric=self.metric, average=self.average, 
-                n_iter=self.n_iter, balance=False, return_study=True, img_num_channels=self.img_num_channels, normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, 
+                n_iter=self.n_iter, return_study=True, img_num_channels=self.img_num_channels, normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, 
                 val_X=self.val_blob, val_Y=self.val_other, train_epochs=self.train_epochs, patience=self.patience, opt_model=self.opt_model, opt_aug=self.opt_aug, 
                 batch_min=self.batch_min, batch_max=self.batch_max, image_size_min=self.image_size_min, image_size_max=self.image_size_max, balance=self.balance,
                 opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, test_blob=self.test_blob, test_other=self.test_other, shift=self.shift, opt_cv=self.opt_cv, 
