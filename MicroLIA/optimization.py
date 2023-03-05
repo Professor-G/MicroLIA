@@ -26,6 +26,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, cross_validate, cross_val_score
+from sklearn.utils.class_weight import compute_class_weight
 
 from skopt import BayesSearchCV, plots, gp_minimize
 from skopt.plots import plot_convergence, plot_objective
@@ -729,7 +730,7 @@ class objective_cnn(object):
 
             test_metric = np.mean(test)
             if self.verbose == 1:
-                print('After-Test Metric: '+str(test_metric))
+                print('Post-Trial Metric: '+str(test_metric))
         else:
             test_metric = None
 
@@ -936,7 +937,7 @@ class objective_nn(object):
         self.opt_cv = opt_cv
 
     def __call__(self, trial):
-        learning_rate_init= trial.suggest_float('learning_rate_init', 1e-5, 0.1, step=1e-5)
+        learning_rate_init = trial.suggest_float('learning_rate_init', 1e-5, 0.1, step=1e-5)
         solver = trial.suggest_categorical("solver", ["sgd", "adam"]) #"lbfgs"
         activation = trial.suggest_categorical("activation", ["logistic", "tanh", "relu"])
         learning_rate = trial.suggest_categorical("learning_rate", ["constant", "invscaling", "adaptive"])
@@ -1281,10 +1282,8 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                     total_positive = len(data_y) - total_negative
                     sample_weight = total_negative / total_positive
                 elif clf == 'rf':
-                    sample_weight = np.zeros(len(data_y))
-                    for i,label in enumerate(np.unique(data_y)):
-                        index = np.where(data_y == label)[0]
-                        sample_weight[index] = len(index) 
+                    class_weights = compute_class_weight('balanced', np.unique(data_y), data_y)
+                    sample_weight = dict(zip(np.unique(data_y), class_weights))
                 elif clf == 'nn':
                     print('WARNING: Unbalanced dataset detected but MLPClassifier() does not support sample weights.')
             else:
@@ -1297,7 +1296,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     if clf == 'rf':
         try:
             objective = objective_rf(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
             params = study.best_trial.params
             model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
                 max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
@@ -1325,7 +1324,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     elif clf == 'nn':
         try:
             objective = objective_nn(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
             params = study.best_trial.params
             layers = [param for param in params if 'n_units_' in param]
             layers = tuple(params[layer] for layer in layers)
@@ -1352,7 +1351,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
         objective = objective_xgb(data_x, data_y, limit_search=limit_search, opt_cv=opt_cv, test_size=test_size)
         if limit_search:
             print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
-        study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)#gc_after_trial=True
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
         params = study.best_trial.params
         if limit_search:
             if params['booster'] == 'dart':
@@ -1431,7 +1430,7 @@ def borutashap_opt(data_x, data_y, boruta_trials=50, model='rf', importance_type
         history information and visualization options.
     """
     
-    if boruta_trials == 0:
+    if boruta_trials == 0: #This is the flag that the ensemble_model.Classifier class uses to disable feature selection
         return np.arange(data_x.shape[1]), None
 
     if boruta_trials < 20:

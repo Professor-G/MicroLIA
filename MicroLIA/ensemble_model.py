@@ -203,10 +203,14 @@ class Classifier:
             data = self.data_x[:]
             data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
 
-        self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
-        if len(self.feats_to_use) == 0:
-            print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
-            self.feats_to_use = np.arange(data.shape[1])
+        if self.feats_to_use is None:
+            self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
+            if len(self.feats_to_use) == 0:
+                print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
+                self.feats_to_use = np.arange(data.shape[1])
+        else:
+            print('feats_to_use attribute already exists, skipping feature selection...')
+
         #Re-construct the imputer with the selected features as
         #new predictions will only compute these metrics, need to fit again!
         if self.imp_method == 'KNN':
@@ -233,7 +237,7 @@ class Classifier:
                 and created anew to avoid duplicate files. 
         """
         if self.model is None and self.imputer is None and self.feats_to_use is None:
-            raise ValueError('The models have not been created! Run classifier.create() first.')
+            raise ValueError('The models have not been created! Run the create() method first.')
 
         if path is None:
             path = str(Path.home())
