@@ -223,12 +223,15 @@ class Classifier:
         print("Fitting and returning final model...")
         self.model.fit(data_x, self.data_y)
         
-    def save(self, path=None, overwrite=False):
+    def save(self, dirname=None, path=None, overwrite=False):
         """
         Saves the trained classifier in a new directory named 'MicroLIA_models', 
         as well as the imputer and the features to use attributes, if not None.
         
         Args:
+            dirname (str): The name of the directory where the model folder will be saved.
+                This directory will be created, and therefore if it already exists
+                in the system an error will appear.
             path (str): Absolute path where the data folder will be saved
                 Defaults to None, in which case the directory is saved to the
                 local home directory.
@@ -243,6 +246,15 @@ class Classifier:
             path = str(Path.home())
         if path[-1] != '/':
             path+='/'
+
+        if dirname is not None:
+            if dirname[-1] != '/':
+                dirname+='/'
+            path = path+dirname
+            try:
+                os.makedirs(path)
+            except FileExistsError:
+                raise ValueError('The dirname folder already exists!')
 
         try:
             os.mkdir(path+'MicroLIA_ensemble_model')
