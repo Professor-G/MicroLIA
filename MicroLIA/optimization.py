@@ -940,10 +940,10 @@ class objective_nn(object):
         solver = trial.suggest_categorical("solver", ["sgd", "adam"]) #"lbfgs"
         activation = trial.suggest_categorical("activation", ["logistic", "tanh", "relu"])
         learning_rate = trial.suggest_categorical("learning_rate", ["constant", "invscaling", "adaptive"])
-        alpha = trial.suggest_float("alpha", 1e-6, 1, step=1e-5)
+        alpha = trial.suggest_float("alpha", 1e-7, 1, step=1e-6)
         batch_size = trial.suggest_int('batch_size', 1, 1000)
-        
         n_layers = trial.suggest_int('hidden_layer_sizes', 1, 10)
+
         layers = []
         for i in range(n_layers):
             layers.append(trial.suggest_int(f'n_units_{i}', 100, 5000))
@@ -1283,7 +1283,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 elif clf == 'rf':
                     sample_weight = 'auto'
                 elif clf == 'nn':
-                    print('WARNING: Unbalanced dataset detected but MLPClassifier() does not support sample weights.')
+                    print('WARNING: MLPClassifier() does not support sample weights.')
             else:
                 sample_weight = None
         else:
@@ -1294,7 +1294,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     if clf == 'rf':
         try:
             objective = objective_rf(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
             params = study.best_trial.params
             model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
                 max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
@@ -1322,7 +1322,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     elif clf == 'nn':
         try:
             objective = objective_nn(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
             params = study.best_trial.params
             layers = [param for param in params if 'n_units_' in param]
             layers = tuple(params[layer] for layer in layers)
@@ -1349,7 +1349,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
         objective = objective_xgb(data_x, data_y, limit_search=limit_search, opt_cv=opt_cv, test_size=test_size)
         if limit_search:
             print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
-        study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
         params = study.best_trial.params
         if limit_search:
             if params['booster'] == 'dart':
