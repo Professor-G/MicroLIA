@@ -1281,7 +1281,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                     total_positive = len(data_y) - total_negative
                     sample_weight = total_negative / total_positive
                 elif clf == 'rf':
-                    sample_weight = 'auto'
+                    sample_weight = 'balanced'
                 elif clf == 'nn':
                     print('WARNING: MLPClassifier() does not support sample weights.')
             else:
@@ -1294,7 +1294,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     if clf == 'rf':
         try:
             objective = objective_rf(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
             params = study.best_trial.params
             model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
                 max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
@@ -1322,7 +1322,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     elif clf == 'nn':
         try:
             objective = objective_nn(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
+            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
             params = study.best_trial.params
             layers = [param for param in params if 'n_units_' in param]
             layers = tuple(params[layer] for layer in layers)
@@ -1349,7 +1349,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
         objective = objective_xgb(data_x, data_y, limit_search=limit_search, opt_cv=opt_cv, test_size=test_size)
         if limit_search:
             print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
-        study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
         params = study.best_trial.params
         if limit_search:
             if params['booster'] == 'dart':
