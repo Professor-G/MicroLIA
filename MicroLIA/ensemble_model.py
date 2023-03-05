@@ -317,40 +317,40 @@ class Classifier:
 
         try:
             self.imputer = joblib.load(path+'Imputer')
-            imputer = 'imputer'
+            imputer = ', imputer'
         except FileNotFoundError:
             imputer = ''
             pass 
 
         try:
             self.feats_to_use = joblib.load(path+'Feats_Index')
-            feats_to_use = 'feats_to_use'
+            feats_to_use = ', feats_to_use'
         except FileNotFoundError:
             feats_to_use = ''
             pass
 
         try:
             self.best_params = joblib.load(path+'Best_Params')
-            best_params = 'best_params'
+            best_params = ', best_params'
         except FileNotFoundError:
             best_params = ''
             pass
 
         try:
             self.feature_history = joblib.load(path+'FeatureOpt_Results')
-            feature_opt_results = 'feature_selection_results'
+            feature_opt_results = ', feature_selection_results'
         except FileNotFoundError:
             feature_opt_results = ''
             pass
 
         try:
             self.optimization_results = joblib.load(path+'HyperOpt_Results')
-            optimization_results = 'optimization_results'
+            optimization_results = ', optimization_results'
         except FileNotFoundError:
             optimization_results = '' 
             pass
 
-        print('Successfully loaded the following class attributes: {}, {}, {}, {}, {}, {}'.format(model, imputer, feats_to_use, best_params, feature_opt_results, optimization_results))
+        print('Successfully loaded the following class attributes: {}{}{}{}{}{}'.format(model, imputer, feats_to_use, best_params, feature_opt_results, optimization_results))
         
         self.path = path
 
@@ -406,7 +406,9 @@ class Classifier:
             clearly.
 
         Args:
-            data_y (ndarray, optional): If using XGBoost then the
+            data_y (ndarray, optional): A custom labels array, that coincides with
+                the labels in model.data_y. Defaults to None, in which case the
+                model.data_y labels are used.
             special_class (optional): The class label that you wish to highlight,
                 setting this optional parameter will 
             norm (bool): If True the data will be min-max normalized. Defaults
@@ -482,6 +484,8 @@ class Classifier:
                 data_y = self.data_y_ 
                 feats = np.unique(self.data_y_)
         else:
+            if isinstance(data_y, list):
+                data_y = np.array(data_y)
             feats = np.unique(data_y) 
 
         for count, feat in enumerate(feats):

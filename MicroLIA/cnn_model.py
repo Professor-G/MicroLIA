@@ -445,26 +445,26 @@ class Classifier:
 
         try:
             self.model = load_model(path+'Keras_Model.h5', custom_objects={'f1_score': f1_score})
-            model = 'model,'
+            model = 'model'
         except:
             model = ''
             pass
 
         try:
             self.optimization_results = joblib.load(path+'HyperOpt_Results')
-            optimization_results = 'optimization_results,'
+            optimization_results = ', optimization_results,'
         except:
             optimization_results = '' 
             pass
 
         try:
             self.best_params = joblib.load(path+'Best_Params')
-            best_params = 'best_params'
+            best_params = ', best_params'
         except:
             best_params = '' 
             pass        
 
-        print('Successfully loaded the following class attributes: {} {} {}'.format(model, optimization_results, best_params))
+        print('Successfully loaded the following class attributes: {}{}{}'.format(model, optimization_results, best_params))
         
         self.path = path
         

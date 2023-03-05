@@ -26,7 +26,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split, cross_validate, cross_val_score
-from sklearn.utils.class_weight import compute_class_weight
 
 from skopt import BayesSearchCV, plots, gp_minimize
 from skopt.plots import plot_convergence, plot_objective
@@ -1282,8 +1281,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                     total_positive = len(data_y) - total_negative
                     sample_weight = total_negative / total_positive
                 elif clf == 'rf':
-                    class_weights = compute_class_weight('balanced', np.unique(data_y), data_y)
-                    sample_weight = dict(zip(np.unique(data_y), class_weights))
+                    sample_weight = 'auto'
                 elif clf == 'nn':
                     print('WARNING: Unbalanced dataset detected but MLPClassifier() does not support sample weights.')
             else:
