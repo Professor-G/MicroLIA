@@ -810,12 +810,13 @@ class Classifier:
             ax.set_yticks(np.arange(len(x_names)), x_names)#, rotation=90)
             for t in ax.get_yticklabels():
                 txt = t.get_text()
-                if 'Max Shadow' in txt and include_rejected is False:
-                        t.set_color('red')
-                        ax.plot(y[-1], np.arange(len(x_names))[-1], marker='*', color='red')
-                else:
+                if 'Max Shadow' in txt:
                     t.set_color('red')
-                    ax.plot(y[-1-len(rejected_indices)], np.arange(len(x_names))[-1-len(rejected_indices)], marker='*', color='red')
+                    if include_rejected is False:
+                        ax.plot(y[-1], np.arange(len(x_names))[-1], marker='*', color='red')
+                    else:
+                        idx = 1 + len(rejected_indices)
+                        ax.plot(y[-idx], np.arange(len(x_names))[-idx], marker='*', color='red')
 
             ax.set_ylim((np.arange(len(x_names))[0]-0.5, np.arange(len(x_names))[-1]+0.5))
             ax.set_xlim((np.min(y)-1, np.max(y)+1))
