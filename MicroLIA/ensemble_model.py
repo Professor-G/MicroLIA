@@ -225,7 +225,7 @@ class Classifier:
         
     def save(self, dirname=None, path=None, overwrite=False):
         """
-        Saves the trained classifier in a new directory named 'MicroLIA_models', 
+        Saves the trained classifier in a new directory named 'MicroLIA_ensemble_model', 
         as well as the imputer and the features to use attributes, if not None.
         
         Args:
@@ -235,7 +235,7 @@ class Classifier:
             path (str): Absolute path where the data folder will be saved
                 Defaults to None, in which case the directory is saved to the
                 local home directory.
-            overwrite (bool, optional): If True the 'MicroLIA_models' folder this
+            overwrite (bool, optional): If True the 'MicroLIA_ensemble_model' folder this
                 function creates in the specified path will be deleted if it exists
                 and created anew to avoid duplicate files. 
         """
@@ -292,11 +292,11 @@ class Classifier:
     def load(self, path=None):
         """ 
         Loads the model, imputer, and feats to use, if created and saved.
-        This function will look for a folder named 'MicroLIA_models' in the
+        This function will look for a folder named 'MicroLIA_ensemble_model' in the
         local home directory, unless a path argument is set. 
 
         Args:
-            path (str): Path where the directory 'MicroLIA_models' is saved. 
+            path (str): Path where the directory 'MicroLIA_ensemble_model' is saved. 
                 Defaults to None, in which case the folder is assumed to be in the 
                 local home directory.
         """

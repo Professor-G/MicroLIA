@@ -41,7 +41,7 @@ from MicroLIA import optimization
 class Classifier:
     """
     Creates and trains the convolutional neural network. The built-in methods can be used predict new samples, and also optimize the engine and output visualizations.
-
+    
     Args:
         positive_class (ndarray): The samples for the first class should be passed, which will automatically 
             be assigned the positive label '1'.
@@ -111,6 +111,20 @@ class Classifier:
         monitor2_thresh (float, optional): The threshold value of the second monitor metric. If the metric is loss-related
             the training will stop early if the value falls below this threshold. Similarly, if the metric is accuracy-related,
             then the training will stop early if the value falls above this threshold. Defaults to None.
+    
+    Note:
+        The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+        ratio of the minority class to the majority class after oversampling the majority.
+
+        If smote_sampling=1.0, the minority class will be oversampled to have the same number 
+        of instances as the majority class, resulting in a balanced dataset.
+
+        If smote_sampling=0.5, the minority class will be oversampled to have 50% of the number 
+        of instances of the majority class.
+
+        If smote_sampling='auto', SMOTE will automatically set the desired ratio between the minority 
+        and majority classes to balance the dataset.
+
     """
 
     def __init__(self, positive_class=None, negative_class=None, val_positive=None, val_negative=None, img_num_channels=1, 
@@ -118,7 +132,7 @@ class Classifier:
         patience=5, opt_model=True, opt_aug=False, batch_min=2, batch_max=25, image_size_min=50, image_size_max=100, 
         balance=True, opt_max_min_pix=None, opt_max_max_pix=None, metric='loss', average=True, test_positive=None, 
         test_negative=None, shift=10, opt_cv=None, mask_size=None, num_masks=None, verbose=0, train_acc_threshold=None,
-        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None):
+        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, smote_sampling=0):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -159,6 +173,7 @@ class Classifier:
         self.monitor2 = monitor2
         self.monitor1_thresh = monitor1_thresh
         self.monitor2_thresh = monitor2_thresh
+        self.smote_sampling = smote_sampling
 
         self.model = None
         self.history = None 
@@ -176,18 +191,19 @@ class Classifier:
         if self.optimize is False and self.best_params is None:
             print("Returning base AlexNet model...")
             self.model, self.history = AlexNet(self.positive_class, self.negative_class, img_num_channels=self.img_num_channels, normalize=self.normalize,
-                min_pixel=self.min_pixel, max_pixel=self.max_pixel, val_blob=self.val_blob, val_other=self.val_other, epochs=self.epochs, balance=self.balance)
+                min_pixel=self.min_pixel, max_pixel=self.max_pixel, val_positive=self.val_positive, val_negative=self.val_negative, epochs=self.epochs, 
+                smote_sampling=self.smote_sampling)
             
             return      
 
         if self.best_params is None:
             self.best_params, self.optimization_results = optimization.hyper_opt(self.positive_class, self.negative_class, clf='cnn', metric=self.metric, average=self.average, 
                 n_iter=self.n_iter, return_study=True, img_num_channels=self.img_num_channels, normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, 
-                val_X=self.val_blob, val_Y=self.val_other, train_epochs=self.train_epochs, patience=self.patience, opt_model=self.opt_model, opt_aug=self.opt_aug, 
+                val_X=self.val_positive, val_Y=self.val_negative, train_epochs=self.train_epochs, patience=self.patience, opt_model=self.opt_model, opt_aug=self.opt_aug, 
                 batch_min=self.batch_min, batch_max=self.batch_max, image_size_min=self.image_size_min, image_size_max=self.image_size_max, balance=self.balance,
-                opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, test_blob=self.test_blob, test_other=self.test_other, shift=self.shift, opt_cv=self.opt_cv, 
+                opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, test_positive=self.test_positive, test_negative=self.test_negative, shift=self.shift, opt_cv=self.opt_cv, 
                 mask_size=self.mask_size, num_masks=self.num_masks, verbose=self.verbose, train_acc_threshold=self.train_acc_threshold, limit_search=self.limit_search,
-                monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, monitor2_thresh=self.monitor2_thresh)
+                monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, monitor2_thresh=self.monitor2_thresh, smote_sampling=self.smote_sampling)
             print("Fitting and returning final model...")
         else:
             print('Fitting model using the loaded best_params...')
@@ -242,7 +258,7 @@ class Classifier:
                 elif self.img_num_channels == 3:
                     channel1, channel2, channel3 = copy.deepcopy(self.negative_class[:,:,:,0]), copy.deepcopy(self.negative_class[:,:,:,1]), copy.deepcopy(self.negative_class[:,:,:,2])
                 
-                augmented_images_other = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=1, 
+                augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=1, 
                     width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=False, 
                     image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks)
 
@@ -250,14 +266,14 @@ class Classifier:
                 if self.img_num_channels > 1:
                     class_2=[]
                     if self.img_num_channels == 2:
-                        for i in range(len(augmented_images_other[0])):
-                            class_2.append(data_processing.concat_channels(augmented_images_other[0][i], augmented_images_other[1][i]))
+                        for i in range(len(augmented_images_negative[0])):
+                            class_2.append(data_processing.concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i]))
                     else:
-                        for i in range(len(augmented_images_other[0])):
-                            class_2.append(data_processing.concat_channels(augmented_images_other[0][i], augmented_images_other[1][i], augmented_images_other[2][i]))
+                        for i in range(len(augmented_images_negative[0])):
+                            class_2.append(data_processing.concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i], augmented_images_negative[2][i]))
                     class_2 = np.array(class_2)
                 else:
-                    class_2 = augmented_images_other
+                    class_2 = augmented_images_negative
 
                 #Balance the class sizes
                 if self.balance:
@@ -274,36 +290,36 @@ class Classifier:
                         channel3 = resize(class_2[:,:,:,2], size=self.best_params['image_size'])
                         class_2 = data_processing.concat_channels(channel1, channel2, channel3)
 
-                if self.val_blob is not None:
+                if self.val_positive is not None:
                     if self.img_num_channels == 1:
-                        val_class_1 = resize(self.val_blob, size=self.best_params['image_size'])
+                        val_class_1 = resize(self.val_positive, size=self.best_params['image_size'])
                     else:
-                        val_channel1 = resize(self.val_blob[:,:,:,0], size=self.best_params['image_size'])
-                        val_channel2 = resize(self.val_blob[:,:,:,1], size=self.best_params['image_size'])
+                        val_channel1 = resize(self.val_positive[:,:,:,0], size=self.best_params['image_size'])
+                        val_channel2 = resize(self.val_positive[:,:,:,1], size=self.best_params['image_size'])
                         if self.img_num_channels == 2:
                             val_class_1 = data_processing.concat_channels(val_channel1, val_channel2)
                         else:
-                            val_channel3 = resize(self.val_blob[:,:,:,2], size=self.best_params['image_size'])
+                            val_channel3 = resize(self.val_positive[:,:,:,2], size=self.best_params['image_size'])
                             val_class_1 = data_processing.concat_channels(val_channel1, val_channel2, val_channel3)
                 else:
                     val_class_1 = None
 
-                if self.val_other is not None:
+                if self.val_negative is not None:
                     if self.img_num_channels == 1:
-                        val_class_2 = resize(self.val_other, size=self.best_params['image_size'])
+                        val_class_2 = resize(self.val_negative, size=self.best_params['image_size'])
                     elif self.img_num_channels > 1:
-                        val_channel1 = resize(self.val_other[:,:,:,0], size=self.best_params['image_size'])
-                        val_channel2 = resize(self.val_other[:,:,:,1], size=self.best_params['image_size'])
+                        val_channel1 = resize(self.val_negative[:,:,:,0], size=self.best_params['image_size'])
+                        val_channel2 = resize(self.val_negative[:,:,:,1], size=self.best_params['image_size'])
                         if self.img_num_channels == 2:
                             val_class_2 = data_processing.concat_channels(val_channel1, val_channel2)
                         else:
-                            val_channel3 = resize(self.val_other[:,:,:,2], size=self.best_params['image_size'])
+                            val_channel3 = resize(self.val_negative[:,:,:,2], size=self.best_params['image_size'])
                             val_class_2 = data_processing.concat_channels(val_channel1, val_channel2, val_channel3)
                 else:
                     val_class_2 = None
             else:
                 class_1, class_2 = self.positive_class, self.negative_class
-                val_class_1, val_class_2 = self.val_blob, self.val_other
+                val_class_1, val_class_2 = self.val_positive, self.val_negative
 
             if self.opt_model:
                 if self.best_params['optimizer'] != 'adam' and self.best_params['optimizer'] != 'adagrad':
@@ -318,15 +334,16 @@ class Classifier:
 
                 if self.limit_search:
                     self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
-                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_blob=val_class_1, val_other=val_class_2, 
+                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
                         epochs=self.train_epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], 
                         lr=self.best_params['lr'], momentum=momentum, decay=decay, nesterov=nesterov, loss=self.best_params['loss'], 
                         model_reg=self.best_params['model_reg'], activation_conv=self.best_params['activation_conv'], activation_dense=self.best_params['activation_dense'], 
                         pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], pooling_3=self.best_params['pooling_3'],  
-                        conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], conv_reg=self.best_params['conv_reg'], dense_reg=self.best_params['dense_reg'], verbose=self.verbose)
+                        conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], conv_reg=self.best_params['conv_reg'], dense_reg=self.best_params['dense_reg'], 
+                        smote_sampling=self.smote_sampling, verbose=self.verbose)
                 else:
                     self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
-                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_blob=val_class_1, val_other=val_class_2, 
+                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
                         epochs=self.train_epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], lr=self.best_params['lr'], momentum=momentum, decay=decay, nesterov=nesterov, 
                         loss=self.best_params['loss'], model_reg=self.best_params['model_reg'], activation_conv=self.best_params['activation_conv'], 
                         activation_dense=self.best_params['activation_dense'], pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], 
@@ -339,11 +356,11 @@ class Classifier:
                         strides_4=self.best_params['strides_4'], filter_5=self.best_params['filter_5'], filter_size_5=self.best_params['filter_size_5'], 
                         strides_5=self.best_params['strides_5'], dense_neurons_1=self.best_params['dense_neurons_1'], dense_neurons_2=self.best_params['dense_neurons_2'], 
                         dropout_1=self.best_params['dropout_1'], dropout_2=self.best_params['dropout_2'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'],
-                        conv_reg=self.best_params['conv_reg'], dense_reg=self.best_params['dense_reg'], verbose=self.verbose)
+                        conv_reg=self.best_params['conv_reg'], dense_reg=self.best_params['dense_reg'], smote_sampling=self.smote_sampling, verbose=self.verbose)
             else: 
                 self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize,
-                    min_pixel=min_pix, max_pixel=max_pix, val_blob=val_class_1, val_other=val_class_2, epochs=self.epochs, optimizer=self.best_params['optimizer'],
-                    verbose=self.verbose)
+                    min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.epochs, optimizer=self.best_params['optimizer'],
+                    smote_sampling=self.smote_sampling, verbose=self.verbose)
        
         return 
 
@@ -359,7 +376,7 @@ class Classifier:
             path (str): Absolute path where the data folder will be saved
                 Defaults to None, in which case the directory is saved to the
                 local home directory.
-            overwrite (bool, optional): If True the 'MicroLIA_models' folder this
+            overwrite (bool, optional): If True the 'MicroLIA_cnn_model' folder this
                 function creates in the specified path will be deleted if it exists
                 and created anew to avoid duplicate files. 
         """
@@ -424,7 +441,7 @@ class Classifier:
         local home directory, unless a path argument is set. 
 
         Args:
-            path (str): Path where the directory 'MicroLIA_models' is saved. 
+            path (str): Path where the directory 'MicroLIA_cnn_model' is saved. 
             Defaults to None, in which case the folder is assumed to be in the 
             local home directory.
         """
@@ -766,7 +783,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         filter_2=256, filter_size_2=5, strides_2=1, filter_3=384, filter_size_3=3, strides_3=1, filter_4=384, 
         filter_size_4=3, strides_4=1, filter_5=256, filter_size_5=3, strides_5=1, dense_neurons_1=4096, 
         dense_neurons_2=4096, dropout_1=0.5, dropout_2=0.5, conv_reg=0, dense_reg=0, optimizer='sgd', 
-        early_stop_callback=None, checkpoint=False, verbose=1, add_weights=True):
+        early_stop_callback=None, checkpoint=False, verbose=1, add_weights=True, smote_sampling=0):
         """
         The CNN model infrastructure presented by the 2012 ImageNet Large Scale 
         Visual Recognition Challenge, AlexNet. Parameters were adapted for
@@ -825,28 +842,28 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             add_weights (bool): If True the classes will be weighted to counter the class imbalance. This involves assigning a weight to 
                 each class that is proportional to the inverse of its frequency in the training set, which in turn makes
                 it so the model will give more importance to the positive class during training. Defaults to False. 
+            smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+                ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
 
         Returns:
             The trained CNN model and accompanying history.
         """
         
-        if len(positive_class.shape) != len(negative_class.shape):
-            raise ValueError("Shape of blob and other data must be the same.")
         if batch_size < 16 and model_reg == 'batch_norm':
             print("Batch Normalization can be unstable with low batch sizes, if loss returns nan try a larger batch size and/or smaller learning rate.")
         
-        if val_blob is not None:
-            val_X1, val_Y1 = process_class(val_blob, label=1, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
-            if val_other is None:
+        if val_positive is not None:
+            val_X1, val_Y1 = process_class(val_positive, label=1, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
+            if val_negative is None:
                 val_X, val_Y = val_X1, val_Y1
             else:
-                val_X2, val_Y2 = process_class(val_other, label=0, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
+                val_X2, val_Y2 = process_class(val_negative, label=0, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
                 val_X, val_Y = np.r_[val_X1, val_X2], np.r_[val_Y1, val_Y2]
         else:
-            if val_other is None:
+            if val_negative is None:
                 val_X, val_Y = None, None
             else:
-                val_X2, val_Y2 = process_class(val_other, label=0, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
+                val_X2, val_Y2 = process_class(val_negative, label=0, img_num_channels=img_num_channels, min_pixel=min_pixel, max_pixel=max_pixel, normalize=normalize)
                 val_X, val_Y = val_X2, val_Y2
 
         img_width = positive_class[0].shape[0]
@@ -864,6 +881,16 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             X_train[X_train > 1] = 1
             X_train[X_train < 0] = 0
             
+        #Apply SMOTE to oversample the minority class
+        if smote_sampling > 0:
+            smote = SMOTE(sampling_strategy=smote_sampling)
+            X_train_res, Y_train_res = smote.fit_resample(X_train, Y_train)
+        elif smote_sampling == 0:
+            X_train_res, Y_train_res = X_train, Y_train
+        else:
+            raise ValueError('smote_sampling must be a float greater than 0.0!')
+
+
         num_classes, input_shape = 2, (img_width, img_height, img_num_channels)
        
         if verbose == 1:
@@ -972,9 +999,9 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
 
         #Fit the Model
         if val_X is None:
-            history = model.fit(X_train, Y_train, batch_size=batch_size, epochs=epochs, callbacks=callbacks_list, verbose=verbose)
+            history = model.fit(X_train_res, Y_train_res, batch_size=batch_size, epochs=epochs, callbacks=callbacks_list, verbose=verbose)
         else:
-            history = model.fit(X_train, Y_train, batch_size=batch_size, validation_data=(val_X, val_Y), epochs=epochs, callbacks=callbacks_list, verbose=verbose)
+            history = model.fit(X_train_res, Y_train_res, batch_size=batch_size, validation_data=(val_X, val_Y), epochs=epochs, callbacks=callbacks_list, verbose=verbose)
 
         return model, history
 

@@ -149,6 +149,8 @@ class objective_cnn(object):
         monitor2_thresh (float, optional): The threshold value of the second monitor metric. If the metric is loss-related
             the training will stop early if the value falls below this threshold. Similarly, if the metric is accuracy-related,
             then the training will stop early if the value falls above this threshold. Defaults to None.
+        smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
         
     Returns:
         The performance metric.
@@ -158,7 +160,7 @@ class objective_cnn(object):
         val_positive=None, val_negative=None, test_positive=None, test_negative=None, train_epochs=25, patience=20, 
         opt_model=True, opt_aug=False, batch_min=2, batch_max=25, image_size_min=50, image_size_max=100, 
         balance=True, opt_max_min_pix=None, opt_max_max_pix=None, metric='loss', average=True, shift=10,
-        mask_size=None, num_masks=None, opt_cv=None, verbose=0, train_acc_threshold=None, 
+        mask_size=None, num_masks=None, opt_cv=None, verbose=0, train_acc_threshold=None, smote_sampling=0,
         limit_search=True, batch_size_min=16, batch_size_max=64, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None):
 
         self.positive_class = positive_class
@@ -199,6 +201,7 @@ class objective_cnn(object):
         self.monitor2 = monitor2
         self.monitor1_thresh = monitor1_thresh
         self.monitor2_thresh = monitor2_thresh
+        self.smote_sampling = smote_sampling
 
         if 'all' not in self.metric and 'loss' not in self.metric and 'f1_score' not in self.metric and 'binary_accuracy' not in self.metric:
             raise ValueError("Invalid metric input, options are: 'loss', 'binary_accuracy', 'f1_score', or 'all', and the validation equivalents (add val_ at the beginning).")
@@ -432,7 +435,7 @@ class objective_cnn(object):
                     epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
                     loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
                     conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose, 
-                    pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3)
+                    pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, smote_sampling=self.smote_sampling)
             else:
                 ### Filter and Layer Characterstics ###
                 filter_1 = trial.suggest_int('filter_1', 12, 240, step=12)
@@ -481,7 +484,7 @@ class objective_cnn(object):
                     filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, filter_4=filter_4, 
                     filter_size_4=filter_size_4, strides_4=strides_4, filter_5=filter_5, filter_size_5=filter_size_5, 
                     strides_5=strides_5, dense_neurons_1=dense_neurons_1, dense_neurons_2=dense_neurons_2, 
-                    dropout_1=dropout_1, dropout_2=dropout_2, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
+                    dropout_1=dropout_1, dropout_2=dropout_2, smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
         else:
             if self.opt_cv is not None:
                 print()
@@ -498,7 +501,7 @@ class objective_cnn(object):
             model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
                 min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
                 batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
-                checkpoint=False, verbose=self.verbose, optimizer=optimizer)
+                checkpoint=False, verbose=self.verbose, optimizer=optimizer, smote_sampling=self.smote_sampling)
 
         #If the patience is reached, return nan#
         if len(history.history['loss']) != self.train_epochs:
@@ -650,7 +653,7 @@ class objective_cnn(object):
                     model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
                         min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
                         batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
-                        conv_init=conv_init, dense_init=dense_init, checkpoint=False, verbose=self.verbose, optimizer=optimizer)
+                        conv_init=conv_init, dense_init=dense_init, smote_sampling=self.smote_sampling, checkpoint=False, verbose=self.verbose, optimizer=optimizer)
                 else:
                     if self.limit_search:
                         model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
@@ -658,7 +661,7 @@ class objective_cnn(object):
                             epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
                             loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
                             conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose, 
-                            pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3)
+                            pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, smote_sampling=self.smote_sampling)
                     else:
                         model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
                             normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
@@ -671,7 +674,7 @@ class objective_cnn(object):
                             filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, filter_4=filter_4, 
                             filter_size_4=filter_size_4, strides_4=strides_4, filter_5=filter_5, filter_size_5=filter_size_5, 
                             strides_5=strides_5, dense_neurons_1=dense_neurons_1, dense_neurons_2=dense_neurons_2, 
-                            dropout_1=dropout_1, dropout_2=dropout_2, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
+                            dropout_1=dropout_1, dropout_2=dropout_2, smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
 
                 #If the trial is pruned or the patience is reached, return nan#
                 if len(history.history['loss']) != self.train_epochs:
@@ -1106,7 +1109,8 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     normalize=True, min_pixel=0, max_pixel=100, val_X=None, val_Y=None, train_epochs=25, patience=0, metric='loss', 
     limit_search=True, opt_model=True, opt_aug=False, batch_min=2, batch_max=25, image_size_min=50, image_size_max=100,
     opt_max_min_pix=None, opt_max_max_pix=None, opt_cv=10, test_size=None, average=True, test_positive=None, test_negative=None, shift=10, 
-    mask_size=None, num_masks=None, verbose=1, train_acc_threshold=None, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None):
+    mask_size=None, num_masks=None, verbose=1, train_acc_threshold=None, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None,
+    smote_sampling=0):
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy, unless a CNN
     is being optimized, in which case no cross-validation is performed during trial assesment.
@@ -1217,6 +1221,8 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             regularizer. Only applicable if opt_aug=True. Defaults to None.
         num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. If 
             this is set to a value greater than one, overlap may occur. 
+        smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
 
@@ -1378,7 +1384,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             val_positive=val_X, val_negative=val_Y, train_epochs=train_epochs, patience=patience, metric=metric, average=average, test_positive=test_positive, test_negative=test_negative,
             opt_model=opt_model, opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, image_size_min=image_size_min, image_size_max=image_size_max, balance=balance, 
             opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, shift=shift, opt_cv=opt_cv, mask_size=mask_size, num_masks=num_masks, train_acc_threshold=train_acc_threshold,
-            verbose=verbose, limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh)
+            verbose=verbose, limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, smote_sampling=smote_sampling)
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)#, n_jobs=1)
         params = study.best_trial.params
 
