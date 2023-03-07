@@ -17,6 +17,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors 
 from sklearn.utils import class_weight
+from imblearn.over_sampling import SMOTE
 
 import random as python_random
 ##https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development##
@@ -111,7 +112,9 @@ class Classifier:
         monitor2_thresh (float, optional): The threshold value of the second monitor metric. If the metric is loss-related
             the training will stop early if the value falls below this threshold. Similarly, if the metric is accuracy-related,
             then the training will stop early if the value falls above this threshold. Defaults to None.
-    
+        smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+                ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
+
     Note:
         The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
         ratio of the minority class to the majority class after oversampling the majority.
@@ -890,7 +893,6 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         else:
             raise ValueError('smote_sampling must be a float greater than 0.0!')
 
-
         num_classes, input_shape = 2, (img_width, img_height, img_num_channels)
        
         if verbose == 1:
@@ -907,7 +909,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         loss = get_loss_function(loss)
 
         if add_weights:
-            class_weights = class_weight.compute_class_weight('balanced', np.unique(Y_train), Y_train)
+            class_weights = class_weight.compute_class_weight('balanced', np.unique(Y_train_res), Y_train_res)
         else:
             class_weights = None 
 
