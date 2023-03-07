@@ -591,6 +591,137 @@ class Classifier:
         predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
         generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig)
 
+
+    def plot_roc_curve(self, k_fold=10, pca=False, title="Receiver Operating Characteristic Curve", 
+        savefig=False):
+        """
+        Plots ROC curve with k-fold cross-validation, as such the 
+        standard deviation variations are plotted.
+        
+        Args:
+            classifier: The machine learning classifier to optimize.
+            data_x (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
+            data_y (ndarray, str): 1D array containing the corresponing labels.
+            k_fold (int, optional): The number of cross-validations to perform.
+                The output confusion matrix will display the mean accuracy across
+                all k_fold iterations. Defaults to 10.
+            title (str, optional): The title of the output plot. 
+            savefig (bool): If True the figure will not disply but will be saved instead.
+                Defaults to False. 
+                
+        Returns:
+            AxesImage
+        """
+        if self.model is None:
+            raise ValueError('No model has been created! Run model.create() first.')
+
+        if self.feats_to_use is not None:
+            if len(self.data_x.shape) == 1:
+                data = self.data_x[self.feats_to_use].reshape(1,-1)
+            else:
+                data = self.data_x[:,self.feats_to_use]
+        else:
+            data = self.data_x[:]
+
+        if np.any(np.isnan(data)):
+            print('Automatically imputing NaN values with KNN imputation...')
+            if self.imputer is not None and self.imp_method == 'KNN':
+                data = KNN_imputation(data=data, imputer=self.imputer)
+            else:
+                data = KNN_imputation(data=data)[0]
+
+        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+
+        if pca:
+            pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
+            pca_transformation.fit(data) 
+            pca_data = pca_transformation.transform(data)
+            data = np.asarray(pca_data).astype('float64')
+        
+        model0 = self.model
+        if len(np.unique(self.data_y)) != 2:
+            X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=0.2, random_state=0)
+            model0.fit(X_train, y_train)
+            y_probas = model0.predict_proba(X_test)
+            skplt.metrics.plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='cividis', plot_macro=False, plot_micro=False)
+            plt.show()
+            return
+
+        cv = StratifiedKFold(n_splits=k_fold)
+        
+        tprs = []
+        aucs = []
+        mean_fpr = np.linspace(0, 1, 100)
+
+        train = data
+        fig, ax = plt.subplots()
+
+        for i, (data_x, test) in enumerate(cv.split(train, self.data_y)):
+            model0.fit(train[data_x], self.data_y[data_x])
+            viz = RocCurveDisplay.from_estimator(
+                model0,
+                train[test],
+                self.data_y[test],
+                alpha=0,#0.3,
+                lw=1,
+                ax=ax,
+                name="ROC fold {}".format(i+1),
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        lns1, = ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            #label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            label=r"Mean (AUC = %0.2f)" % (mean_auc),
+            lw=2,
+            alpha=0.8,
+        )
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        lns_sigma = ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1$\sigma$",
+        )
+
+        ax.set(
+            xlim=[0, 1.0],
+            ylim=[0.0, 1.0],
+            title="Receiver Operating Characteristic Curve",
+        )
+        
+        lns2, = ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Random (AUC=0.5)", alpha=0.8)
+
+        #handles, labels = ax.get_legend_handles_labels()
+        #ax.legend(handles[-3:], labels[-3:], loc="lower center", ncol=3, frameon=False, handlelength=2)
+        ax.legend([lns2, (lns1, lns_sigma)], ['Random (AUC = 0.5)', r"Mean (AUC = %0.2f)" % (mean_auc)], loc='lower center', ncol=2, frameon=False, handlelength=2)
+
+        ax.set_facecolor("white")
+        plt.ylabel('True Positive Rate')#, size=14)
+        plt.xlabel('False Positive Rate')#, size=14)
+        plt.title(label=title)#,fontsize=18)
+
+        if savefig:
+            plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
+            plt.clf()
+        else:
+            plt.show()
+
     def plot_hyper_opt(self, baseline=None, xlim=None, ylim=None, xlog=True, ylog=False, 
         savefig=False):
         """
