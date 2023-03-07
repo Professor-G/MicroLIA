@@ -1231,7 +1231,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
 
     Args:
         train_acc_threshold (float, optional): A value between 0 and 1 that designates the training binary_accuracy threshold that should
-            not be exceeded. As soon as the training exceeds this limit, the trial is stopped early. Defaults to None.
+            not be exceeded. As soon as the training exceeds this limit, the trial is stopped. Defaults to None.
         monitor1 (str, optional): The first metric to monitor, can take the same values as the metric argument. Defaults to None.
         monitor2 (str, optional): The second metric to monitor, can take the same values as the metric argument. Defaults to None.
         monitor1_thresh (float, optional): The threshold value of the first monitor metric. If the metric is loss-related
