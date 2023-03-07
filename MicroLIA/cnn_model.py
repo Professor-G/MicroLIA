@@ -797,6 +797,24 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         min-max normalization using the min_pixel and max_pixel arguments, 
         which should be set carefully.
 
+        Note:
+            SMOTE expects a 2D input array that represents the feature space of the minority class. 
+            In the case of image classification, the feature space is usually flattened to a 1D vector 
+            for each image. This means that each row of the 2D input array represents a single image 
+            from the minority class, and each column represents a feature (pixel) of that image.
+
+            SMOTE expects a 2D input array because it works by computing the k-nearest neighbors of each minority 
+            class sample in the feature space and generating synthetic samples by interpolating between those neighbors.
+
+            By working in the feature space, SMOTE is able to generate synthetic samples that are similar 
+            to the existing minority class samples, and therefore more representative of the true distribution 
+            of the minority class. The resulting synthetic samples can then be added to the training set to 
+            balance the class distribution.
+
+            Once SMOTE has generated the synthetic samples, the 2D array can be reshaped back into its 
+            original image format to be used as input to a CNN model.
+
+
         Args:
             positive_class (ndarray): 3D array containing more than one image of diffuse objects.
             negative_class (ndarray): 3D array containing more than one image of non-diffuse objects.
@@ -886,12 +904,14 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             
         #Apply SMOTE to oversample the minority class
         if smote_sampling > 0:
+            X_train_2d = X_train.reshape(X_train.shape[0], -1)
             smote = SMOTE(sampling_strategy=smote_sampling)
-            X_train_res, Y_train_res = smote.fit_resample(X_train, Y_train)
+            X_train_resampled, Y_train_res = smote.fit_resample(X_train_2d, Y_train)
+            X_train_res = X_train_resampled.reshape(X_train_resampled.shape[0], img_height, img_width, img_num_channels)
         elif smote_sampling == 0:
             X_train_res, Y_train_res = X_train, Y_train
         else:
-            raise ValueError('smote_sampling must be a float greater than 0.0!')
+            raise ValueError('smote_sampling must be a float between 0.0 and 1.0!')
 
         num_classes, input_shape = 2, (img_width, img_height, img_num_channels)
        
