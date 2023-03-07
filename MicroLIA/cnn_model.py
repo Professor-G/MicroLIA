@@ -73,9 +73,9 @@ class Classifier:
         opt_model (bool): If True, the architecture parameters will be optimized. Defaults to True.
         opt_aug (bool): If True, the augmentation procedure will be optimized. Defaults to False.
         batch_min (int): The minimum number of augmentations to perform per image on the positive class, only applicable 
-        if opt_aug=True. Defaults to 2.
+            if opt_aug=True. Defaults to 2.
         batch_max (int): The maximum number of augmentations to perform per image on the positive class, only applicable 
-        if opt_aug=True. Defaults to 25.
+            if opt_aug=True. Defaults to 25.
         image_size_min (int): The minimum image size to assess, only applicable if opt_aug=True. Defaults to 50.
         image_size_max (int): The maximum image size to assess, only applicable if opt_aug=True. Defaults to 100.
         opt_max_min_pix (int, optional): The minimum max pixel value to use when tuning the normalization procedure, 
