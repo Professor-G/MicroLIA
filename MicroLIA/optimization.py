@@ -5,7 +5,6 @@ Created on Sat Feb  25 10:39:23 2023
 
 @author: daniel
 """
-
 import os, sys
 import copy, gc
 import tensorflow as tf
@@ -86,7 +85,7 @@ class objective_cnn(object):
     Args:
         positive_class (ndarray): The samples for the first class should be passed, which will automatically 
             be assigned the positive label '1'.
-        negative_class (ndarray, str): The samples for the second class should be passed, which will automatically 
+        negative_class (ndarray): The samples for the second class should be passed, which will automatically 
             be assigned the negative label '0'.
         img_num_channels (int): The number of filters. Defaults to 1.
         normalize (bool, optional): If True the data will be min-max normalized using the 
@@ -110,9 +109,9 @@ class objective_cnn(object):
         opt_model (bool): If True, the architecture parameters will be optimized. Defaults to True.
         opt_aug (bool): If True, the augmentation procedure will be optimized. Defaults to False.
         batch_min (int): The minimum number of augmentations to perform per image on the positive class, only applicable 
-        if opt_aug=True. Defaults to 2.
+            if opt_aug=True. Defaults to 2.
         batch_max (int): The maximum number of augmentations to perform per image on the positive class, only applicable 
-        if opt_aug=True. Defaults to 25.
+            if opt_aug=True. Defaults to 25.
         image_size_min (int): The minimum image size to assess, only applicable if opt_aug=True. Defaults to 50.
         image_size_max (int): The maximum image size to assess, only applicable if opt_aug=True. Defaults to 100.
         opt_max_min_pix (int, optional): The minimum max pixel value to use when tuning the normalization procedure, 
@@ -128,16 +127,16 @@ class objective_cnn(object):
             this is set to a value greater than one, overlap may occur. 
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
-        opt_cv (int): Cross-validations to perform when assesing the performance at each
+        opt_cv (int): Cross-validations to perform when assessing the performance at each
             hyperparameter optimization trial. For example, if cv=3, then each optimization trial
             will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
             NOTE: The higher this number, the longer the optimization will take.
         balance (bool, optional): This will determine whether the two classes
             are kept the same size during optimization, applicable if tuning the augmentation
             parameters. Defaults to True.
-        limit_search (bool): If False, the AlexNet layer paremters will be tuned, including the number of filters to learn
-            as well as the convolution sizes and strides. Defaults to False due to memory allocation issues when handling
-            lots of tunable parameters.
+        limit_search (bool): Whether to expand the hyperparameter search space. If clf='cnn', this will 
+            include the tuning of the individual layer parameters such as the number of filter, size & stride.
+            Defaults to True due to memory allocation issues when handling lots of tunable parameters.
         batch_size_min (int): The minimum batch size to use during training. Should be multiples of 16 for optimal hardware use?? Defaults to 16.
         batch_size_max (int): The Maximum batch size to use during training. Should be multiples of 16 for optimal hardware use?? Defaults to 64.
         train_acc_threshold (float, optional): A value between 0 and 1 that designates the training binary_accuracy threshold that should

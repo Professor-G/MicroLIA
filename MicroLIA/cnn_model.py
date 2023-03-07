@@ -41,11 +41,10 @@ class Classifier:
     """
     Creates and trains the convolutional neural network. The built-in methods can be used predict new samples, and also optimize the engine and output visualizations.
 
-
     Args:
         positive_class (ndarray): The samples for the first class should be passed, which will automatically 
             be assigned the positive label '1'.
-        negative_class (ndarray, str): The samples for the second class should be passed, which will automatically 
+        negative_class (ndarray): The samples for the second class should be passed, which will automatically 
             be assigned the negative label '0'.
         val_positive (ndarray, optional): Positive class data to be used for validation. Defaults to None.
         val_negative (ndarray, optional): Negative class data to be used for validation. Defaults to None.
