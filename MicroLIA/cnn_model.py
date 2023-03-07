@@ -16,6 +16,7 @@ import pkg_resources
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors 
+from sklearn.utils import class_weight
 
 import random as python_random
 ##https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development##
@@ -110,13 +111,6 @@ class Classifier:
         monitor2_thresh (float, optional): The threshold value of the second monitor metric. If the metric is loss-related
             the training will stop early if the value falls below this threshold. Similarly, if the metric is accuracy-related,
             then the training will stop early if the value falls above this threshold. Defaults to None.
-
-        Attributes:
-            model (object): The machine learning model.
-            history (object): The machine learning model history, generated during training.
-            optimization_results (object): The Optuna hyperparameter optimization history result.
-            best_params (dict): The best parameters output from the optimization routine.
-
     """
 
     def __init__(self, positive_class=None, negative_class=None, val_positive=None, val_negative=None, img_num_channels=1, 
@@ -182,7 +176,7 @@ class Classifier:
         if self.optimize is False and self.best_params is None:
             print("Returning base AlexNet model...")
             self.model, self.history = AlexNet(self.positive_class, self.negative_class, img_num_channels=self.img_num_channels, normalize=self.normalize,
-                min_pixel=self.min_pixel, max_pixel=self.max_pixel, val_blob=self.val_blob, val_other=self.val_other, epochs=self.epochs)
+                min_pixel=self.min_pixel, max_pixel=self.max_pixel, val_blob=self.val_blob, val_other=self.val_other, epochs=self.epochs, balance=self.balance)
             
             return      
 
@@ -772,7 +766,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         filter_2=256, filter_size_2=5, strides_2=1, filter_3=384, filter_size_3=3, strides_3=1, filter_4=384, 
         filter_size_4=3, strides_4=1, filter_5=256, filter_size_5=3, strides_5=1, dense_neurons_1=4096, 
         dense_neurons_2=4096, dropout_1=0.5, dropout_2=0.5, conv_reg=0, dense_reg=0, optimizer='sgd', 
-        early_stop_callback=None, checkpoint=False, verbose=1):
+        early_stop_callback=None, checkpoint=False, verbose=1, add_weights=True):
         """
         The CNN model infrastructure presented by the 2012 ImageNet Large Scale 
         Visual Recognition Challenge, AlexNet. Parameters were adapted for
@@ -828,6 +822,9 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             checkpoint (bool, optional): If False no checkpoint will be saved. Defaults to True.
             verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
                 a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
+            add_weights (bool): If True the classes will be weighted to counter the class imbalance. This involves assigning a weight to 
+                each class that is proportional to the inverse of its frequency in the training set, which in turn makes
+                it so the model will give more importance to the positive class during training. Defaults to False. 
 
         Returns:
             The trained CNN model and accompanying history.
@@ -881,6 +878,11 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
 
         #Call the appropriate tf.keras.losses.Loss function
         loss = get_loss_function(loss)
+
+        if add_weights:
+            class_weights = class_weight.compute_class_weight('balanced', np.unique(Y_train), Y_train)
+        else:
+            class_weights = None 
 
         #Model configuration
         model = Sequential()
@@ -957,7 +959,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         optimizer = get_optimizer(optimizer, lr, momentum=momentum, decay=decay, nesterov=nesterov)
 
         #Compile the Model
-        model.compile(loss=loss, optimizer=optimizer, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
+        model.compile(loss=loss, optimizer=optimizer, class_weight=class_weights, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
         
         #Optional checkpoint callback, with the monitor hardcoded to loss of the validation data.
         callbacks_list = []
