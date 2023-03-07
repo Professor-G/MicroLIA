@@ -16,7 +16,6 @@ import pkg_resources
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors 
-from sklearn.utils import class_weight
 from imblearn.over_sampling import SMOTE
 
 import random as python_random
@@ -24,6 +23,7 @@ import random as python_random
 np.random.seed(1909), python_random.seed(1909), tf.random.set_seed(1909)
 
 from tensorflow.keras import backend as K
+from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.backend import clear_session 
 from tensorflow.keras.models import Sequential, save_model, load_model, Model
@@ -786,7 +786,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         filter_2=256, filter_size_2=5, strides_2=1, filter_3=384, filter_size_3=3, strides_3=1, filter_4=384, 
         filter_size_4=3, strides_4=1, filter_5=256, filter_size_5=3, strides_5=1, dense_neurons_1=4096, 
         dense_neurons_2=4096, dropout_1=0.5, dropout_2=0.5, conv_reg=0, dense_reg=0, optimizer='sgd', 
-        early_stop_callback=None, checkpoint=False, verbose=1, add_weights=True, smote_sampling=0):
+        early_stop_callback=None, checkpoint=False, verbose=1, smote_sampling=0):
         """
         The CNN model infrastructure presented by the 2012 ImageNet Large Scale 
         Visual Recognition Challenge, AlexNet. Parameters were adapted for
@@ -860,9 +860,6 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             checkpoint (bool, optional): If False no checkpoint will be saved. Defaults to True.
             verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
                 a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
-            add_weights (bool): If True the classes will be weighted to counter the class imbalance. This involves assigning a weight to 
-                each class that is proportional to the inverse of its frequency in the training set, which in turn makes
-                it so the model will give more importance to the positive class during training. Defaults to False. 
             smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
                 ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
 
@@ -927,11 +924,6 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
 
         #Call the appropriate tf.keras.losses.Loss function
         loss = get_loss_function(loss)
-
-        if add_weights:
-            class_weights = class_weight.compute_class_weight('balanced', np.unique(Y_train_res), Y_train_res)
-        else:
-            class_weights = None 
 
         #Model configuration
         model = Sequential()
@@ -1008,7 +1000,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         optimizer = get_optimizer(optimizer, lr, momentum=momentum, decay=decay, nesterov=nesterov)
 
         #Compile the Model
-        model.compile(loss=loss, optimizer=optimizer, class_weight=class_weights, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
+        model.compile(loss=loss, optimizer=optimizer, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
         
         #Optional checkpoint callback, with the monitor hardcoded to loss of the validation data.
         callbacks_list = []
