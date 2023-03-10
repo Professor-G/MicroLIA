@@ -341,7 +341,7 @@ class Classifier:
                 if self.limit_search:
                     self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
                         normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
-                        epochs=self.train_epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], 
+                        epochs=self.epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], 
                         lr=self.best_params['lr'], momentum=momentum, decay=decay, nesterov=nesterov, loss=self.best_params['loss'], 
                         model_reg=self.best_params['model_reg'], activation_conv=self.best_params['activation_conv'], activation_dense=self.best_params['activation_dense'], 
                         pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], pooling_3=self.best_params['pooling_3'],  
@@ -350,7 +350,7 @@ class Classifier:
                 else:
                     self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
                         normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
-                        epochs=self.train_epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], lr=self.best_params['lr'], momentum=momentum, decay=decay, nesterov=nesterov, 
+                        epochs=self.epochs, batch_size=self.best_params['batch_size'], optimizer=self.best_params['optimizer'], lr=self.best_params['lr'], momentum=momentum, decay=decay, nesterov=nesterov, 
                         loss=self.best_params['loss'], model_reg=self.best_params['model_reg'], activation_conv=self.best_params['activation_conv'], 
                         activation_dense=self.best_params['activation_dense'], pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], 
                         pooling_3=self.best_params['pooling_3'], pool_size_1=self.best_params['pool_size_1'], pool_stride_1=self.best_params['pool_stride_1'], 
