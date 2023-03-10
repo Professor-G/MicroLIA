@@ -273,10 +273,10 @@ class Classifier:
                     class_2=[]
                     if self.img_num_channels == 2:
                         for i in range(len(augmented_images_negative[0])):
-                            class_2.append(data_processing.concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i]))
+                            class_2.append(concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i]))
                     else:
                         for i in range(len(augmented_images_negative[0])):
-                            class_2.append(data_processing.concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i], augmented_images_negative[2][i]))
+                            class_2.append(concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i], augmented_images_negative[2][i]))
                     class_2 = np.array(class_2)
                 else:
                     class_2 = augmented_images_negative
@@ -291,10 +291,10 @@ class Classifier:
                     channel1 = resize(class_2[:,:,:,0], size=self.best_params['image_size'])
                     channel2 = resize(class_2[:,:,:,1], size=self.best_params['image_size'])
                     if self.img_num_channels == 2:
-                        class_2 = data_processing.concat_channels(channel1, channel2)
+                        class_2 = concat_channels(channel1, channel2)
                     else:
                         channel3 = resize(class_2[:,:,:,2], size=self.best_params['image_size'])
-                        class_2 = data_processing.concat_channels(channel1, channel2, channel3)
+                        class_2 = concat_channels(channel1, channel2, channel3)
 
                 if self.val_positive is not None:
                     if self.img_num_channels == 1:
@@ -303,10 +303,10 @@ class Classifier:
                         val_channel1 = resize(self.val_positive[:,:,:,0], size=self.best_params['image_size'])
                         val_channel2 = resize(self.val_positive[:,:,:,1], size=self.best_params['image_size'])
                         if self.img_num_channels == 2:
-                            val_class_1 = data_processing.concat_channels(val_channel1, val_channel2)
+                            val_class_1 = concat_channels(val_channel1, val_channel2)
                         else:
                             val_channel3 = resize(self.val_positive[:,:,:,2], size=self.best_params['image_size'])
-                            val_class_1 = data_processing.concat_channels(val_channel1, val_channel2, val_channel3)
+                            val_class_1 = concat_channels(val_channel1, val_channel2, val_channel3)
                 else:
                     val_class_1 = None
 
@@ -317,10 +317,10 @@ class Classifier:
                         val_channel1 = resize(self.val_negative[:,:,:,0], size=self.best_params['image_size'])
                         val_channel2 = resize(self.val_negative[:,:,:,1], size=self.best_params['image_size'])
                         if self.img_num_channels == 2:
-                            val_class_2 = data_processing.concat_channels(val_channel1, val_channel2)
+                            val_class_2 = concat_channels(val_channel1, val_channel2)
                         else:
                             val_channel3 = resize(self.val_negative[:,:,:,2], size=self.best_params['image_size'])
-                            val_class_2 = data_processing.concat_channels(val_channel1, val_channel2, val_channel3)
+                            val_class_2 = concat_channels(val_channel1, val_channel2, val_channel3)
                 else:
                     val_class_2 = None
             else:
