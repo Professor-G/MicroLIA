@@ -10,6 +10,7 @@ import tensorflow as tf
 os.environ['PYTHONHASHSEED'], os.environ["TF_DETERMINISTIC_OPS"] = '0', '1'
 os.environ['CUDA_VISIBLE_DEVICES'], os.environ['TF_CPP_MIN_LOG_LEVEL'] = '-1', '3'
 
+import copy
 import joblib
 import numpy as np
 import pkg_resources

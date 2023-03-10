@@ -5,7 +5,20 @@ Created on Sat Feb  25 10:39:23 2023
 
 @author: daniel
 """
-import os, sys
+import os, sys, site
+#Remove line from BorutaShap that conflics with updated scikit-learn versions
+site_pkgs_path = site.getsitepackages()[0]
+boruta_shap_rel_path = "BorutaShap.py"
+boruta_shap_path = os.path.join(site_pkgs_path, boruta_shap_rel_path)
+with open(boruta_shap_path, "r") as f:
+    lines = f.readlines()
+for i, line in enumerate(lines):
+    if "from sklearn.datasets import load_breast_cancer, load_boston" in line:
+        lines[i] = "from sklearn.datasets import load_breast_cancer\n" # Remove load_boston from the import statement
+with open(boruta_shap_path, "w") as f:
+    f.writelines(lines)
+from BorutaShap import BorutaShap
+
 import copy, gc
 import tensorflow as tf
 os.environ['PYTHONHASHSEED']= '0' #, os.environ["TF_DETERMINISTIC_OPS"] =1
@@ -34,7 +47,6 @@ from tensorflow.keras.callbacks import EarlyStopping, Callback
 
 import optuna
 from boruta import BorutaPy
-from BorutaShap import BorutaShap
 from xgboost import XGBClassifier, DMatrix, train
 from optuna.integration import TFKerasPruningCallback
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -134,7 +146,8 @@ class objective_cnn(object):
         balance (bool, optional): This will determine whether the two classes
             are kept the same size during optimization, applicable if tuning the augmentation
             parameters. Defaults to True.
-        limit_search (bool): Whether to expand the hyperparameter search space. If clf='cnn', this will 
+        clf (str): Can be 'cnn' for AlexNet or 'custom_cnn' for the customly configured, shallower model.
+        limit_search (bool): Whether to expand the hyperparameter search space, only if applicable if clf='cnn', this will 
             include the tuning of the individual layer parameters such as the number of filter, size & stride.
             Defaults to True due to memory allocation issues when handling lots of tunable parameters.
         batch_size_min (int): The minimum batch size to use during training. Should be multiples of 16 for optimal hardware use?? Defaults to 16.
@@ -150,7 +163,8 @@ class objective_cnn(object):
             the training will stop early if the value falls below this threshold. Similarly, if the metric is accuracy-related,
             then the training will stop early if the value falls above this threshold. Defaults to None.
         smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
-            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
+            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure. For more
+            information refer to the ensemble_model module.
         
     Returns:
         The performance metric.
@@ -161,7 +175,7 @@ class objective_cnn(object):
         opt_model=True, opt_aug=False, batch_min=2, batch_max=25, image_size_min=50, image_size_max=100, 
         balance=True, opt_max_min_pix=None, opt_max_max_pix=None, metric='loss', average=True, shift=10,
         mask_size=None, num_masks=None, opt_cv=None, verbose=0, train_acc_threshold=None, smote_sampling=0,
-        limit_search=True, batch_size_min=16, batch_size_max=64, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None):
+        clf='cnn', limit_search=True, batch_size_min=16, batch_size_max=64, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -196,6 +210,7 @@ class objective_cnn(object):
         self.num_masks = num_masks
         self.train_acc_threshold = train_acc_threshold
         self.limit_search = limit_search
+        self.clf = clf
 
         self.monitor1 = monitor1
         self.monitor2 = monitor2
@@ -239,7 +254,7 @@ class objective_cnn(object):
             num_aug = trial.suggest_int('num_aug', self.batch_min, self.batch_max, step=1)
             image_size = trial.suggest_int('image_size', self.image_size_min, self.image_size_max, step=1)
             #rotation = trial.suggest_categorical('rotation', [True, False])
-            rotation = False
+            rotation = True
             horizontal = vertical = True 
 
             augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=num_aug, 
@@ -397,9 +412,6 @@ class objective_cnn(object):
         if self.opt_model:
             """AlexNet Hyperparameter Search Space"""
 
-            ### Regularization Technique (BN is newer) ###
-            model_reg = trial.suggest_categorical('model_reg', ['local_response', 'batch_norm'])
-
             ### Activation and Loss Functions ### 
             activation_conv = trial.suggest_categorical('activation_conv', ['relu',  'sigmoid', 'tanh', 'elu', 'selu'])            
             activation_dense = trial.suggest_categorical('activation_dense', ['relu', 'sigmoid', 'tanh', 'elu', 'selu'])
@@ -424,67 +436,128 @@ class objective_cnn(object):
                     print('Image Size : ', image_size)
                     print('Max Pixel(s) :', max_pix)
 
-            ### Pooling Type ###
-            if self.limit_search:
+            if self.clf != 'custom_cnn':
+
+                ### Regularization Technique (BN is newer) ###
+                model_reg = trial.suggest_categorical('model_reg', ['local_response', 'batch_norm'])
+
                 pooling_1 = trial.suggest_categorical('pooling_1', ['min', 'max', 'average'])
                 pooling_2 = trial.suggest_categorical('pooling_2', ['min', 'max', 'average'])
                 pooling_3 = trial.suggest_categorical('pooling_3', ['min', 'max', 'average'])
 
-                model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
-                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
-                    epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
-                    loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
-                    conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose, 
-                    pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, smote_sampling=self.smote_sampling)
+                ### Pooling Type ###
+                if self.limit_search:
+                
+                    model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                        epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
+                        loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
+                        conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose, 
+                        pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, smote_sampling=self.smote_sampling)
+                else:
+                    ### Filter and Layer Characterstics ###
+                    filter_1 = trial.suggest_int('filter_1', 12, 240, step=12)
+                    filter_size_1 = trial.suggest_int('filter_size_1', 1, 11, step=2)
+                    strides_1 = trial.suggest_int('strides_1', 1, 3, step=1)
+                    pool_size_1 = trial.suggest_int('pool_size_1', 1, 7, step=1)
+                    pool_stride_1 = trial.suggest_int('pool_stride_1', 1, 3, step=1)
+
+                    filter_2 = trial.suggest_int('filter_2', 12, 240, step=12)
+                    filter_size_2 = trial.suggest_int('filter_size_2', 1, 7, step=2)
+                    strides_2 = trial.suggest_int('strides_2', 1, 3, step=1)
+                    pool_size_2 = trial.suggest_int('pool_size_2', 1, 7, step=1)
+                    pool_stride_2 = trial.suggest_int('pool_stride_2', 1, 3, step=1)
+
+                    filter_3 = trial.suggest_int('filter_3', 12, 240, step=12)
+                    filter_size_3 = trial.suggest_int('filter_size_3', 1, 7, step=2)
+                    strides_3 = trial.suggest_int('strides_3', 1, 3, step=1)
+                    pool_size_3 = trial.suggest_int('pool_size_3', 1, 7, step=1)
+                    pool_stride_3 = trial.suggest_int('pool_stride_3', 1, 3, step=1)
+
+                    filter_4 = trial.suggest_int('filter_4', 12, 240, step=12)
+                    filter_size_4 = trial.suggest_int('filter_size_4', 1, 7, step=2)
+                    strides_4 = trial.suggest_int('strides_4', 1, 3, step=1)
+
+                    filter_5 = trial.suggest_int('filter_5', 12, 240, step=12)
+                    filter_size_5 = trial.suggest_int('filter_size_5', 1, 7, step=2)
+                    strides_5 = trial.suggest_int('strides_5', 1, 3, step=1) 
+
+                    ### Dense Layers ###
+                    dense_neurons_1 = trial.suggest_int('dense_neurons_1', 128, 6400, step=128)
+                    dense_neurons_2 = trial.suggest_int('dense_neurons_2', 128, 6400, step=128)
+                    dropout_1 = trial.suggest_float('dropout_1', 0.0, 0.5, step=0.01)
+                    dropout_2 = trial.suggest_float('dropout_2', 0.0, 0.5, step=0.01) 
+
+                    model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                        normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                        epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
+                        loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
+                        conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, 
+                        pool_stride_1=pool_stride_1, pool_size_1=pool_size_1, pool_size_2=pool_size_2, pool_stride_2=pool_stride_2, 
+                        pool_size_3=pool_size_3, pool_stride_3=pool_stride_3, filter_1=filter_1, filter_size_1=filter_size_1, 
+                        strides_1=strides_1, filter_2=filter_2, filter_size_2=filter_size_2, strides_2=strides_2, 
+                        filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, filter_4=filter_4, 
+                        filter_size_4=filter_size_4, strides_4=strides_4, filter_5=filter_5, filter_size_5=filter_size_5, 
+                        strides_5=strides_5, dense_neurons_1=dense_neurons_1, dense_neurons_2=dense_neurons_2, 
+                        dropout_1=dropout_1, dropout_2=dropout_2, smote_sampling=self.smote_sampling,
+                        early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
+    
             else:
-                ### Filter and Layer Characterstics ###
+
                 filter_1 = trial.suggest_int('filter_1', 12, 240, step=12)
                 filter_size_1 = trial.suggest_int('filter_size_1', 1, 11, step=2)
-                strides_1 = trial.suggest_int('strides_1', 1, 3, step=1)
-                pooling_1 = trial.suggest_categorical('pooling_1', ['max', 'average'])
+                strides_1 = 1#trial.suggest_int('strides_1', 1, 3, step=1)
+                pooling_1 = trial.suggest_categorical('pooling_1', ['min', 'max', 'average'])
                 pool_size_1 = trial.suggest_int('pool_size_1', 1, 7, step=1)
-                pool_stride_1 = trial.suggest_int('pool_stride_1', 1, 3, step=1)
+                pool_stride_1 = 1#trial.suggest_int('pool_stride_1', 1, 3, step=1)
 
-                filter_2 = trial.suggest_int('filter_2', 12, 240, step=12)
-                filter_size_2 = trial.suggest_int('filter_size_2', 1, 7, step=2)
-                strides_2 = trial.suggest_int('strides_2', 1, 3, step=1)
-                pooling_2 = trial.suggest_categorical('pooling_2', ['max', 'average'])
-                pool_size_2 = trial.suggest_int('pool_size_2', 1, 7, step=1)
-                pool_stride_2 = trial.suggest_int('pool_stride_2', 1, 3, step=1)
+                num_conv_layers = trial.suggest_int('num_conv_layers', 1, 3, step=1)
 
-                filter_3 = trial.suggest_int('filter_3', 12, 240, step=12)
-                filter_size_3 = trial.suggest_int('filter_size_3', 1, 7, step=2)
-                strides_3 = trial.suggest_int('strides_3', 1, 3, step=1)
-                pooling_3 = trial.suggest_categorical('pooling_3', ['max', 'average'])
-                pool_size_3 = trial.suggest_int('pool_size_3', 1, 7, step=1)
-                pool_stride_3 = trial.suggest_int('pool_stride_3', 1, 3, step=1)
-
-                filter_4 = trial.suggest_int('filter_4', 12, 240, step=12)
-                filter_size_4 = trial.suggest_int('filter_size_4', 1, 7, step=2)
-                strides_4 = trial.suggest_int('strides_4', 1, 3, step=1)
-
-                filter_5 = trial.suggest_int('filter_5', 12, 240, step=12)
-                filter_size_5 = trial.suggest_int('filter_size_5', 1, 7, step=2)
-                strides_5 = trial.suggest_int('strides_5', 1, 3, step=1) 
+                if num_conv_layers == 1:
+                    filter_2 = filter_size_2 = strides_2 = pool_size_2 = pool_stride_2 = filter_3 = filter_size_3 = strides_3 = pool_size_3 = pool_stride_3 = 0; pooling_2 = pooling_3 = None
+                elif num_conv_layers == 2:
+                    filter_2 = trial.suggest_int('filter_2', 12, 240, step=12)
+                    filter_size_2 = trial.suggest_int('filter_size_2', 1, 7, step=2)
+                    strides_2 = 1#trial.suggest_int('strides_2', 1, 3, step=1)
+                    pooling_2 = trial.suggest_categorical('pooling_2', ['min', 'max', 'average'])
+                    pool_size_2 = trial.suggest_int('pool_size_2', 1, 7, step=1)
+                    pool_stride_2 = 1#trial.suggest_int('pool_stride_2', 1, 3, step=1)
+                    filter_3 = filter_size_3 = strides_3 = pool_size_3 = pool_stride_3 = 0; pooling_3 = None
+                else:
+                    filter_3 = trial.suggest_int('filter_3', 12, 240, step=12)
+                    filter_size_3 = trial.suggest_int('filter_size_3', 1, 7, step=2)
+                    strides_3 = 1#trial.suggest_int('strides_3', 1, 3, step=1)
+                    pooling_3 = trial.suggest_categorical('pooling_3', ['min', 'max', 'average'])
+                    pool_size_3 = trial.suggest_int('pool_size_3', 1, 7, step=1)
+                    pool_stride_3 = 1#trial.suggest_int('pool_stride_3', 1, 3, step=1)
 
                 ### Dense Layers ###
-                dense_neurons_1 = trial.suggest_int('dense_neurons_1', 128, 6400, step=128)
-                dense_neurons_2 = trial.suggest_int('dense_neurons_2', 128, 6400, step=128)
-                dropout_1 = trial.suggest_float('dropout_1', 0.0, 0.5, step=0.01)
-                dropout_2 = trial.suggest_float('dropout_2', 0.0, 0.5, step=0.01) 
 
-                model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                dense_neurons_1 = trial.suggest_int('dense_neurons_1', 128, 6400, step=128)
+                dropout_1 = trial.suggest_float('dropout_1', 0.0, 0.5, step=0.01)
+
+                num_dense_layers = trial.suggest_int('num_dense_layers', 1, 3, step=1)
+
+                if num_dense_layers == 1:
+                    dense_neurons_2 = dropout_2 = dense_neurons_3 = dropout_3 = 0
+                if num_dense_layers >= 2:
+                    dense_neurons_2 = trial.suggest_int('dense_neurons_2', 128, 6400, step=128)
+                    dropout_2 = trial.suggest_float('dropout_2', 0.0, 0.5, step=0.01)
+                    dense_neurons_3 = dropout_3 = 0
+                if num_dense_layers == 3:
+                    dense_neurons_3 = trial.suggest_int('dense_neurons_3', 128, 6400, step=128)
+                    dropout_3 = trial.suggest_float('dropout_3', 0.0, 0.5, step=0.01)
+
+                model, history = cnn_model.custom_model(class_1, class_2, img_num_channels=self.img_num_channels, 
                     normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
-                    epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
-                    loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, model_reg=model_reg, 
-                    conv_init=conv_init, dense_init=dense_init, optimizer=optimizer, pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, 
-                    pool_stride_1=pool_stride_1, pool_size_2=pool_size_2, pool_stride_2=pool_stride_2, 
-                    pool_size_3=pool_size_3, pool_stride_3=pool_stride_3, filter_1=filter_1, filter_size_1=filter_size_1, 
-                    strides_1=strides_1, filter_2=filter_2, filter_size_2=filter_size_2, strides_2=strides_2, 
-                    filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, filter_4=filter_4, 
-                    filter_size_4=filter_size_4, strides_4=strides_4, filter_5=filter_5, filter_size_5=filter_size_5, 
-                    strides_5=strides_5, dense_neurons_1=dense_neurons_1, dense_neurons_2=dense_neurons_2, 
-                    dropout_1=dropout_1, dropout_2=dropout_2, smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
+                    epochs=self.train_epochs, batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov,
+                    loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, conv_init=conv_init, dense_init=dense_init, 
+                    optimizer=optimizer, pooling_1=pooling_1, pooling_2=pooling_2, pooling_3=pooling_3, 
+                    pool_size_1=pool_size_1, pool_stride_1=pool_stride_1, filter_1=filter_1, filter_size_1=filter_size_1, strides_1=strides_1, 
+                    pool_size_2=pool_size_2, pool_stride_2=pool_stride_2, filter_2=filter_2, filter_size_2=filter_size_2, strides_2=strides_2, 
+                    pool_size_3=pool_size_3, pool_stride_3=pool_stride_3, filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, 
+                    dense_neurons_1=dense_neurons_1, dense_neurons_2=dense_neurons_2, dense_neurons_3=dense_neurons_3, dropout_1=dropout_1, 
+                    dropout_2=dropout_2, dropout_3=dropout_3, smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
         else:
             if self.opt_cv is not None:
                 print()
@@ -498,21 +571,28 @@ class objective_cnn(object):
                 print('Image Size : ', image_size)
                 print('Max Pixel(s) : ', max_pix)
 
-            model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
-                min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
-                batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
-                checkpoint=False, verbose=self.verbose, optimizer=optimizer, smote_sampling=self.smote_sampling)
+            if self.clf != 'custom_cnn':
+                model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
+                    min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
+                    batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
+                    checkpoint=False, verbose=self.verbose, optimizer=optimizer, smote_sampling=self.smote_sampling)
+            else:
+                 model, history = cnn_model.custom_model(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
+                    min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
+                    batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
+                    checkpoint=False, verbose=self.verbose, optimizer=optimizer, smote_sampling=self.smote_sampling)
 
-        #If the patience is reached, return nan#
+
+        #If the patience is reached#
         if len(history.history['loss']) != self.train_epochs:
             print()
             print('The trial was pruned or the training patience was reached...')#, returning 0.001 times the number of completed epochs...')
             print()
             return (len(history.history['loss']) * 0.001) - 999.0
 
-        #If the training fails return NaN right away#
+        #If the output is nan
         if np.isfinite(history.history['loss'][-1]):
-            #If the train acc threshold is set#
+            #If the train ac notc threshold is set#
             if self.train_acc_threshold is not None:
                 if history.history['binary_accuracy'][-1] > self.train_acc_threshold:
                     print()
@@ -520,15 +600,14 @@ class objective_cnn(object):
                     print()
                     return (len(history.history['loss']) * 0.001) - 999.0
 
-
             models, histories = [], []
             models.append(model), histories.append(history)
 
-        else:
+        else: 
             print('Training failed due to numerical instability, returning nan...')
             return np.nan 
 
-        ##### Cross-Validation Routine - very specific implementation #####
+        ##### Cross-Validation Routine - very specific implementation in which the validation data is inserted into the training data with the replacement serving as the new validation#####
         if self.opt_cv is not None:
             if self.val_positive is None and self.val_negative is not None:
                 raise ValueError('CNN cross-validation is currently supported only if validation data is input.')
@@ -653,7 +732,7 @@ class objective_cnn(object):
                     model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, normalize=self.normalize, 
                         min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, epochs=self.train_epochs, 
                         batch_size=batch_size, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, early_stop_callback=callbacks, 
-                        conv_init=conv_init, dense_init=dense_init, smote_sampling=self.smote_sampling, checkpoint=False, verbose=self.verbose, optimizer=optimizer)
+                        conv_init=conv_init, dense_init=dense_init, checkpoint=False, verbose=self.verbose, optimizer=optimizer, smote_sampling=self.smote_sampling)
                 else:
                     if self.limit_search:
                         model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
@@ -1112,8 +1191,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     mask_size=None, num_masks=None, verbose=1, train_acc_threshold=None, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None,
     smote_sampling=0):
     """
-    Optimizes hyperparameters using a k-fold cross validation splitting strategy, unless a CNN
-    is being optimized, in which case no cross-validation is performed during trial assesment.
+    Optimizes hyperparameters using a k-fold cross validation splitting strategy.
 
     **IMPORTANT** In the case of CNN optimization, data_x and data_y are not the standard
     data plus labels -- if optimizing a CNN the samples for the first class should be passed
@@ -1221,11 +1299,11 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             regularizer. Only applicable if opt_aug=True. Defaults to None.
         num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. If 
             this is set to a value greater than one, overlap may occur. 
-        smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
-            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
-
+        smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
+            ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
+        
     The folllowing arguments can be used to set early-stopping callbacks. These can be used to terminate trials that exceed
     pre-determined thresholds, which may be indicative of an overfit model.
 
@@ -1263,12 +1341,12 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
                 y[index] = i
             data_y = y 
             print('------------------------------------')
-    elif clf == 'cnn':
-        pass 
+    elif clf == 'cnn' or clf == 'custom_cnn':
+        pass
     else:
-        raise ValueError('clf argument must either be "rf", "xgb", "nn", or "cnn".')
+        raise ValueError('clf argument must either be "rf", "xgb", "nn", "cnn", or "custom_cnn".')
 
-    if clf != 'cnn':
+    if 'cnn' not in clf:
         cv = cross_validate(model_0, data_x, data_y, cv=opt_cv)
         initial_score = np.mean(cv['test_score'])
 
@@ -1276,7 +1354,7 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
     study = optuna.create_study(direction='maximize', sampler=sampler, pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10))
     print('Starting hyperparameter optimization, this will take a while...')
     #If binary classification task, can deal with imbalance classes with weights hyperparameter
-    if len(np.unique(data_y)) == 2 and clf != 'cnn':
+    if len(np.unique(data_y)) == 2 and 'cnn' not in clf:
         counter = Counter(data_y)
         if counter[np.unique(data_y)[0]] != counter[np.unique(data_y)[1]]:
             if balance:
@@ -1384,13 +1462,13 @@ def hyper_opt(data_x, data_y, clf='rf', n_iter=25, return_study=True, balance=Tr
             val_positive=val_X, val_negative=val_Y, train_epochs=train_epochs, patience=patience, metric=metric, average=average, test_positive=test_positive, test_negative=test_negative,
             opt_model=opt_model, opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, image_size_min=image_size_min, image_size_max=image_size_max, balance=balance, 
             opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, shift=shift, opt_cv=opt_cv, mask_size=mask_size, num_masks=num_masks, train_acc_threshold=train_acc_threshold,
-            verbose=verbose, limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, smote_sampling=smote_sampling)
+            verbose=verbose, limit_search=limit_search, clf=clf, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, smote_sampling=smote_sampling)
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)#, n_jobs=1)
         params = study.best_trial.params
 
     final_score = study.best_value
 
-    if clf != 'cnn':
+    if 'cnn' not in clf:
         if initial_score > final_score:
             print('Hyperparameter optimization complete! Optimal performance of {} is LOWER than the base performance of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 6), np.round(initial_score, 6)))
         else:
@@ -1606,10 +1684,6 @@ def KNN_imputation(data, imputer=None, k=3):
         return imputed_data, imputer
 
     return imputer.transform(data) 
-
-
-
-
 
 
 
