@@ -422,8 +422,8 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
             If True the magnitudes will be converted to flux using the input zeropoint.
             If the lightcurves are already in flux, set convert=False. Defaults to True.
         zp: float
-            The zero point of the observing instrument, will be used when generating
-            the noise model. Defaults to 24.
+            The zero point of the observing instrument, will be used to calcualate 
+            the features. This is ignored used if convert=False. Defaults to 24.
         filename: str, optional
             The name to be appended to the lightcurves.fits and the all_features.txt
             files, only relevant if save_file=True. If no argument is input the

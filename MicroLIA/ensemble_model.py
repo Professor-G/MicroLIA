@@ -591,7 +591,6 @@ class Classifier:
         predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
         generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig)
 
-
     def plot_roc_curve(self, k_fold=10, pca=False, title="Receiver Operating Characteristic Curve", 
         savefig=False):
         """

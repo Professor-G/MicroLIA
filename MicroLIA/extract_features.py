@@ -31,7 +31,7 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
         If False the features are computed with the input magnitudes,
         defaults to True to convert and compute in flux. 
     zp : float
-        Zeropoint of the instrument, defaults to 24.
+        Zeropoint of the instrument, only used if convert=True. Defaults to 24.
     return_names : bool
         If True the first output will be the stats array, and the second
         will be the list of corresponding feature names. Defaults to False,

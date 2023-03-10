@@ -5,20 +5,7 @@ Created on Sat Feb  25 10:39:23 2023
 
 @author: daniel
 """
-import os, sys, site
-#Remove line from BorutaShap that conflics with updated scikit-learn versions
-site_pkgs_path = site.getsitepackages()[0]
-boruta_shap_rel_path = "BorutaShap.py"
-boruta_shap_path = os.path.join(site_pkgs_path, boruta_shap_rel_path)
-with open(boruta_shap_path, "r") as f:
-    lines = f.readlines()
-for i, line in enumerate(lines):
-    if "from sklearn.datasets import load_breast_cancer, load_boston" in line:
-        lines[i] = "from sklearn.datasets import load_breast_cancer\n" # Remove load_boston from the import statement
-with open(boruta_shap_path, "w") as f:
-    f.writelines(lines)
-from BorutaShap import BorutaShap
-
+import os, sys
 import copy, gc
 import tensorflow as tf
 os.environ['PYTHONHASHSEED']= '0' #, os.environ["TF_DETERMINISTIC_OPS"] =1
@@ -46,6 +33,7 @@ from tensorflow.keras.backend import clear_session
 from tensorflow.keras.callbacks import EarlyStopping, Callback
 
 import optuna
+from BorutaShap import BorutaShap
 from boruta import BorutaPy
 from xgboost import XGBClassifier, DMatrix, train
 from optuna.integration import TFKerasPruningCallback
