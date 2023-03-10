@@ -266,7 +266,7 @@ class Classifier:
                 
                 augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=1, 
                     width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                    image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks)
+                    image_size=self.best_params['image_size'], mask_size=self.mask_size, num_masks=self.num_masks)
 
                 #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
                 if self.img_num_channels > 1:
