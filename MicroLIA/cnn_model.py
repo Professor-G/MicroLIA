@@ -239,7 +239,7 @@ class Classifier:
                     raise ValueError('Only three filters are supported!')
 
                 augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.best_params['num_aug'], 
-                    width_shift=self.shift, height_shift=self.shift, horizontal=True, vertical=True, rotation=False,#self.best_params['rotation'], 
+                    width_shift=self.shift, height_shift=self.shift, horizontal=False, vertical=True, rotation=False,#self.best_params['rotation'], 
                     image_size=self.best_params['image_size'], mask_size=self.mask_size, num_masks=self.num_masks)
 
                 if self.img_num_channels > 1:
@@ -263,7 +263,7 @@ class Classifier:
                     channel1, channel2, channel3 = copy.deepcopy(self.negative_class[:,:,:,0]), copy.deepcopy(self.negative_class[:,:,:,1]), copy.deepcopy(self.negative_class[:,:,:,2])
                 
                 augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=1, 
-                    width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=False, 
+                    width_shift=self.shift, height_shift=self.shift, horizontal=False, vertical=vertical, rotation=False, 
                     image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks)
 
                 #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
