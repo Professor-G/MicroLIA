@@ -522,8 +522,7 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
 
     return data_x, data_y
 
-
-def plot(hdu, ID=None, label=None):
+def plot(hdu, ID=None, label=None, savefig=False):
     """
     Plots simulated lightcurve, extracted from the 
     lightcurves.fits file that is saved upon training set
@@ -536,6 +535,9 @@ def plot(hdu, ID=None, label=None):
         label (str, optional): The class label of the lightcuve class
             to be plotted, the lightcurve will be chosen randomly among
             the class sample.
+        savefig (bool): If True the figure will be saved to the
+            working directory. Defaults to False, which will plot
+            the figure instead.
 
         Returns:
             AxesImage
@@ -548,67 +550,23 @@ def plot(hdu, ID=None, label=None):
     if label is not None:
         index = np.where(hdu[1].data['Class'] == label)[0]
         index = np.random.choice(index)
+        index = np.where(hdu[1].data['ID'] == hdu[1].data['ID'][index])[0]
         if len(index) == 0:
             raise ValueError('Could not find input class label, options are: {}'.format(classes))
     else:
         print('Plotting random lightcurve...')
         index = np.random.choice(np.arange(len(hdu[1].data['Class'])))
+        index = np.where(hdu[1].data['ID'] == hdu[1].data['ID'][index])[0]
 
     time, mag, magerr = hdu[1].data['time'][index], hdu[1].data['mag'][index], hdu[1].data['magerr'][index]
     plt.errorbar(time, mag, magerr, fmt='ro--')
     plt.gca().invert_yaxis()
     plt.xlabel('Time (days)')
     plt.ylabel('Mag')
-    plt.title(str(hdu[1].data['Class'][index[0]])+' || ID: '+str(ID))
+    plt.title(str(hdu[1].data['Class'][index[0]])+' || ID: '+str(int(hdu[1].data['ID'][index[0]])))
 
     if savefig:
-        plt.savefig(str(hdu[1].data['Class'][index[0]])+'_ID_'+str(ID), bbox_inches='tight', dpi=300)
-        plt.clf()
-    else:
-        plt.show()
-
-hdu = fits.open('/Users/daniel/lightcurves.fits')
-
-def plot(hdu, ID=None, label=None):
-    """
-    Plots simulated lightcurve, extracted from the 
-    lightcurves.fits file that is saved upon training set
-    creation
-
-    Args:
-        hdu (fits file) : The loaded lightcurves.fits file.
-        ID (int, optional): The ID of the lightcurve to be plotted.
-            This input is overwritten if label is also input. Defaults to None.
-        label (str, optional): The class label of the lightcuve class
-            to be plotted, the lightcurve will be chosen randomly among
-            the class sample.
-
-        Returns:
-            AxesImage
-    """
-
-    classes = np.unique(np.array(hdu[1].data['Class']))
-
-    if ID is not None:
-        index = np.where(hdu[1].data['ID'] == ID)[0]
-    if label is not None:
-        index = np.where(hdu[1].data['Class'] == label)[0]
-        index = np.random.choice(index)
-        if len(index) == 0:
-            raise ValueError('Could not find input class label, options are: {}'.format(classes))
-    else:
-        print('Plotting random lightcurve...')
-        index = np.random.choice(np.arange(len(hdu[1].data['Class'])))
-
-    time, mag, magerr = hdu[1].data['time'][index], hdu[1].data['mag'][index], hdu[1].data['magerr'][index]
-    plt.errorbar(time, mag, magerr, fmt='ro--')
-    plt.gca().invert_yaxis()
-    plt.xlabel('Time (days)')
-    plt.ylabel('Mag')
-    plt.title(str(hdu[1].data['Class'][index[0]])+' || ID: '+str(ID))
-
-    if savefig:
-        plt.savefig(str(hdu[1].data['Class'][index[0]])+'_ID_'+str(ID), bbox_inches='tight', dpi=300)
+        plt.savefig(str(hdu[1].data['Class'][index[0]])+'_ID_'+str(int(hdu[1].data['ID'][index[0]])), bbox_inches='tight', dpi=300)
         plt.clf()
     else:
         plt.show()

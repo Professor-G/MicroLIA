@@ -95,7 +95,7 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             else:
                 stats.append(np.nan)
 
-        except (ZeroDivisionError, ValueError):
+        except (ZeroDivisionError, ValueError, IndexError):
             stats.append(np.nan)
 
         counter += 1
@@ -125,7 +125,7 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             else:
                 stats.append(np.nan)
 
-        except (ZeroDivisionError, ValueError):
+        except (ZeroDivisionError, ValueError, IndexError):
             stats.append(np.nan)
             
         counter += 1

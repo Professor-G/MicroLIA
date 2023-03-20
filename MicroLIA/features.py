@@ -672,6 +672,7 @@ def FluxPercentileRatioMid20(time, mag, magerr):
     -------     
     rtype: float
     """
+    
     if len(mag) <= 18:
         return 0
         
