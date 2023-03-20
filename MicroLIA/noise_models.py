@@ -53,6 +53,8 @@ def add_noise(mag, fn, zp=24, exptime=60):
         Spline fit, must be defined using the create_noise function. 
     zp : Zeropoint
         Zeropoint of the instrument, default is 24.
+    exptime : Exposure time
+        The exposure time of the observations.
         
     Returns
     -------

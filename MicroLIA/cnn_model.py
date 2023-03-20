@@ -712,13 +712,13 @@ class Classifier:
 
         return  
 
-    def plot_performance(self, metric='binary_accuracy', combine=False, ylabel=None, title=None,
+    def plot_performance(self, metric='acc', combine=False, ylabel=None, title=None,
         xlim=None, ylim=None, xlog=False, ylog=True, savefig=False):
         """
         Plots the training/performance histories.
     
         Args:
-            metric (str): Metric to plot, options are: 'binary_accuracy', 'f1_score', 'loss'. Defaults to 'binary_accuracy'
+            metric (str): Metric to plot, options are: 'acc', 'f1_score', 'loss'. Defaults to 'acc'
             combine (bool): If True the validation history will also be included, if applicable.
             ylabel (str, optional): The y-label of the plot.
             title (str, optional): The title of the plot.
