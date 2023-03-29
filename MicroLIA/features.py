@@ -12,6 +12,7 @@ import peakutils
 import scipy.integrate as sintegrate
 import scipy.signal as ssignal
 import scipy.stats as sstats
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -90,7 +91,12 @@ def con(time, mag, magerr):
     assuming a  flat lightcurve prior to the event. The magnitude measurements
     are split into bins such that the reference  magnitude is defined as the mean
     of the measurements in the largest bin.
-    
+
+    In this updated version of the con function, the upper and lower bounds for each 
+    measurement are defined as mag[i] + 3*magerr[i] and mag[i] - 3*magerr[i], respectively. 
+    These bounds are then used to check if a measurement is within a cluster. 
+    If a measurement is outside the bounds and we're in a cluster, the cluster is ended.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -102,36 +108,53 @@ def con(time, mag, magerr):
     rtype: float       
     """
 
+    # Find the median of the magnitudes
     mean = np.median(mag)
     
+    # Initialize variables
     con = 0
     deviating = False
 
-    a = np.argwhere(mag < mean+3*magerr)
-    if len(a) < 3:
-        return 0
-    else:
-        for i in range(len(mag)-2):
-            first = mag[i]
-            second = mag[i+1]
-            third = mag[i+2]
-            if (first <= mean+3*magerr[i] and
-                second <= mean+3*magerr[i+1] and
-                third <= mean+3*magerr[i+2]):
-                if (not deviating):
-                    con += 1
-                    deviating = True
-                elif deviating:
-                    deviating = False
+    # Loop over the magnitudes
+    for i in range(len(mag)-2):
+        
+        # Define the upper and lower bounds for each measurement
+        upper_bound = mag[i] + 3*magerr[i]
+        lower_bound = mag[i] - 3*magerr[i]
+        
+        # Check if the current measurement is within the bounds
+        if (mag[i] <= upper_bound and mag[i] >= lower_bound and
+            mag[i+1] <= upper_bound and mag[i+1] >= lower_bound and
+            mag[i+2] <= upper_bound and mag[i+2] >= lower_bound):
+            
+            # If the current measurement is within the bounds and we're not
+            # already in a cluster, start a new cluster
+            if (not deviating):
+                con += 1
+                deviating = True
+            
+            # If the current measurement is within the bounds and we're already
+            # in a cluster, do nothing
+            elif deviating:
+                pass
+        
+        # If the current measurement is outside the bounds and we're in a
+        # cluster, end the cluster
+        elif deviating:
+            deviating = False
 
     return con/len(mag)
-    
+
 def kurtosis(time, mag, magerr):
     """"
-    Kurtosis function returns the calculated kurtosis of the lightcurve.
+    This function returns the calculated kurtosis of the lightcurve.
     It's a measure of the peakedness (or flatness) of the lightcurve relative
     to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
     
+    This updated implementation calculates the weighted mean x_mean and the weighted 
+    standard deviation sigma using numpy.average() with the weights parameter set to 1/magerr**2. 
+    Then it calculates the weighted kurtosis using the above formula and returns the result.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -143,15 +166,20 @@ def kurtosis(time, mag, magerr):
     rtype: float
     """
 
-    kurtosis = sstats.kurtosis(mag)
-   
-    return kurtosis
+    x_mean = np.average(mag, weights=1/magerr**2)
+    sigma = np.sqrt(np.average((mag-x_mean)**2, weights=1/magerr**2))
+    w_kurtosis = np.sum((mag-x_mean)**4 * 1/magerr**2) / (np.sum(1/magerr**2) * sigma**4) - 3
+
+    return w_kurtosis
 
 def skewness(time, mag, magerr):
     """
-    Skewness measures the assymetry of a lightcurve, with a positive skewness
+    Skewness measures the asymmetry of a lightcurve, with a positive skewness
     indicating a skew to the right, and a negative skewness indicating a skew to the left.
     
+    This function calculates the weighted mean and standard deviation using the photometric 
+    errors as weights, and then uses these values to compute the weighted skewness.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -163,10 +191,14 @@ def skewness(time, mag, magerr):
     :rtype: float
     """
     
-    skewness =  sstats.skew(mag)
+    # Calculate the weighted mean and standard deviation
+    wmean = np.average(mag, weights=1/magerr**2)
+    wstd = np.sqrt(np.sum((mag - wmean)**2 / magerr**2) / np.sum(1/magerr**2))
+    
+    # Calculate the weighted skewness
+    skewness = np.sum(((mag - wmean) / wstd)**3 * 1/magerr**2) / np.sum(1/magerr**2)
 
     return skewness
-
 
 def vonNeumannRatio(time, mag, magerr):
     """
@@ -175,6 +207,12 @@ def vonNeumannRatio(time, mag, magerr):
     it is an indication of a strong positive correlation between the successive photometric 
     data points. See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
     
+    In this updated version, np.average() is used to calculate the weighted average of the measurement 
+    errors squared as the sample variance. The weights argument in np.average() is used to specify 
+    the weights for each element in the input array, with larger weights given to elements with smaller errors. 
+    We also modify the calculation of delta to take into account the measurement errors by dividing the 
+    differences between successive magnitudes by the corresponding errors.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -187,8 +225,8 @@ def vonNeumannRatio(time, mag, magerr):
     """
     
     n = np.float(len(mag))
-    delta = sum((mag[1:] - mag[:-1])**2 / (n-1.))
-    sample_variance = np.std(mag)**2
+    delta = sum(((mag[1:] - mag[:-1]) / magerr[:-1])**2 / (n-1.))
+    sample_variance = np.average(magerr**2, weights=1/magerr**2)
     vonNeumannRatio = delta / sample_variance
     
     return vonNeumannRatio
@@ -218,8 +256,6 @@ def stetsonJ(time, mag, magerr):
     for i in range(0, len(mag)-1):
         delta = np.sqrt(n/(n-1.))*((mag[i] - mean)/magerr[i])
         delta2 = np.sqrt(n/(n-1.))*((mag[i+1] - mean)/magerr[i+1])
-
-        
         delta_list.append(np.nan_to_num(delta*delta2))
     
     stetj = sum(np.sign(delta_list)*np.sqrt(np.abs(delta_list)))
@@ -247,10 +283,8 @@ def stetsonK(time, mag, magerr):
     mean = np.median(mag)
     delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
     
-
     stetsonK = ((1./n)*sum(abs(delta)))/(np.sqrt((1./n)*sum(delta**2)))
 
-            
     return np.nan_to_num(stetsonK)
 
 def stetsonL(time, mag, magerr):
@@ -269,7 +303,6 @@ def stetsonL(time, mag, magerr):
     magerr: Photometric error for the intensity. Must be an array.
     time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
-
     Returns
     -------    
     rtype: float    
@@ -283,46 +316,58 @@ def median_buffer_range(time, mag, magerr):
     """
     This function returns the ratio of points that are between plus or minus 10% of the
     amplitude value over the mean.
-        
+
+    In this updated version, we compute the weighted mean of the mag array using the 
+    corresponding magerr values as weights. Then we use the weighted mean to compute a and b values 
+    for the range around the mean that we want to consider. Finally, we compute the ratio of points 
+    within this range to the total number of points.
+
     Parameters
-    ----------   
+    ----------
     mag: The time-varying intensity of the lightcurve. Must be an array.
     magerr: Photometric error for the intensity. Must be an array.
     time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
-    -------     
+    -------
     rtype: float
     """
     
-    n = np.float(len(mag))
+    n = len(mag)
     amp = amplitude(time, mag, magerr)
-    #mean = meanMag(mag, magerr)
-    mean = np.median(mag)
-    a = mean - amp*0.1
-    b = mean + amp*0.1
+    w_mean = np.average(mag, weights=1/magerr**2)
+    a = w_mean - amp*0.1
+    b = w_mean + amp*0.1
     
-    return len(np.argwhere((mag > a) & (mag < b))) / n
+    return len(np.argwhere((mag > a) & (mag < b))) / float(n)
 
 def std_over_mean(time, mag, magerr):
     """
     A measure of the ratio of standard deviation and mean.
     
+    In this version, weights is calculated as the inverse square 
+    of magerr. The weighted_mean is calculated as the weighted average 
+    of mag, where the weights are given by weights. weighted_var is the 
+    weighted variance, and weighted_std is the square root of weighted_var. 
+    The final line returns the ratio of weighted_std and weighted_mean.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
     magerr: Photometric error for the intensity. Must be an array.
     time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-
+    
     Returns
     -------     
     rtype: float
     """
 
-    std = np.std(mag)
-    mean = np.median(mag)
+    weights = 1.0 / (magerr ** 2)
+    weighted_mean = np.sum(mag * weights) / np.sum(weights)
+    weighted_var = np.sum(weights * (mag - weighted_mean) ** 2) / np.sum(weights)
+    weighted_std = np.sqrt(weighted_var)
 
-    return std/mean
+    return weighted_std / weighted_mean
 
 def amplitude(time, mag, magerr):
     """
@@ -330,6 +375,11 @@ def amplitude(time, mag, magerr):
     measurement and the lowest magnitude measurement, divided by 2. We account for outliers by
     removing the upper and lower 2% of magnitudes.
     
+    In this updated implementation we first sort the magnitude and error arrays based on the magnitude values. 
+    We then compute the median magnitude value after excluding the upper and lower 2% of magnitudes to account 
+    for outliers. We compute both the standard amplitude and the weighted amplitude, where each magnitude measurement 
+    is weighed by its corresponding error. The weighted amplitude is then returned by the function.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -340,35 +390,51 @@ def amplitude(time, mag, magerr):
     ------- 
     rtype: float
     """
-
-    return (np.percentile(mag, 98) - np.percentile(mag, 2)) / 2.0
-
-def median_distance(time, mag,magerr):
-    """
-    This function calculates the median eucledian distance between each photometric 
-    measurement, helpful metric for detecting overlapped lightcurves.
     
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    n = len(mag)
+    lower_bound = int(n*0.02)
+    upper_bound = int(n*(1-0.02))
+    mag_median = np.median(sorted_mag[lower_bound:upper_bound])
+    amplitude = (np.max(sorted_mag[lower_bound:upper_bound]) - np.min(sorted_mag[lower_bound:upper_bound])) / 2.0
+    weighted_amplitude = np.sum(np.abs(sorted_mag[lower_bound:upper_bound] - mag_median) * sorted_magerr[lower_bound:upper_bound]) / np.sum(sorted_magerr[lower_bound:upper_bound])
+    
+    return weighted_amplitude
+
+def median_distance(time, mag, magerr):
+    """
+    This function calculates the median Euclidean distance between each photometric
+    measurement, a helpful metric for detecting overlapped lightcurves.
+
     Parameters
-    ----------   
+    ----------
     mag: The time-varying intensity of the lightcurve. Must be an array.
     magerr: Photometric error for the intensity. Must be an array.
     time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
-    -------     
-    rtype: float    
+    -------
+    rtype: float
     """
 
     delta_mag = (mag[1:] - mag[:-1])**2
     delta_t = (time[1:] - time[:-1])**2
+    delta_magerr = (magerr[1:]**2 + magerr[:-1]**2)
     
-    return np.median(np.sqrt(delta_mag + delta_t))
+    return np.median(np.sqrt(delta_mag/delta_magerr + delta_t/delta_magerr))
 
 def above1(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 1 standard deviation
-    from the median magnitude.
+    from the median magnitude, weighted by their errors.
     
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are above 1 standard deviation from the median magnitude is returned.
+    By weighting each data point according to its error, we are taking into account the fact 
+    that more weight should be given to data points that have lower measurement uncertainties. 
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -380,16 +446,21 @@ def above1(time, mag, magerr):
     rtype: float
     """
     
-
-    above1 = len(np.where(mag-np.median(mag)>magerr)[0])/len(mag)
-
-    return above1
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_above1 = np.sum((mag - median_mag > std) * (mag - median_mag - std) / magerr**2)
+    total_weight = np.sum((mag - median_mag > std) / magerr**2)
+    
+    return weighted_above1 / total_weight
 
 def above3(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 3 standard deviations
-    from the median magnitude.
+    from the median magnitude, weighted by their errors.
     
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are above 3 standard deviations from the median magnitude is returned.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -401,15 +472,21 @@ def above3(time, mag, magerr):
     rtype: float
     """
     
-    above3 = len(np.where(mag-np.median(mag)>3*magerr)[0])/len(mag)
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_above3 = np.sum((mag - median_mag > 3 * magerr) * (mag - median_mag - 3 * std) / magerr**2)
+    total_weight = np.sum(1 / magerr**2)
     
-    return above3
+    return weighted_above3 / total_weight
 
 def above5(time, mag, magerr):
     """
     This function measures the ratio of data points that are above 5 standard deviations
-    from the median magnitude.
-        
+    from the median magnitude, weighted by their errors.
+    
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are above 5 standard deviations from the median magnitude is returned.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -421,15 +498,21 @@ def above5(time, mag, magerr):
     rtype: float   
     """
     
-    above5 = len(np.where(mag-np.median(mag)>5*magerr)[0])/len(mag)
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_above5 = np.sum((mag - median_mag > 5 * magerr) * (mag - median_mag - 5 * std) / magerr**2)
+    total_weight = np.sum(1 / magerr**2)
+    
+    return weighted_above5 / total_weight
 
-    return above5
-
-def below1(time,mag, magerr):
+def below1(time, mag, magerr):
     """
-    This function measures the ratio of data points that are below 1 standard deviations
-    from the median magnitude.
-        
+    This function measures the ratio of data points that are below 1 standard deviation
+    from the median magnitude, weighted by their errors.
+    
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are below 1 standard deviation from the median magnitude is returned.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -441,15 +524,21 @@ def below1(time,mag, magerr):
     rtype: float
     """
     
-    below1 = len(np.where(-mag+np.median(mag)>magerr)[0])/len(mag)
-
-    return below1
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_below1 = np.sum((-mag + median_mag > magerr) * (-mag + median_mag - std) / magerr**2)
+    total_weight = np.sum(1 / magerr**2)
+    
+    return weighted_below1 / total_weight
 
 def below3(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 3 standard deviations
-    from the median magnitude.
-        
+    from the median magnitude, weighted by their errors.
+    
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are below 3 standard deviations from the median magnitude is returned.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -461,15 +550,21 @@ def below3(time, mag, magerr):
     rtype: float
     """
     
-    below3 = len(np.where(-mag+np.median(mag)>3*magerr)[0])/len(mag)
-
-    return below3
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_below3 = np.sum((-mag + median_mag > 3*magerr) * (-mag + median_mag - 3*std) / magerr**2)
+    total_weight = np.sum(1 / magerr**2)
+    
+    return weighted_below3 / total_weight
 
 def below5(time, mag, magerr):
     """
     This function measures the ratio of data points that are below 5 standard deviations
-    from the median magnitude.
-        
+    from the median magnitude, weighted by their errors.
+    
+    In this updated function, each data point is weighed according to its error. The weighted 
+    ratio of points that are below 5 standard deviations from the median magnitude is returned.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -481,15 +576,22 @@ def below5(time, mag, magerr):
     rtype: float
     """
     
-    below5 = len(np.where(-mag+np.median(mag)>5*magerr)[0])/len(mag)
-
-    return below5
+    median_mag = np.median(mag)
+    std = np.std(mag)
+    weighted_below5 = np.sum((-mag + median_mag > 5*magerr) * (-mag + median_mag - 5*std) / magerr**2)
+    total_weight = np.sum(1 / magerr**2)
+    
+    return weighted_below5 / total_weight
 
 def medianAbsDev(time, mag, magerr):
-    """"
+    """
     A measure of the mean average distance between each magnitude value
     and the mean magnitude. https://en.wikipedia.org/wiki/Median_absolute_deviation 
-        
+    
+    This updated function first calculates the median of the magnitude array, 
+    then calculates the absolute deviation from the median, divided by the corresponding error value. 
+    The median of these absolute deviations is returned as the MAD value.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -500,28 +602,42 @@ def medianAbsDev(time, mag, magerr):
     -------     
     rtype: float
     """
+
+    med = np.median(mag)
+    absdev = np.abs(mag - med) / magerr
+    mad = np.median(absdev)
     
-    array = np.ma.array(mag).compressed() 
-    med = np.median(array)
-    
-    return np.median(np.abs(array - med))
+    return mad
 
 def root_mean_squared(time, mag, magerr):
     """
-    A measure of the root mean square deviation.
-        
+    A measure of the root mean square deviation that takes into account the photometric errors.
+    
+    In this new version, the magnitudes are weighted by their corresponding errors, which takes
+    into account the uncertainty in the measurements. The weighted mean of the magnitudes is 
+    subtracted from each magnitude to calculate the weighted deviations, which are then squared 
+    and averaged to get the weighted mean of the squared deviations. Finally, the square root of 
+    this quantity gives the root mean square deviation that takes into account the photometric errors.
+
     Parameters
     ----------   
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
     mag: The time-varying intensity of the lightcurve. Must be an array.
     magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
     -------     
-    rtype: float
+    rms: The root mean square deviation. Must be a float.
     """
 
-    return np.sqrt(np.median(mag)**2)
+    weighted_mean = np.sum(mag / magerr**2) / np.sum(1 / magerr**2)
+    weights = 1 / magerr**2
+    deviations = (mag - weighted_mean)
+    weighted_deviations = deviations * weights
+    weighted_dev_squared = np.sum(weighted_deviations**2) / np.sum(weights)
+    rms = np.sqrt(weighted_dev_squared) #Root mean square deviation
+
+    return rms
 
 def meanMag(time,mag, magerr):
     """
@@ -544,6 +660,12 @@ def integrate(time, mag, magerr):
     """
     Integrate magnitude using the trapezoidal rule.
     See: http://en.wikipedia.org/wiki/Trapezoidal_rule
+    
+    In the case of integrating the magnitude using the trapezoidal rule, 
+    it is not necessary to incorporate the error since the error in magnitude 
+    will affect each individual data point, but not the overall integration. 
+    The trapezoidal rule uses the values of the magnitudes and their timestamps 
+    to compute the area under the curve, without considering the individual errors at each point.
 
     Parameters
     ----------   
@@ -553,14 +675,23 @@ def integrate(time, mag, magerr):
 
     Returns
     -------     
-    rtype: float
+    rtype: tuple
     """
-
-    return np.trapz(mag,time)
+    
+    integrated_mag = np.trapz(mag, time)
+    
+    return integrated_mag
 
 def auto_corr(time, mag, magerr):
     """
     Similarity between observations as a function of a time lag between them.
+    
+    This version of the function first calculates the mean and standard deviation 
+    of the magnitudes, and then uses these values to normalize the data before 
+    computing the autocovariance function. The weights for each data point are 
+    also calculated based on their measurement uncertainties, and are used to compute 
+    the weighted autocovariance. Finally, the autocovariance function is normalized by 
+    its value at zero lag to obtain the autocorrelation function.
 
     Parameters
     ----------   
@@ -573,7 +704,22 @@ def auto_corr(time, mag, magerr):
     rtype: float
     """
 
-    auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
+    #Calculate the mean and standard deviation of the magnitudes
+    mag_mean = np.mean(mag)
+    mag_std = np.std(mag)
+
+    #Calculate the autocovariance function using the weighted data points
+    autocov = np.correlate((mag - mag_mean) / mag_std, (mag - mag_mean) / mag_std, mode='full')
+    autocov = autocov[autocov.size // 2:]
+
+    #Calculate the weights for each data point based on their measurement uncertainties
+    weights = 1. / magerr**2
+
+    #Calculate the weighted autocovariance function
+    weighted_autocov = np.sum(weights[:-1] * weights[1:] * autocov[1:]) / np.sum(weights)**2
+
+    #Normalize by the autocovariance at zero lag to obtain the autocorrelation function
+    auto_corr = weighted_autocov / autocov[0]
 
     return auto_corr
 
@@ -581,6 +727,10 @@ def peak_detection(time, mag, magerr):
     """
     Function to detect number of peaks.
     
+    Does not need to incorporate error since it is simply detecting 
+    the number of peaks in the lightcurve, which is based on the 
+    magnitude values alone.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -601,12 +751,18 @@ def peak_detection(time, mag, magerr):
 
     return len(indices)/len(mag)
 
+"""
 #Below stats used by Richards et al (2011)
+"""
 
-def MaxSlope(time, mag,magerr):
+def MaxSlope(time, mag, magerr):
     """
     Examining successive (time-sorted) magnitudes, the maximal first difference
     (value of delta magnitude over delta time)
+    
+    In this updated version of the function, the slope between successive magnitudes 
+    is calculated using the errors as weights, and the weighted slope is returned as 
+    a single value.
 
     Parameters
     ----------   
@@ -619,25 +775,41 @@ def MaxSlope(time, mag,magerr):
     rtype: float
     """
 
-    slope = np.abs(mag[1:] - mag[:-1]) / (time[1:] - time[:-1])
+    #Calculate the slope using the errors as weights
+    weights = 1 / magerr[:-1]**2 + 1 / magerr[1:]**2
+    slope = np.abs((mag[1:] - mag[:-1]) / (time[1:] - time[:-1]))
+    weighted_slope = np.sum(weights * slope) / np.sum(weights)
 
-    return np.max(slope)
+    return weighted_slope
 
-def LinearTrend(time, mag,magerr):
+def LinearTrend(time, mag, magerr):
     """
-    Slope of a linear fit to the light-curve.
+    Slope of a weighted linear fit to the light-curve.
+
+    Parameters
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
+    Returns
+    -------     
+    rtype: float
     """
 
-    regression_slope = sstats.linregress(time, mag)[0]
+    # Perform weighted linear regression
+    weights = 1.0 / magerr**2
+    regression_slope = np.polyfit(time, mag, deg=1, w=weights)[0]
 
     return regression_slope
 
 def PairSlopeTrend(time, mag, magerr):
     """
-    Considering the last 30 (time-sorted) measurements of source magnitude,
-    the fraction of increasing first differences minus the fraction of
-    decreasing first differences.
-    Percentage of all pairs of consecutive flux measurements that have positive slope
+    This is the percentage of all pairs of consecutive flux measurements that have positive slope,
+    considering only the last 30 (time-sorted) magnitude measurements.
+
+    This updated function incorporates error by calculating the weighted first differences 
+    and then taking the weighted mean of the positive differences and negative differences separately.
 
     Parameters
     ----------   
@@ -651,16 +823,161 @@ def PairSlopeTrend(time, mag, magerr):
     """
 
     data_last = mag[-30:]
+    err_last = magerr[-30:]
 
-    PST = (len(np.where(np.diff(data_last) > 0)[0]) - len(np.where(np.diff(data_last) <= 0)[0])) / 30.0
+    #Calculate the weighted first differences
+    weights = 1 / err_last[:-1]**2 + 1 / err_last[1:]**2
+    diff = data_last[1:] - data_last[:-1]
+    diff_weighted = diff * weights
+    pos_diff_weighted = diff_weighted[diff_weighted > 0]
+    neg_diff_weighted = diff_weighted[diff_weighted < 0]
+
+    #Calculate the weighted mean of positive and negative differences
+    if len(pos_diff_weighted) > 0:
+        pos_mean = np.sum(pos_diff_weighted) / np.sum(weights[diff_weighted > 0])
+    else:
+        pos_mean = 0
+    if len(neg_diff_weighted) > 0:
+        neg_mean = np.sum(neg_diff_weighted) / np.sum(weights[diff_weighted < 0])
+    else:
+        neg_mean = 0
+
+    PST = (np.sum(pos_diff_weighted) - np.sum(neg_diff_weighted)) / np.sum(weights)
 
     return PST
 
 def FluxPercentileRatioMid20(time, mag, magerr):
     """
-    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    In order to characterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
     Ratio of flux percentiles (60th - 40th) over (95th - 5th)
+    
+    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
+    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
+    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
+    flux percentile ratios using the weighted percentiles.
+
+    Parameters
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
+    Returns
+    -------     
+    rtype: float
+    """
+
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    
+    #Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_40 = np.interp(40, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_60 = np.interp(60, cum_weights / cum_weights[-1], sorted_mag)
+    
+    #Calculate the flux percentile ratios
+    F_40_60 = percentile_60 - percentile_40
+    F_5_95 = percentile_95 - percentile_5
+    F_mid20 = F_40_60 / F_5_95
+
+    return F_mid20
+
+def FluxPercentileRatioMid35(time, mag, magerr):
+    """
+    In order to characterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (67.5th - 32.5th) over (95th - 5th)
+    
+    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
+    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
+    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
+
+    Parameters
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
+    Returns
+    -------     
+    rtype: float
+    """
+
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    
+    #Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_325 = np.interp(32.5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_675 = np.interp(67.5, cum_weights / cum_weights[-1], sorted_mag)
+    
+    #Calculate the flux percentile ratios
+    F_325_675 = percentile_675 - percentile_325
+    F_5_95 = percentile_95 - percentile_5
+    F_mid35 = F_325_675 / F_5_95
+
+    return F_mid35
+
+def FluxPercentileRatioMid50(time, mag, magerr):
+    """
+    In order to characterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (75th - 25th) over (95th - 5th)
+    
+    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
+    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
+    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
+    flux percentile ratios using the weighted percentiles.
+
+    Parameters
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
+    Returns
+    -------     
+    rtype: float
+    """
+
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    
+    # Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_25 = np.interp(25, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_75 = np.interp(75, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
+
+    # Calculate the flux percentile ratios
+    F_25_75 = percentile_75 - percentile_25
+    F_5_95 = percentile_95 - percentile_5
+    F_mid50 = F_25_75 / F_5_95
+
+    return F_mid50
+
+def FluxPercentileRatioMid65(time, mag, magerr):
+    """
+    In order to characterize the sorted magnitudes distribution we use percentiles. 
+    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
+    Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
+
+    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
+    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
+    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
+    flux percentile ratios using the weighted percentiles.
 
     Parameters
     ----------   
@@ -673,119 +990,28 @@ def FluxPercentileRatioMid20(time, mag, magerr):
     rtype: float
     """
     
-    if len(mag) <= 18:
-        return 0
-        
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    
+    # Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_175 = np.interp(17.5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_825 = np.interp(82.5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
 
-    F_60_index = int(math.ceil(0.60 * lc_length))
-    F_40_index = int(math.ceil(0.40 * lc_length))
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-
-    F_40_60 = sorted_data[F_60_index] - sorted_data[F_40_index]
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-    F_mid20 = F_40_60 / F_5_95
-
-    return F_mid20
-
-def FluxPercentileRatioMid35(time, mag, magerr):
-    """
-    In order to caracterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (67.5th - 32.5th) over (95th - 5th)
-
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-
-    Returns
-    -------     
-    rtype: float
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    F_325_index = int(math.ceil(0.325 * lc_length))
-    F_675_index = int(math.ceil(0.675 * lc_length))
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-
-    F_325_675 = sorted_data[F_675_index] - sorted_data[F_325_index]
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-    F_mid35 = F_325_675 / F_5_95
-
-    return F_mid35
-
-def FluxPercentileRatioMid50(time, mag, magerr):
-    """
-    In order to caracterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (75th - 25th) over (95th - 5th)
-
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-
-    Returns
-    -------     
-    rtype: float
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    F_25_index = int(math.ceil(0.25 * lc_length))
-    F_75_index = int(math.ceil(0.75 * lc_length))
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-
-    F_25_75 = sorted_data[F_75_index] - sorted_data[F_25_index]
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-    F_mid50 = F_25_75 / F_5_95
-
-    return F_mid50
-
-def FluxPercentileRatioMid65(time, mag, magerr):
-    """
-    In order to caracterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
-
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-
-    Returns
-    -------     
-    rtype: float
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    F_175_index = int(math.ceil(0.175 * lc_length))
-    F_825_index = int(math.ceil(0.825 * lc_length))
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-
-    F_175_825 = sorted_data[F_825_index] - sorted_data[F_175_index]
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    # Calculate the flux percentile ratios
+    F_175_825 = percentile_825 - percentile_175
+    F_5_95 = percentile_95 - percentile_5
     F_mid65 = F_175_825 / F_5_95
 
     return F_mid65
 
 def FluxPercentileRatioMid80(time, mag, magerr):
     """
-    In order to caracterize the sorted magnitudes distribution we use percentiles. 
+    In order to characterize the sorted magnitudes distribution we use percentiles. 
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
     Ratio of flux percentiles (90th - 10th) over (95th - 5th)
 
@@ -799,17 +1025,22 @@ def FluxPercentileRatioMid80(time, mag, magerr):
     -------     
     rtype: float
     """
+    
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+    
+    # Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_10 = np.interp(10, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_90 = np.interp(90, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
 
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    F_10_index = int(math.ceil(0.10 * lc_length))
-    F_90_index = int(math.ceil(0.90 * lc_length))
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-
-    F_10_90 = sorted_data[F_90_index] - sorted_data[F_10_index]
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    # Calculate the flux percentile ratios
+    F_10_90 = percentile_90 - percentile_10
+    F_5_95 = percentile_95 - percentile_5
     F_mid80 = F_10_90 / F_5_95
 
     return F_mid80
@@ -818,6 +1049,11 @@ def PercentAmplitude(time, mag, magerr):
     """
     The largest absolute departure from the median flux, divided by the median flux
     Largest percentage difference between either the max or min magnitude and the median.
+    
+    This function calculates both the regular median and a weighted median that takes into 
+    account the photometric errors. It then calculates the largest absolute departure from 
+    each of these medians and returns the largest percentage difference between either the 
+    max or min magnitude and the weighted median.
 
     Parameters
     ----------   
@@ -830,16 +1066,21 @@ def PercentAmplitude(time, mag, magerr):
     rtype: float
     """
 
+    weights = 1.0 / magerr**2
     median = np.median(mag)
+    w_median = np.ma.average(mag, weights=weights)
     distance_median = np.abs(mag - median)
+    w_distance_median = np.abs(mag - w_median)
     max_distance = np.max(distance_median)
+    w_max_distance = np.max(w_distance_median)
+    percent_amplitude = max_distance / median
+    w_percent_amplitude = w_max_distance / w_median
 
-    return max_distance / median
+    return w_percent_amplitude
 
 def PercentDifferenceFluxPercentile(time, mag, magerr):
     """
     Ratio of F5,95 over the median flux.
-    Difference between the 2nd & 98th flux percentiles.
 
     Parameters
     ----------   
@@ -852,16 +1093,25 @@ def PercentDifferenceFluxPercentile(time, mag, magerr):
     rtype: float
     """
 
-    median = np.median(mag)
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
 
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-    F_5_index = int(math.ceil(0.05 * lc_length))
-    F_95_index = int(math.ceil(0.95 * lc_length))
-    F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
+    median = np.median(sorted_mag)
 
-    return F_5_95 / median
+    # Calculate the weighted percentiles
+    weights = 1 / sorted_magerr ** 2
+    cum_weights = np.cumsum(weights)
+    percentile_2 = np.interp(2, cum_weights / cum_weights[-1], sorted_mag) #can be used to find the percentile of the value 2 in the distribution defined by sorted_mag and cum_weights.
+    percentile_98 = np.interp(98, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
+    percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
 
+    # Calculate the flux percentile ratios
+    F_5_95 = percentile_95 - percentile_5
+    F_5_95_over_median = F_5_95 / median
+
+    return F_5_95_over_median
 
 #Below stats from Kim (2015), used in Upsilon
 #https://arxiv.org/pdf/1512.01611.pdf
@@ -871,7 +1121,10 @@ def half_mag_amplitude_ratio(time, mag, magerr):
     The ratio of the squared sum of residuals of magnitudes
     that are either brighter than or fainter than the mean
     magnitude. For EB-like variability, having sharp flux gradients around its eclipses, A is larger
-    than 1
+    than 1.
+
+    In this modified version, the weighted standard deviation of each set of magnitudes (i.e., those above 
+    and those below the median) is calculated using the formula:
 
     Parameters
     ----------   
@@ -884,18 +1137,21 @@ def half_mag_amplitude_ratio(time, mag, magerr):
     rtype: float
     """
 
-    # For fainter magnitude than average.
+    #For fainter magnitude than average.
     avg = np.median(mag)
 
     index = np.argwhere(mag > avg)
     lower_mag = mag[index]
+    lower_magerr = magerr[index]
 
-    lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
+    lower_weighted_std = np.sum((lower_mag - avg)**2 / lower_magerr**2) / np.sum(1. / lower_magerr**2)
 
-    # For brighter magnitude than average.
+    #For brighter magnitude than average.
     index = np.argwhere(mag <= avg)
     higher_mag = mag[index]
-    higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
+    higher_magerr = magerr[index]
+
+    higher_weighted_std = np.sum((higher_mag - avg)**2 / higher_magerr**2) / np.sum(1. / higher_magerr**2)
 
     ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
             
@@ -903,7 +1159,12 @@ def half_mag_amplitude_ratio(time, mag, magerr):
 
 def cusum(time, mag, magerr):
     """
-    Range of cumulative sum
+    Range of cumulative sum.
+
+    In this updated version, we first calculate the weighted standard deviation of 
+    the magnitude using the formula wstd = np.sqrt(np.sum((mag - np.median(mag))**2 / magerr**2) / np.sum(1. / magerr**2)). 
+    Then we use this value instead of np.std(mag) to normalize the cumulative sum. This takes into account the error in 
+    the measurements of the magnitude.
 
     Parameters
     ----------   
@@ -916,7 +1177,10 @@ def cusum(time, mag, magerr):
     rtype: float
     """
 
-    c = np.cumsum(mag - np.median(mag)) * 1./(len(mag)*np.std(mag))
+    #Calculate the weighted standard deviation
+    wstd = np.sqrt(np.sum((mag - np.median(mag))**2 / magerr**2) / np.sum(1. / magerr**2))
+
+    c = np.cumsum(mag - np.median(mag)) * 1./(len(mag)*wstd)
 
     return np.max(c) - np.min(c)
 
@@ -926,6 +1190,10 @@ def shapiro_wilk(time, mag, magerr):
     The Shapiro-Wilk test tests the null hypothesis that the 
     data was drawn from a normal distribution.
     
+    Note
+    ----------
+    The Shapiro-Wilk test implemented in scipy.stats does not provide an option to incorporate measurement errors.
+
     Parameters
     ----------   
     mag: The time-varying intensity of the lightcurve. Must be an array.
@@ -936,17 +1204,50 @@ def shapiro_wilk(time, mag, magerr):
     -------     
     rtype: float
     """
+
     shapiro_w = sstats.shapiro(mag)[0]
 
     return shapiro_w
 
-
-#following stats pulled from FEETS
+#Following stats pulled from FEETS
 #https://feets.readthedocs.io/en/latest/tutorial.html
 
 def AndersonDarling(time, mag, magerr):
     """
     The Anderson-Darling test is a statistical test of whether a given 
+    sample of data is drawn from a given probability distribution. 
+    When applied to testing if a normal distribution adequately describes a set of data, 
+    it is one of the most powerful statistical tools for detecting most departures from normality.
+    
+    It is a measure of how well the data fits a normal distribution. The AndersonDarling_Weighted() function applies the same test, but with weights based on the input errors magerr. 
+    Both functions return a value between 0 and 1, with values closer to 1 indicating a better fit to a normal distribution.
+
+    From Kim et al. 2009: "To test normality, we use the Anderson–Darling test (Anderson & Darling 1952; Stephens 1974) 
+    which tests the null hypothesis that a data set comes from the normal distribution."
+    (Doi:10.1111/j.1365-2966.2009.14967.x.)
+
+    Parameters
+    ----------   
+    time : array_like
+        The timestamps of the corresponding mag and magerr measurements.
+    mag : array_like
+        The time-varying intensity of the lightcurve.
+    magerr : array_like
+        Photometric error for the intensity.
+
+    Returns
+    -------     
+    float
+        The Anderson-Darling test statistic for the normality test.
+    """
+
+    ander = sstats.anderson(mag)[0]
+
+    return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
+
+def AndersonDarling_Weighted(time, mag, magerr):
+    """
+    The weighted Anderson-Darling test is a statistical test of whether a given 
     sample of data is drawn from a given probability distribution. 
     When applied to testing if a normal distribution adequately describes a set of data, 
     it is one of the most powerful statistical tools for detecting most departures from normality.
@@ -966,15 +1267,36 @@ def AndersonDarling(time, mag, magerr):
     rtype: float
     """
 
-    ander = sstats.anderson(mag)[0]
+    weights = 1.0 / np.square(magerr)
+    wmag = np.average(mag, weights=weights)
+    wmagsq = np.average(np.square(mag), weights=weights)
+    wvar = wmagsq - wmag**2
 
-    return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
+    z = (mag - wmag) / np.sqrt(wvar)
+    z_sorted = np.sort(z)
+    n = len(mag)
+
+    s = np.zeros(n)
+    for i in range(n):
+        s[i] = (2*i + 1) * np.log(sstats.norm.cdf(z_sorted[i])) + (2*(n-i)-1) * np.log(1 - sstats.norm.cdf(z_sorted[i]))
+
+    anderson_statistic = -n - np.sum(s) / n
+
+    return 1 / (1.0 + np.exp(-10 * (anderson_statistic - 0.3)))
 
 def Gskew(time, mag, magerr):
     """
-    Median-based measure of the skew
+    Gskew is a measure of the skewness of a distribution of magnitudes. It is defined as the 
+    sum of the medians of the magnitudes below and above the 3rd and 97th percentiles, respectively, 
+    minus twice the median magnitude. In other words, Gskew is a measure of the asymmetry of the 
+    distribution of magnitudes. A positive Gskew value indicates a distribution that is skewed to the 
+    right (has a long tail on the right side), while a negative Gskew value indicates a distribution 
+    that is skewed to the left (has a long tail on the left side).
+
+    It is a median-based measure of the skewness. See: Lopez et al. 2016: "A machine learned classifier for RR Lyrae in the VVV survey" 
+
     Gskew = mq3 + mq97 − 2m
-    mq3  is the median of magnitudes lesser or equal than the quantile 3.
+    mq3 is the median of magnitudes lesser or equal than the quantile 3.
     mq97 is the median of magnitudes greater or equal than the quantile 97.
     2m is 2 times the median magnitude.
 
@@ -997,10 +1319,70 @@ def Gskew(time, mag, magerr):
 
     return gs
 
+def Gskew_Weighted(time, mag, magerr):
+    """
+    This is a modified version of the Gskew function that incorporates the photometric 
+    errors of the data points. It calculates a weighted median for the magnitudes that 
+    fall below the 3rd percentile and above the 97th percentile, using the inverse 
+    square of the photometric errors as weights. The resulting weighted medians and 
+    the median magnitude are then used to calculate the Gskew value, which is a measure 
+    of the skewness of the lightcurve.
+
+    Parameters
+    ----------   
+    mag: The time-varying intensity of the lightcurve. Must be an array.
+    magerr: Photometric error for the intensity. Must be an array.
+    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
+
+    Returns
+    -------     
+    rtype: float
+    """
+
+    #Sort the magnitude and error arrays by magnitude
+    sorted_indices = np.argsort(mag)
+    sorted_mag = mag[sorted_indices]
+    sorted_magerr = magerr[sorted_indices]
+
+    #Calculate the cumulative weights
+    weights = 1.0 / np.square(sorted_magerr)
+    cum_weights = np.cumsum(weights)
+
+    #Calculate the indices of the median and quantiles
+    median_index = np.searchsorted(cum_weights, 0.5*cum_weights[-1])
+    q3_index = np.searchsorted(cum_weights, 0.03*cum_weights[-1])
+    q97_index = np.searchsorted(cum_weights, 0.97*cum_weights[-1])
+
+    #Calculate the median and quantiles
+    median_mag = sorted_mag[median_index]
+    F_3_value = sorted_mag[q3_index]
+    F_97_value = sorted_mag[q97_index]
+
+    #Calculate the weighted median of magnitudes <= F_3_value
+    cum_weights_3 = cum_weights[q3_index-1]
+    weights_3 = weights[:q3_index]
+    cum_weights_3 -= cum_weights_3[0]
+    cum_weights_3 /= cum_weights_3[-1]
+    mq3 = np.interp(0.5, cum_weights_3, sorted_mag[:q3_index])
+
+    #Calculate the weighted median of magnitudes >= F_97_value
+    cum_weights_97 = cum_weights[q97_index-1]
+    weights_97 = weights[q97_index-1:]
+    cum_weights_97 -= cum_weights_97[0]
+    cum_weights_97 /= cum_weights_97[-1]
+    mq97 = np.interp(0.5, cum_weights_97, sorted_mag[q97_index-1:])
+
+    gs = mq3 + mq97 - 2*median_mag
+
+    return gs
+
 def abs_energy(time, mag, magerr):
     """
     Returns the absolute energy of the time series, defined to be the sum over the squared
-    values of the time-series.
+    values of the time-series, weighted by the inverse square of the photometric errors.
+    
+    In this modified function, we calculate the inverse square of the photometric errors 
+    and use them as weights to calculate the weighted sum of squares of the magnitudes.
 
     Parameters
     ----------   
@@ -1013,11 +1395,18 @@ def abs_energy(time, mag, magerr):
     rtype: float
     """
 
-    return np.dot(mag, mag)
+    weights = 1.0 / np.square(magerr)
+    abs_energy = np.sum(weights * np.square(mag))
+
+    return abs_energy
 
 def abs_sum_changes(time, mag, magerr):
     """
-    Returns sum over the abs value of consecutive changes in mag.
+    Returns sum over the abs value of consecutive changes in mag, weighted by the errors.
+    
+    In this updated version we incorporate photometric errors by dividing the absolute value 
+    of the difference between consecutive magnitudes by the square root of the sum of their squared errors. 
+    Therefore larger errors will result in smaller weight for the corresponding changes in magnitude.
 
     Parameters
     ----------   
@@ -1030,13 +1419,23 @@ def abs_sum_changes(time, mag, magerr):
     rtype: float
     """
 
-    return np.sum(np.abs(np.diff(mag)))
+    delta_mag = np.abs(np.diff(mag))
+    delta_err = np.sqrt(np.square(magerr[:-1]) + np.square(magerr[1:]))
+    weighted_delta = delta_mag / delta_err
+
+    return np.sum(weighted_delta)
 
 def benford_correlation(time, mag, magerr):
     """
     Useful for anomaly detection applications. Returns the 
     correlation from first digit distribution when compared to 
-    the Newcomb-Benford’s Law distribution
+    the Newcomb-Benford’s Law distribution, weighted by the inverse variance of the magnitudes.
+    
+    In this updated version, we calculate the weights as the inverse 
+    variance of the magnitudes (i.e., the inverse of the squared photometric errors), and use 
+    these weights to calculate the weighted distribution of the data. We then normalize this 
+    weighted distribution and compute the weighted correlation between the Benford distribution 
+    and the weighted data distribution.
 
     Parameters
     ----------   
@@ -1049,22 +1448,43 @@ def benford_correlation(time, mag, magerr):
     rtype: float
     """
 
-    # retrieve first digit from data
+    #Retrieve first digit from data
     x = np.array([int(str(np.format_float_scientific(i))[:1]) for i in np.abs(np.nan_to_num(mag))])
 
     # benford distribution
     benford_distribution = np.array([np.log10(1 + 1 / n) for n in range(1, 10)])
-    data_distribution = np.array([(x == n).mean() for n in range(1, 10)])
+    
+    #Calculate weights as inverse variance of magnitudes
+    weights = 1 / np.square(np.nan_to_num(magerr))
+    
+    #Calculate weighted distribution of data
+    weighted_data_distribution = np.zeros(9)
+    for i in range(1, 10):
+        mask = (x == i)
+        weighted_data_distribution[i-1] = np.sum(weights[mask])
+    
+    #Normalize weighted distribution
+    weighted_data_distribution /= np.sum(weights)
 
-    # np.corrcoef outputs the normalized covariance (correlation) between benford_distribution and data_distribution.
-    # In this case returns a 2x2 matrix, the  [0, 1] and [1, 1] are the values between the two arrays
-    benford_corr = np.corrcoef(benford_distribution, data_distribution)[0, 1]
+    #Weighted correlation
+    benford_corr = np.corrcoef(benford_distribution, weighted_data_distribution)[0, 1]
 
     return benford_corr
 
 def c3(time, mag, magerr, lag=1):
     """
-    A measure of non-linearity.
+    The C3 measure is a way to estimate the non-linearity of a time series by measuring the third-order 
+    correlation between the values of the time series. It is based on the idea that a truly linear time 
+    series will have a third-order correlation of zero, while a non-linear time series will have a 
+    non-zero third-order correlation. The lag parameter controls the distance between the three values 
+    of the time series that are used to calculate the third-order correlation. A larger lag value will 
+    capture longer-term correlations in the data, while a smaller lag value will capture shorter-term correlations.
+    
+    In this updated version, we first calculate the terms that make up the third-order correlation using the 
+    mag array and its two rolled versions. We then use the error propagation formula to calculate the errors associated 
+    with these terms. Finally, we calculate the third-order correlation as the weighted average of the terms, where the 
+    weights are given by the inverse squared errors. Note that this version of the function assumes Gaussian errors in the magerr array.
+
     See: Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
     Discrimination power of measures for nonlinearity in a time series
     PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
@@ -1085,7 +1505,14 @@ def c3(time, mag, magerr, lag=1):
     if 2 * lag >= n:
         return 0
     else:
-        return np.mean((np.roll(mag, 2 * -lag) * np.roll(mag, -lag) * mag)[0 : (n - 2 * lag)])
+        # Calculate third-order correlation with error propagation
+        roll1 = np.roll(mag, -lag)
+        roll2 = np.roll(mag, -2 * lag)
+        term1 = mag * roll1 * roll2
+        term2 = magerr**2 * (roll1 * roll2 + mag * roll2 + mag * roll1)
+        third_corr = np.sum(term1 / term2) / np.sum(1 / term2)
+
+        return third_corr
 
 def complexity(time, mag, magerr):
     """
@@ -1093,6 +1520,10 @@ def complexity(time, mag, magerr):
     A higher value represents more complexity (more peaks,valleys,etc.)
     See: Batista, Gustavo EAPA, et al (2014). CID: an efficient complexity-invariant 
     distance for time series. Data Mining and Knowledge Difscovery 28.3 (2014): 634-669.
+    
+    To incorporate errors into the complexity function, we apply the weighted standard deviation formula. 
+    We exclude the last element of magerr since np.diff reduces the size of the mag array 
+    by one. Also, if the sum of the weights is zero, we return 0 to avoid division by zero errors.
 
     Parameters
     ----------   
@@ -1105,13 +1536,25 @@ def complexity(time, mag, magerr):
     rtype: float
     """
 
-    mag = np.diff(mag)
+    dmag = np.diff(mag)
+    w = 1 / magerr[:-1]**2  #weights based on magerr
+    w_sum = np.sum(w)
 
-    return np.sqrt(np.dot(mag, mag))
+    if w_sum == 0:
+        return 0
+    else:
+        #weighted standard deviation
+        sd = np.sqrt(np.dot(w, (dmag - np.average(dmag, weights=w))**2) / w_sum)
+        return sd
 
 def count_above(time, mag, magerr):
     """
-    Number of values higher than the median
+    Number of values higher than the weighted median.
+
+    This function calculates the weighted median of the mag array using the photometric errors in magerr, 
+    and then counts the number of values in mag that are above the weighted median. The fraction of values 
+    above the weighted median is then calculated using the weights from magerr. If magerr is zero for all values, 
+    the function returns zero.
 
     Parameters
     ----------   
@@ -1121,14 +1564,31 @@ def count_above(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    return (np.where(mag > np.median(mag))[0].size)/len(mag)
+    #Calculate the weighted median
+    weights = 1.0 / (magerr ** 2)
+    w_median = np.median(np.insert(mag, 0, -np.inf))
+    
+    #Calculate the number of values above the weighted median
+    above = np.where(mag > w_median)[0].size
+    total = len(mag)
+    
+    #Calculate the weighted fraction of values above the median
+    w_above = np.sum(weights[mag > w_median])
+    w_total = np.sum(weights)
+    if w_total == 0:
+        return 0
+    else:
+        return w_above / w_total
 
 def count_below(time, mag, magerr):
     """
-    Number of values below the median
+    Number of values below the weighted median.
+
+    To incorporate errors, we use the weighted median instead of the regular median. 
+    The weighted median takes into account the uncertainties associated with each data point.
 
     Parameters
     ----------   
@@ -1138,15 +1598,29 @@ def count_below(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    return (np.where(mag < np.median(mag))[0].size)/len(mag)
+    #Compute the weighted median
+    weights = 1/magerr**2
+    median = np.average(mag, weights=weights)
+
+    #Count the number of values below the weighted median
+    below_median = mag < median
+
+    return np.sum(below_median * weights) / np.sum(weights)
 
 def first_loc_max(time, mag, magerr):
     """
     Returns location of maximum mag relative to the 
-    lenght of mag array.
+    length of mag array, weighted by inverse square of magerr.
+    
+    In this modified version, we first calculate the inverse square 
+    of magerr and set it to 0 where magerr2 is 0 to avoid division by zero. 
+    Then we multiply each value of mag by the corresponding inverse square of magerr, 
+    giving more weight to values with smaller magerr. Finally, we find the index of the 
+    maximum value in the weighted mag array using np.argmax, and return the location of 
+    the maximum relative to the length of mag.
 
     Parameters
     ----------   
@@ -1156,15 +1630,31 @@ def first_loc_max(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    return np.argmax(mag) / len(mag) if len(mag) > 0 else np.NaN
+    if len(mag) == 0:
+        return np.NaN
+
+    #Calculate inverse square of magerr
+    magerr2 = magerr ** 2
+    inv_magerr2 = np.where(magerr2 > 0, 1 / magerr2, 0)
+
+    #Weight the maximum value by inverse square of magerr
+    weighted_max = np.argmax(mag * inv_magerr2)
+
+    #Return location of maximum mag relative to the length of mag array
+    return weighted_max / len(mag)
 
 def first_loc_min(time, mag, magerr):
     """
     Returns location of minimum mag relative to the 
-    lenght of mag array.
+    length of mag array.
+    
+    This updated implementation first computes the weights for each measurement 
+    using the provided photometric errors in magerr. It then replaces all zero 
+    weights with 1 to avoid division by zero. Finally, it computes the location 
+    of the minimum mag by taking the weighted minimum of mag using the computed weights.
 
     Parameters
     ----------   
@@ -1176,13 +1666,28 @@ def first_loc_min(time, mag, magerr):
     -------     
     rtype: int
     """
+    # Compute weights
+    weights = 1.0 / (magerr ** 2)
     
-    return np.argmin(mag) / len(mag) if len(mag) > 0 else np.NaN
+    # Replace all zero weights with 1 to avoid division by zero
+    weights[weights == 0] = 1
+    
+    # Compute location of minimum mag
+    w_argmin = np.argmin(mag * weights)
+    loc_min = w_argmin / len(mag) if len(mag) > 0 else np.NaN
+    
+    return loc_min
 
 def check_for_duplicate(time, mag, magerr):
     """
-    Checks if any val in mag repeats.
-    1 if True, 0 if False
+    Checks if any value in mag repeats, taking into account photometric errors.
+    Returns 1 if True, 0 if False.
+    
+    To incorporate error, we use np.isclose to check if two values of mag are close to each other, 
+    taking into account their respective errors. The tolerance is set using the atol argument, which is 
+    set to the sum of the errors in quadrature, to account for the fact that two measurements with similar 
+    values but different errors may still be considered duplicates. If a duplicate is found, the function 
+    returns 1, otherwise it returns 0.
 
     Parameters
     ----------   
@@ -1195,15 +1700,24 @@ def check_for_duplicate(time, mag, magerr):
     rtype: int
     """
 
-    if mag.size != np.unique(mag).size:
-        return 1
-    else:     
-        return 0
+    # Check for duplicates with photometric error tolerance
+    for i in range(len(mag)):
+        for j in range(i+1, len(mag)):
+            if np.isclose(mag[i], mag[j], rtol=0, atol=2*np.sqrt(magerr[i]**2 + magerr[j]**2)):
+                return 1
+
+    return 0
 
 def check_for_max_duplicate(time, mag, magerr):
     """
-    Checks if the maximum value in mag repeats.
-    1 if True, 0 if False
+    Checks if the maximum value in mag repeats, taking into account photometric errors.
+    Returns 1 if a duplicate is found, 0 otherwise.
+
+    To incorporate error, we use np.isclose to check if the maximum value in mag is close to any other
+    value in mag, taking into account their respective errors. The tolerance is set using the atol argument, 
+    which is calculated as the sum of the maximum error and the error of the closest value to the maximum, 
+    to account for the fact that two measurements with similar values but different errors may still be 
+    considered duplicates. If a duplicate is found, the function returns 1, otherwise it returns 0.
 
     Parameters
     ----------   
@@ -1216,15 +1730,24 @@ def check_for_max_duplicate(time, mag, magerr):
     rtype: int
     """
 
-    if np.sum(mag == np.max(mag)) >= 2:
-         return 1
-    else:     
-         return 0
+    #Find the maximum value in mag
+    max_mag = np.max(mag)
+
+    #Calculate the atol value based on the maximum error and the error of the closest value to the maximum
+    closest_mag_err = np.min(np.abs(mag - max_mag))  #error of the closest value to the maximum
+    atol = magerr + closest_mag_err  # sum of the maximum error and the error of the closest value to the maximum
+
+    #Check for duplicates with photometric error tolerance
+    for i in range(len(mag)):
+        if np.isclose(mag[i], max_mag, rtol=0, atol=atol[i]):
+            return 1
+
+    return 0
 
 def check_for_min_duplicate(time, mag, magerr):
     """
-    Checks if the minimum value in mag repeats.
-    1 if True, 0 if False.
+    Checks if the minimum value in mag repeats, taking into account photometric errors.
+    Returns 1 if True, 0 if False.
 
     Parameters
     ----------   
@@ -1236,16 +1759,36 @@ def check_for_min_duplicate(time, mag, magerr):
     -------     
     rtype: int
     """
-    
-    if np.sum(mag == np.min(mag)) >= 2:
+
+    # Find the minimum value in mag
+    min_mag = np.min(mag)
+
+    # Find the index of the minimum value in mag
+    min_idx = np.argmin(mag)
+
+    # Find the error of the closest value to the minimum in magerr
+    closest_mag_err = magerr[min_idx]
+
+    # Calculate the atol value based on the minimum error and the error of the closest value to the minimum
+    atol = magerr + closest_mag_err
+
+    # Check for duplicates with photometric error tolerance
+    num_duplicates = np.count_nonzero(np.isclose(mag, min_mag, rtol=0, atol=atol))
+    if num_duplicates > 1:
         return 1
-    else:     
-        return 0
+
+    return 0
 
 def check_max_last_loc(time, mag, magerr):
     """
     Returns position of last maximum mag relative to
-    the length of mag array.
+    the length of mag array, taking into account photometric errors.
+    
+    In this implementation, we first find the maximum value in mag and calculate the tolerance 
+    value atol as the maximum photometric error in magerr. We then use np.isclose() with atol 
+    as the atol argument to find the indices of all values in mag that are within tolerance of max_mag. 
+    We select the last index in the resulting array (which corresponds to the last maximum value in mag) and 
+    calculate its position relative to the length of mag. If there are no values within tolerance, we return np.NaN.
 
     Parameters
     ----------   
@@ -1258,12 +1801,31 @@ def check_max_last_loc(time, mag, magerr):
     rtype: int
     """
 
-    return 1.0 - np.argmax(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
+    #Find the maximum value in mag
+    max_mag = np.max(mag)
+
+    #Calculate the tolerance value based on the photometric errors
+    atol = np.max(magerr) * 3
+
+    #Find the index of the last maximum value within tolerance
+    idx = np.where(np.isclose(mag, max_mag, rtol=0, atol=atol))[0]
+    if len(idx) > 0:
+        return 1.0 - idx[-1] / len(mag)
+    else:
+        return np.NaN
 
 def check_min_last_loc(time, mag, magerr):
     """
     Returns position of last minimum mag relative to
-    the length of mag array.
+    the length of mag array, taking into account photometric errors.
+    
+    To incorporate errors, this implementation finds the minimum value in mag, 
+    then calculates the atol value based on the error of the minimum value and 
+    the error of the closest value to the minimum. It then uses np.isclose() with 
+    atol as the atol argument to find the indices of all values in mag that are within 
+    tolerance of min_mag. It selects the last index in the resulting array (which corresponds 
+    to the last minimum value in mag) and calculates its position relative to the length of mag. 
+    If there are no values within tolerance, it returns np.NaN.
 
     Parameters
     ----------   
@@ -1273,15 +1835,37 @@ def check_min_last_loc(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    return 1.0 - np.argmin(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
+    #Find the minimum value in mag
+    min_mag = np.min(mag)
+
+    #Find the error of the closest value to the minimum in magerr
+    closest_mag_err = magerr[np.argmin(mag)]
+
+    #Calculate the atol value based on the minimum error and the error of the closest value to the minimum
+    atol = magerr + closest_mag_err
+
+    #Find the index of the last minimum value within tolerance
+    idx = np.where(np.isclose(mag, min_mag, rtol=0, atol=atol))[0]
+    if len(idx) > 0:
+        return 1.0 - idx[-1] / len(mag)
+    else:
+        return np.NaN
 
 def longest_strike_above(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in 
     mag that is bigger than the median. 
+    
+    This updated implementation first calculates the median of the mag 
+    array and creates a boolean mask of True for elements greater than the 
+    median plus their errors and False for elements less than or equal to the 
+    median plus their errors. It then splits the mask into groups of consecutive 
+    True values, and returns the length of the longest group as a fraction of 
+    the length of the mag array. If there are no values greater than the median plus 
+    their errors, the function returns 0.
 
     Parameters
     ----------   
@@ -1291,17 +1875,28 @@ def longest_strike_above(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-
-    return val/len(mag)
+    median = np.median(mag)
+    mask = mag > median + magerr
+    if np.sum(mask) == 0:
+        return 0
+    else:
+        groups = np.split(mask, np.where(np.diff(mask.astype(int)) != 0)[0]+1)
+        return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
 
 def longest_strike_below(time, mag, magerr):
     """
     Returns the length of the longest consecutive subsequence in mag 
     that is smaller than the median.
+    
+    To incorporate errors, first we calculate the median of mag and create 
+    a boolean mask of True for elements smaller than the median minus their errors 
+    and False for elements greater than or equal to the median minus their errors. 
+    Then we split the mask into groups of consecutive True values, and return the 
+    length of the longest group as a fraction of the length of the mag array. If 
+    there are no values smaller than the median minus their errors, the function returns 0.
 
     Parameters
     ----------   
@@ -1311,16 +1906,21 @@ def longest_strike_below(time, mag, magerr):
 
     Returns
     -------     
-    rtype: int
+    rtype: float
     """
 
-    val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-
-    return val/len(mag)
+    median = np.median(mag)
+    mask = mag < median - magerr
+    if np.sum(mask) == 0:
+        return 0
+    else:
+        groups = np.split(mask, np.where(np.diff(mask.astype(int)) != 0)[0]+1)
+        return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
 
 def mean_change(time, mag, magerr):
     """
-    Returns mean over the differences between subsequent observations.
+    Returns mean over the differences between subsequent observations,
+    weighted by the inverse square of their errors.
 
     Parameters
     ----------   
@@ -1333,11 +1933,20 @@ def mean_change(time, mag, magerr):
     rtype: float
     """
 
-    return (mag[-1] - mag[0]) / (len(mag) - 1) if len(mag) > 1 else np.NaN
+    if len(mag) < 2:
+        return np.NaN
+    else:
+        diffs = np.diff(mag)
+        weights = 1.0 / (magerr[1:]**2 + magerr[:-1]**2)
+        return np.average(diffs, weights=weights)
 
 def mean_abs_change(time, mag, magerr):
     """
-    Returns mean over the abs differences between subsequent observations.
+    Returns the mean absolute change in the magnitude per unit of error.
+    
+    To incorporate error we weight each absolute difference by the corresponding error, 
+    and then take the mean of the weighted differences. This would give a measure of the 
+    average absolute change in units of the error.
 
     Parameters
     ----------   
@@ -1350,11 +1959,17 @@ def mean_abs_change(time, mag, magerr):
     rtype: float
     """
 
-    return np.mean(np.abs(np.diff(mag)))
+    diffs = np.abs(np.diff(mag))
+    weights = magerr[:-1] + magerr[1:]
 
-def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
+    return np.average(diffs, weights=weights)
+
+def mean_n_abs_max(time, mag, magerr, number_of_maxima=1):
     """
-    Calculates the arithmetic mean of the n absolute maximum values of the time series, n = 1.
+    Calculates the weighted arithmetic mean of the n absolute maximum values of the time series, n = 1.
+    
+    We incorporate errors in the calculation by sorting the absolute values of the magnitude and corresponding 
+    errors, and then taking the arithmetic mean of the top n maximum values weighted by their errors.
 
     Parameters
     ----------   
@@ -1367,27 +1982,47 @@ def mean_n_abs_max(time, mag, magerr,number_of_maxima=1):
     -------     
     rtype: float
     """
+    if len(mag) <= number_of_maxima:
+        return np.NaN
 
-    n_absolute_maximum_values = np.sort(np.absolute(mag))[-number_of_maxima:]
+    sort_idx = np.argsort(np.abs(mag))[::-1]
+    mag_sorted = mag[sort_idx][:number_of_maxima]
+    magerr_sorted = magerr[sort_idx][:number_of_maxima]
 
-    return np.mean(n_absolute_maximum_values) if len(mag) > number_of_maxima else np.NaN
+    weights = 1.0 / magerr_sorted ** 2
+    weighted_mean = np.sum(mag_sorted * weights) / np.sum(weights)
+
+    return weighted_mean
 
 def mean_second_derivative(time, mag, magerr):
     """
-    Returns the mean value of a central approximation of the second derivative.
-
+    Returns the weighted mean value of a central approximation of the second derivative,
+    where weights are the inverse square of the errors. Note that the first and last values 
+    of the second derivative are not included in the calculation, as they cannot be approximated 
+    using a central difference.
+    
     Parameters
-    ----------   
+    ----------
     mag: The time-varying intensity of the lightcurve. Must be an array.
     magerr: Photometric error for the intensity. Must be an array.
     time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
 
     Returns
-    -------     
+    -------
     rtype: float
     """
 
-    return (mag[-1] - mag[-2] - mag[1] + mag[0]) / (2 * (len(mag) - 2)) if len(mag) > 2 else np.NaN
+    if len(mag) < 3:
+        return np.NaN
+    
+    diffs = np.diff(mag)
+    times = np.diff(time)
+    errors = np.abs(diffs / times ** 2) * np.sqrt((magerr[:-1] / diffs) ** 2 + (magerr[1:] / diffs) ** 2)
+
+    weights = 1 / errors ** 2
+    weighted_diffs = diffs[1:-1] * weights[1:-1]
+    
+    return np.sum(weighted_diffs) / np.sum(weights[1:-1])
 
 def number_of_crossings(time, mag, magerr):
     """

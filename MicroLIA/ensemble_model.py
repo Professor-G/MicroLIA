@@ -32,6 +32,7 @@ from MicroLIA import extract_features
 from xgboost import XGBClassifier
 import scikitplot as skplt
 
+
 class Classifier:
     """
     Creates a machine learning classifier object. The built-in methods can be used to optimize the engine and output visualizations.
@@ -81,15 +82,6 @@ class Classifier:
             Defaults to True.        
         csv_file (DataFrame, optional): The csv file output after generating the training set. This can be
             input in lieu of the data_x and data_y arguments.
-        
-    Attributes:
-        model (object): The machine learning model that is created
-        imputer (object): The imputer created during model creation
-        feats_to_use (ndarray): Array of indices containing the metrics
-            that contribute to classification accuracy.
-        feature_history (object): The Boruta feature selection history result.
-        optimization_results (object): The Optuna hyperparameter optimization history result.
-        best_params (dict): The best parameters output from the optimization routine.
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
@@ -128,7 +120,7 @@ class Classifier:
                 print('NOTE: data_x and data_y parameters are required to output visualizations.')
         
         if self.data_y is not None:
-            self.data_y_ = copy.deepcopy(self.data_y) #For plotting purposes, save the original label array as it will be overwrrite with the numerical labels
+            self.data_y_ = copy.deepcopy(self.data_y) #For plotting purposes, save the original label array as it will be overwrite with the numerical labels when plotting only
             if self.clf == 'xgb':
                 if all(isinstance(val, (int, str)) for val in self.data_y):
                     print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
@@ -292,11 +284,11 @@ class Classifier:
     def load(self, path=None):
         """ 
         Loads the model, imputer, and feats to use, if created and saved.
-        This function will look for a folder named 'MicroLIA_ensemble_model' in the
+        This function will look for a folder named 'MicroLIA_models' in the
         local home directory, unless a path argument is set. 
 
         Args:
-            path (str): Path where the directory 'MicroLIA_ensemble_model' is saved. 
+            path (str): Path where the directory 'MicroLIA_models' is saved. 
                 Defaults to None, in which case the folder is assumed to be in the 
                 local home directory.
         """
@@ -410,7 +402,8 @@ class Classifier:
                 the labels in model.data_y. Defaults to None, in which case the
                 model.data_y labels are used.
             special_class (optional): The class label that you wish to highlight,
-                setting this optional parameter will 
+                setting this optional parameter will increase the size and alpha parameter
+                for these points in the plot.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to True.
             pca (bool): If True the data will be fit to a Principal Component
@@ -595,7 +588,7 @@ class Classifier:
         savefig=False):
         """
         Plots ROC curve with k-fold cross-validation, as such the 
-        standard deviation variations are plotted.
+        standard deviation variations are also plotted.
         
         Args:
             classifier: The machine learning classifier to optimize.
@@ -605,10 +598,10 @@ class Classifier:
             k_fold (int, optional): The number of cross-validations to perform.
                 The output confusion matrix will display the mean accuracy across
                 all k_fold iterations. Defaults to 10.
-            title (str, optional): The title of the output plot. 
+            title (str, optional): The title of the output plot.
             savefig (bool): If True the figure will not disply but will be saved instead.
                 Defaults to False. 
-                
+        
         Returns:
             AxesImage
         """
@@ -1151,7 +1144,7 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
         predicted_labels_list: 1D array containing the predicted class labels.
         actual_targets: 1D array containing the actual class labels.
         classes (list): A list containing the label of the two training bags. This
-            will be used to set the axis. Ex) classes = ['DIFFUSE', 'OTHER']
+            will be used to set the axis. Ex) classes = ['ML', 'OTHER']
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
@@ -1183,7 +1176,7 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     Args:
         conf_matrix: The confusion matrix generated using the generate_matrix() function.
         classes (list): A list containing the label of the two training bags. This
-            will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
+            will be used to set the axis. Defaults to a list containing 'ML' & 'OTHER'. 
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
@@ -1202,8 +1195,8 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, alpha=1, color='k')#rotation=45, fontsize=14,
     plt.yticks(tick_marks, classes, alpha=1, color='k', rotation=90)#fontsize=14,
-    #plt.xticks(tick_marks, ['DIFFUSE','OTHER'], rotation=45, fontsize=14)
-    #plt.yticks(tick_marks, ['DIFFUSE','OTHER'], fontsize=14)
+    #plt.xticks(tick_marks, ['ML','OTHER'], rotation=45, fontsize=14)
+    #plt.yticks(tick_marks, ['ML','OTHER'], fontsize=14)
 
     fmt = '.4f' if normalize is True else 'd'
     thresh = conf_matrix.max() / 2.
@@ -1240,7 +1233,4 @@ def min_max_norm(data_x):
         new_array[:,i] = (data_x[:,i] - np.min(data_x[:,i])) / (np.max(data_x[:,i]) - np.min(data_x[:,i]))
 
     return new_array
-    
-
-
 

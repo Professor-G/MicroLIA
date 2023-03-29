@@ -9,6 +9,10 @@ import copy
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
+import copy
+import numpy as np
+from tensorflow.keras.utils import to_categorical
+
 def find_duplicate_features(features, tolerance=1e-9):
     """
     This function will check if there are any duplicate columns 
@@ -131,6 +135,12 @@ def normalize_pixels(channels, min_pixel, max_pixel, img_num_channels):
         min_pixel must be a single input, but the max_pixel can either be 
         an int/float or a list. If it is an int/float then
 
+        Non-subtracted images in the NDWFS Bootes survey data (Bw):
+        NDWFS min 0.01% : 638.186
+        NDWFS max 99.99% : 7350.639
+        Max intensity of expected blobs : ~3000
+    
+
     Args:
         channel (array): 2D array for one image, 3D array for multiple images.
         min_pixel (int, optional): The minimum pixel count, defaults to 0. 
@@ -142,7 +152,7 @@ def normalize_pixels(channels, min_pixel, max_pixel, img_num_channels):
         Reshaped data and label arrays.
 
     Note:
-        In the context of diffuse nebulae detection, the max_pixel value should 
+        In the context of ML nebulae detection, the max_pixel value should 
         be slightly above the maximum expected count for the nebula, as anything 
         brighter (such as stars) will be set to the same limit of max_pixel, which
         will result in more robust classification performance.
@@ -209,7 +219,7 @@ def process_class(channel, label=None, img_num_channels=1, normalize=True, min_p
     Args:
         channel (array): 2D array for one image, 3D array for multiple images.
         img_num_channels (int): The number of filters used. Defaults to 1.
-        label (int, optional): Class label, 1 for positive, 1 for negative. Defaults to None.
+        label (int, optional): Class label, 0 for blob, 1 for other. Defaults to None.
         normalize (bool, optional): True will apply min-max normalization.
         min_pixel (int, optional): The minimum pixel count, defaults to 638. 
             Pixels with counts below this threshold will be set to this limit.
@@ -256,7 +266,7 @@ def process_class(channel, label=None, img_num_channels=1, normalize=True, min_p
     
     return data, label
 
-def create_training_set(positive_class, negative_class, img_num_channels=1, normalize=True, min_pixel=638, max_pixel=3000):
+def create_training_set(blob_data, other_data, img_num_channels=1, normalize=True, min_pixel=638, max_pixel=3000):
     """
     Combines image data of known class to create a training set.
     This is used for training the machine learning models. The 
@@ -278,8 +288,8 @@ def create_training_set(positive_class, negative_class, img_num_channels=1, norm
         >>> training_labels = np.r_[class1_label class2_label, class3_label]
 
     Args:
-        positive_class (array): 3D array containing more than one image of the positive class.
-        negative_class (array): 3D array containing more than one image of the negative objects.
+        blob_data (array): 3D array containing more than one image of ML objects.
+        other_data (array): 3D array containing more than one image of non-ML objects.
         img_num_channels (int): The number of filters used. Defaults to 1.
         normalize (bool, optional): True will normalize the data using the input min and max pixels
         min_pixel (int, optional): The minimum pixel count, defaults to 638. 
@@ -291,12 +301,11 @@ def create_training_set(positive_class, negative_class, img_num_channels=1, norm
         Reshaped data and label arrays.
     """
 
-    class1_data, class1_label = process_class(positive_class, label=1, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
-    class2_data, class2_label = process_class(negative_class, label=0, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
+    class1_data, class1_label = process_class(blob_data, label=1, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
+    class2_data, class2_label = process_class(other_data, label=0, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
     
     training_data = np.r_[class1_data, class2_data]
     training_labels = np.r_[class1_label, class2_label]
 
     return training_data, training_labels
-
 

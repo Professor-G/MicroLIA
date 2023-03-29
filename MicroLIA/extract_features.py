@@ -82,20 +82,23 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        try:
-            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+        #try:
+        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+            try:
                 feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-            else:
+            except:# (ZeroDivisionError, ValueError, IndexError):
+                stats.append(np.nan)
+        else:
+            try:
                 feature = func[1](time, norm_flux, norm_fluxerr)
-
-            feature_names.append(func[0])
-
-            if np.isfinite(feature):
-                stats.append(feature)
-            else:
+            except:# (ZeroDivisionError, ValueError, IndexError):
                 stats.append(np.nan)
 
-        except (ZeroDivisionError, ValueError, IndexError):
+        feature_names.append(func[0])
+
+        if np.isfinite(feature):
+            stats.append(feature)
+        else:
             stats.append(np.nan)
 
         counter += 1
@@ -112,22 +115,24 @@ def extract_all(time, mag, magerr, feats_to_use=None, convert=True, zp=24, retur
             if counter not in feats_to_use:
                 counter += 1
                 continue
-        try:
-            if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+        if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
+            try:
                 feature = func[1](time, flux, flux_err)  #amplitude dependent features use non-normalized flux
-            else:
+            except:# (ZeroDivisionError, ValueError, IndexError):
+                stats.append(np.nan)
+        else:
+            try:
                 feature = func[1](time, norm_flux, norm_fluxerr)
-
-            feature_names.append(func[0]+'_deriv')
-
-            if np.isfinite(feature):
-                stats.append(feature)
-            else:
+            except:# (ZeroDivisionError, ValueError, IndexError):
                 stats.append(np.nan)
 
-        except (ZeroDivisionError, ValueError, IndexError):
+        feature_names.append(func[0]+'_deriv')
+
+        if np.isfinite(feature):
+            stats.append(feature)
+        else:
             stats.append(np.nan)
-            
+        
         counter += 1
 
     stats = np.array(stats)
