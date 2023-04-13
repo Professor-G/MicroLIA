@@ -32,7 +32,8 @@ from tensorflow.keras.callbacks import EarlyStopping, Callback
 from tensorflow.keras.models import Sequential, save_model, load_model, Model
 from tensorflow.keras.initializers import VarianceScaling, HeNormal
 
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adagrad, Adadelta, Adamax, Nadam
+from tensorflow.keras.optimizers.legacy import SGD, Adam, RMSprop, Adagrad, Adadelta, Adamax, Nadam
+#from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adagrad, Adadelta, Adamax, Nadam
 from tensorflow.keras.losses import categorical_crossentropy, Hinge, SquaredHinge, KLDivergence, LogCosh
 from tensorflow.keras.layers import Input, Activation, Dense, Dropout, Conv2D, MaxPool2D, Add, ZeroPadding2D, \
     AveragePooling2D, GlobalAveragePooling2D, Flatten, BatchNormalization, Lambda, concatenate
@@ -395,8 +396,8 @@ class Classifier:
             else:
                 batch_size = self.best_params['batch_size']
 
-            lr = self.best_params['lr']; decay = self.best_params['decay']; optimizer = self.best_params['optimizer']
-
+            lr = self.best_params['lr']; optimizer = self.best_params['optimizer']
+            decay = 0
             #All use inverse time decay, a few use rho as well, and Adam-based optimizers use beta_1 and beta_2 
             if optimizer == 'sgd':
                 momentum = self.best_params['momentum']
@@ -2303,17 +2304,17 @@ def get_optimizer(optimizer, lr, momentum=None, decay=None, rho=0.9, nesterov=Fa
     """
 
     if optimizer == 'sgd':
-        optimizer = SGD(learning_rate=lr, decay=decay,  momentum=momentum, nesterov=nesterov)
+        optimizer = SGD(learning_rate=lr, momentum=momentum, nesterov=nesterov)
     elif optimizer == 'adam':
-        optimizer = Adam(learning_rate=lr, decay=decay,  beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad)
+        optimizer = Adam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad)
     elif optimizer == 'adamax':
-        optimizer = Adamax(learning_rate=lr, decay=decay,  beta_1=beta_1, beta_2=beta_2)
+        optimizer = Adamax(learning_rate=lr, beta_1=beta_1, beta_2=beta_2)
     elif optimizer == 'nadam':
-        optimizer = Nadam(learning_rate=lr, decay=decay,  beta_1=beta_1, beta_2=beta_2)
+        optimizer = Nadam(learning_rate=lr, beta_1=beta_1, beta_2=beta_2)
     elif optimizer == 'adadelta':
-        optimizer = Adadelta(learning_rate=lr, decay=decay,  rho=rho)
+        optimizer = Adadelta(learning_rate=lr, rho=rho)
     elif optimizer == 'rmsprop':
-        optimizer = RMSprop(learning_rate=lr, decay=decay,  rho=rho)
+        optimizer = RMSprop(learning_rate=lr, rho=rho)
     else:
         raise ValueError("Invalid optimizer name. Available options are 'sgd', 'adam', 'adamax', 'nadam', 'adadelta', or 'rmsprop'.")
 

@@ -37,14 +37,6 @@ class Classifier:
     """
     Creates a machine learning classifier object. The built-in methods can be used to optimize the engine and output visualizations.
 
-    Note:
-        test_size is an optional parameter to speed up the XGB optimization training.
-        If input a random validation data will be generated according to this size,
-        which will replace the cross-validation method used by default during the
-        optimization procedure. Need more testing to make this more robust, recommended
-        option is test_size = None. The opt_cv parameter should be used instead to set
-        the number of folds to use when assessing optimization trial performance. 
-
     Args:
         data_x (ndarray): 2D array of size (n x m), where n is the
             number of samples, and m the number of features.
@@ -59,9 +51,6 @@ class Classifier:
             hyperparameter optimization trial. For example, if cv=3, then each optimization trial
             will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
             NOTE: The higher this number, the longer the optimization will take.
-        test_size (float, optional): The size of the validation data, will be chosen
-            randomly each trial. Must be between 0 and 1. Defaults to None, in which
-            case the opt_cv parameter will be used instead.
         limit_search (bool): If True, the search space for the parameters will be expanded,
             as there are some hyperparameters that can range from 0 to inf. Defaults to False.
         impute (bool): If False no data imputation will be performed. Defaults to True,
@@ -85,7 +74,7 @@ class Classifier:
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        test_size=None, limit_search=True, impute=True, imp_method='KNN', n_iter=25, 
+        limit_search=True, impute=True, imp_method='KNN', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
 
         self.data_x = data_x
@@ -93,7 +82,6 @@ class Classifier:
         self.clf = clf
         self.optimize = optimize 
         self.opt_cv = opt_cv 
-        self.test_size = test_size
         self.limit_search = limit_search
         self.impute = impute
         self.imp_method = imp_method
@@ -211,7 +199,7 @@ class Classifier:
             data_x = self.data_x[:,self.feats_to_use]
 
         self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
-            balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv, test_size=self.test_size)
+            balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
         print("Fitting and returning final model...")
         self.model.fit(data_x, self.data_y)
         
@@ -348,7 +336,7 @@ class Classifier:
 
         return
 
-    def predict(self, time, mag, magerr, convert=True, zp=24):
+    def predict(self, time, mag, magerr, convert=True, apply_weights=True, zp=24):
         """
         Predics the class label of new, unseen data.
 
@@ -356,9 +344,10 @@ class Classifier:
             time (ndarray): Array of observation timestamps.
             mag (ndarray): Array of observed magnitudes.
             magerr (ndarray): Array of corresponding magnitude errors.
-            model (object): The machine learning model to use for predictions.
-            convert (bool, optional): If False the features are computed with the input magnitudes.
+            convert (bool): If False the features are computed with the input magnitudes.
                 Defaults to True to convert and compute in flux. 
+            apply_weights (bool): Whether to apply the photometric errors when calculating the features. 
+                Defaults to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
             zp (float): Zeropoint of the instrument, used to convert from magnitude
                 to flux. Defaults to 24.
 
@@ -374,11 +363,11 @@ class Classifier:
         stat_array=[]
         
         if self.imputer is None and self.feats_to_use is None:
-            stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp))
+            stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp))
             pred = self.model.predict_proba(stat_array)
             return np.c_[classes, pred[0]]
         
-        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, feats_to_use=self.feats_to_use))
+        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp, feats_to_use=self.feats_to_use))
         
         if self.imputer is not None:
             stat_array = self.imputer.transform(stat_array)

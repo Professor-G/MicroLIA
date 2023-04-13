@@ -249,7 +249,7 @@ class objective_cnn(object):
             num_aug = trial.suggest_int('num_aug', self.batch_min, self.batch_max, step=1)
             image_size = trial.suggest_int('image_size', self.image_size_min, self.image_size_max, step=1)
             if self.blend_max >= 1.1:
-                blend_multiplier = trial.suggest_int('blend_multiplier', 1.0, self.blend_max, step=0.05)
+                blend_multiplier = trial.suggest_float('blend_multiplier', 1.0, self.blend_max, step=0.05)
                 blending_func = trial.suggest_categorical('blending_func', ['mean', 'min', 'max', 'random'])
             else:
                 blend_multiplier, blending_func = 0, 0, 'mean' #Won't be used
@@ -370,6 +370,7 @@ class objective_cnn(object):
             mode = 'min' if 'loss' in self.metric else 'max' #Need to minimize the metric if evaluating the loss!
             if self.metric == 'all' or self.metric == 'val_all':
                 print(); print("'Cannot use early stopping callbacks if averaging out all performance metrics for evaluation!")
+                input_timeout = InputTimeout("Input the desired early stopping metric (e.g. loss or val_loss) or enter None: ", 30)
                 try:
                     user_input = input_timeout.inputimeout()
                     print("Input the desired early stopping metric (e.g. loss or val_loss) or enter None: ", user_input)             

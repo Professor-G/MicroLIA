@@ -26,7 +26,8 @@ from MicroLIA import extract_features
 from MicroLIA import features
 
 def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
-    n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, filename='', save_file=True):
+    n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, filename='', 
+    apply_weights=True, save_file=True):
     """
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
@@ -103,6 +104,9 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         The name to be appended to the lightcurves.fits and the all_features.txt
         files, only relevant if save_file=True. If no argument is input the
         files will be saved with the default names only.
+    apply_weights: bool 
+        Whether to apply the photometric errors when calculating the features. Defaults
+        to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
     save_file: bool
         If True the lightcurve.fits and all_features.txt files will be
         saved to the home directory. Defaults to True.
@@ -120,7 +124,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     """
 
     if len(getmembers(features, isfunction))*2 > n_class*5:
-        raise ValueError("Parameter n_class must be at least "+str(int(1+len(getmembers(features, isfunction))*2//5))+" for principal components to be computed.")
+        print("WARNING: Parameter n_class must be at least "+str(int(1+len(getmembers(features, isfunction))*2//5))+" for principal components to be computed.")
 
     while True:
         try:
@@ -157,7 +161,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats, feature_names = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp, return_names=True)
+        stats, feature_names = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp, return_names=True)
         stats = [i for i in stats]
         stats = ['VARIABLE'] + [k] + stats
         stats_list.append(stats)
@@ -185,7 +189,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+        stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
         stats = [i for i in stats]
         stats = ['CONSTANT'] + [1*n_class+k] + stats
         stats_list.append(stats) 
@@ -222,7 +226,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+                stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
                 stats = [i for i in stats]
                 stats = ['CV'] + [2*n_class+k] + stats
                 stats_list.append(stats)
@@ -268,7 +272,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         mag_list.append(mag)
         magerr_list.append(magerr)
         
-        stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+        stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
         stats = [i for i in stats]
         stats = ['LPV'] + [4*n_class+k] + stats
         stats_list.append(stats)
@@ -306,7 +310,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                     mag_list.append(mag)
                     magerr_list.append(magerr)
                    
-                    stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+                    stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
                     stats = [i for i in stats]
                     stats = ['ML'] + [3*n_class+k] + stats
                     stats_list.append(stats)
@@ -331,7 +335,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+                stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
                 stats = [i for i in stats]
                 stats = ['ML'] + [1*n_class+k+i] + stats
                 stats_list.append(stats) 
@@ -361,7 +365,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                 mag_list.append(mag)
                 magerr_list.append(magerr)
                 
-                stats = extract_features.extract_all(time, mag, magerr, convert=True, zp=zp)
+                stats = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=True, zp=zp)
                 stats = [i for i in stats]
                 stats = ['ML'] + [1*n_class+k+i] + stats
                 stats_list.append(stats) 
@@ -380,13 +384,13 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         cols = fits.ColDefs([col0, col1, col2, col3, col4])
         hdu = fits.BinTableHDU.from_columns(cols)
 
-        fname = Path('lightcurves'+filename+'.fits')
+        fname = Path('lightcurves_'+filename+'_.fits')
         if fname.exists(): #To avoid error if file already exists
             fname.unlink()
         hdu.writeto(path+str(fname),overwrite=True)
 
-        np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
-        with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
+        np.savetxt(path+'temporary_feats.txt', np.array(stats_list).astype(str), fmt='%s')
+        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'_.txt', 'w') as outfile:    
             outfile.write('# FEAT NAMES # || ' + ' || '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
@@ -394,7 +398,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
             data = data.replace("[", "")
             data = data.replace("]", "")
             outfile.write(data)
-        os.remove(path+'feats.txt')
+        os.remove(path+'temporary_feats.txt')
 
     data = np.array(stats_list)
     data_x = data[:,2:].astype('float')
@@ -402,12 +406,12 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     df = DataFrame(data_x, columns=feature_names)
     df['label'] = data_y
-    df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
+    df.to_csv(path+'MicroLIA_Training_Set_'+filename+'_.csv', index=False)
     print("Complete! Files saved in: {}".format(path))
 
     return data_x, data_y
 
-def load_all(path, convert=True, zp=24, filename='', save_file=True):
+def load_all(path, convert=True, zp=24, filename='', extract_all=True, apply_weights=True, save_file=True):
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
@@ -429,6 +433,9 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
             The name to be appended to the lightcurves.fits and the all_features.txt
             files, only relevant if save_file=True. If no argument is input the
             files will be saved with the default names only.
+        apply_weights: bool 
+            Whether to apply the photometric errors when calculating the features. Defaults
+            to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
         save_file: bool
             If True the lightcurve.fits and all_features.txt files will be
             saved to the home directory. Defaults to True.
@@ -454,31 +461,33 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
     id_list=[]
     stats_list = []
 
+    k=0 #ID counter
     for i in range(len(sub_directories)):
         dir_name = sub_directories[i].split('/')[-1]
         filenames = [name for name in os.listdir(sub_directories[i])]
         progess_bar = bar.FillingSquaresBar('Loading '+dir_name+' lightcurves...', max=len(filenames)) 
         for j in range(len(filenames)):
+            k+=1
             try:
                 lightcurve = np.loadtxt(sub_directories[i]+'/'+filenames[j])
                 time, mag, magerr = lightcurve[:,0], lightcurve[:,1], lightcurve[:,2]
             except:
-                print('WARNING: File {} could not be loaded, skipping...'.format(filenames[j]))
+                print(); print('WARNING: File {} could not be loaded, skipping...'.format(filenames[j]))
                 continue
 
             source_class = [dir_name]*len(time)
             source_class_list.append(source_class)
 
-            id_num = [j]*len(time)
+            id_num = [k]*len(time)
             id_list.append(id_num)
 
             times_list.append(time)
             mag_list.append(mag)
             magerr_list.append(magerr)
 
-            stats, feature_names = extract_features.extract_all(time, mag, magerr, convert=convert, zp=zp, return_names=True)
+            stats, feature_names = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=convert, zp=zp, return_names=True)
             stats = [i for i in stats]
-            stats = [dir_name] + [j] + stats
+            stats = [dir_name] + [k] + stats
             stats_list.append(stats) 
             progess_bar.next()  
         progess_bar.finish()
@@ -495,13 +504,13 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
         cols = fits.ColDefs([col0, col1, col2, col3, col4])
         hdu = fits.BinTableHDU.from_columns(cols)
 
-        fname = Path('lightcurves'+filename+'.fits')
+        fname = Path('lightcurves_'+filename+'_.fits')
         if fname.exists(): #To avoid error if file already exists
             fname.unlink()
-        hdu.writeto(path+str(fname),overwrite=True)
+        hdu.writeto(path+str(fname), overwrite=True)
 
-        np.savetxt(path+'feats.txt',np.array(stats_list).astype(str),fmt='%s')
-        with open(path+'feats.txt', 'r') as infile, open(path+'all_features'+filename+'.txt', 'w') as outfile:    
+        np.savetxt(path+'temporary_feats.txt',np.array(stats_list).astype(str),fmt='%s')
+        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'_.txt', 'w') as outfile:    
             outfile.write('# ' + ', '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
@@ -509,13 +518,13 @@ def load_all(path, convert=True, zp=24, filename='', save_file=True):
             data = data.replace("[", "")
             data = data.replace("]", "")
             outfile.write(data)
-        os.remove(path+'feats.txt')
+        os.remove(path+'temporary_feats.txt')
 
     data = np.array(stats_list)
     data_x = data[:,2:].astype('float')
     data_y = data[:,0].astype(str)
-
-    df = DataFrame(data_x, columns=feature_names[1:])
+    print(data_x.shape, len(feature_names))
+    df = DataFrame(data_x, columns=feature_names)
     df['label'] = data_y
     df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
     print("Complete! Files saved in: {}".format(path))
