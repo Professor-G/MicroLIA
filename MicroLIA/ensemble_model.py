@@ -168,7 +168,6 @@ class Classifier:
 
         if self.impute:
             if self.imp_method == 'KNN':
-                data[~np.isfinite(data)]=0
                 data, self.imputer = KNN_imputation(data=self.data_x, imputer=None)
             else:
                 raise ValueError('Invalid imputation method, currently only k-NN is supported.')

@@ -390,7 +390,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         hdu.writeto(path+str(fname),overwrite=True)
 
         np.savetxt(path+'temporary_feats.txt', np.array(stats_list).astype(str), fmt='%s')
-        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'_.txt', 'w') as outfile:    
+        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'.txt', 'w') as outfile:    
             outfile.write('# FEAT NAMES # || ' + ' || '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
@@ -510,7 +510,7 @@ def load_all(path, convert=True, zp=24, filename='', extract_all=True, apply_wei
         hdu.writeto(path+str(fname), overwrite=True)
 
         np.savetxt(path+'temporary_feats.txt',np.array(stats_list).astype(str),fmt='%s')
-        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'_.txt', 'w') as outfile:    
+        with open(path+'temporary_feats.txt', 'r') as infile, open(path+'all_features_'+filename+'.txt', 'w') as outfile:    
             outfile.write('# ' + ', '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
