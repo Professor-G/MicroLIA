@@ -9,10 +9,6 @@ import copy
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
-import copy
-import numpy as np
-from tensorflow.keras.utils import to_categorical
-
 def find_duplicate_features(features, tolerance=1e-9):
     """
     This function will check if there are any duplicate columns 
@@ -62,7 +58,7 @@ def crop_image(data, x, y, size=50, invert=False):
         convention. We made use of .fits data with the (x, y) = (0, 0) position at the top
         left of the image, for this reason we switched x and y when cropping out individual
         objects. The parameter invert=True performs the coordinate switch for us. This is only
-        required because MicroLIA's cropping function assumes standard convention.
+        required because pyBIA's cropping function assumes standard convention.
 
     Args:
         data (array): 2D array.
@@ -78,10 +74,10 @@ def crop_image(data, x, y, size=50, invert=False):
 
     Example:
         If we have a 100x100 image, we can crop this by setting x,y = (50,50), which
-        would be the center of of the image. Since MicroLIA standard is 50x50, we will 
+        would be the center of of the image. Since pyBIA standard is 50x50, we will 
         set the size of the reshaped array to 50.
 
-        >>> from MicroLIA import data_processing
+        >>> from pyBIA import data_processing
         >>> resize = data_processing.crop_image(data, x=50, y=50, size=50)
 
         If your image is 200x200, then x, y = (100,100), and so on.
@@ -152,7 +148,7 @@ def normalize_pixels(channels, min_pixel, max_pixel, img_num_channels):
         Reshaped data and label arrays.
 
     Note:
-        In the context of ML nebulae detection, the max_pixel value should 
+        In the context of diffuse nebulae detection, the max_pixel value should 
         be slightly above the maximum expected count for the nebula, as anything 
         brighter (such as stars) will be set to the same limit of max_pixel, which
         will result in more robust classification performance.
@@ -277,7 +273,7 @@ def create_training_set(blob_data, other_data, img_num_channels=1, normalize=Tru
         This function is for binary classification only, the manual procedure for multiclass
         training set creation looks as follows:
 
-        >>> from MicroLIA.data_processing import process_class
+        >>> from pyBIA.data_processing import process_class
         >>> import numpy as np 
 
         >>> class1_data, class1_label = process_class(data1, label=0)
@@ -288,8 +284,8 @@ def create_training_set(blob_data, other_data, img_num_channels=1, normalize=Tru
         >>> training_labels = np.r_[class1_label class2_label, class3_label]
 
     Args:
-        blob_data (array): 3D array containing more than one image of ML objects.
-        other_data (array): 3D array containing more than one image of non-ML objects.
+        blob_data (array): 3D array containing more than one image of diffuse objects.
+        other_data (array): 3D array containing more than one image of non-diffuse objects.
         img_num_channels (int): The number of filters used. Defaults to 1.
         normalize (bool, optional): True will normalize the data using the input min and max pixels
         min_pixel (int, optional): The minimum pixel count, defaults to 638. 
@@ -308,4 +304,3 @@ def create_training_set(blob_data, other_data, img_num_channels=1, normalize=Tru
     training_labels = np.r_[class1_label, class2_label]
 
     return training_data, training_labels
-

@@ -157,6 +157,8 @@ class objective_cnn(object):
         num_images_to_blend (int):
         zoom_range (tuple):
         batch_other (int): Can be set to zero.
+        blending_func (str):
+        skew_angle
 
     Returns:
         The performance metric.
@@ -166,8 +168,8 @@ class objective_cnn(object):
         normalize=True, min_pixel=0, max_pixel=1000, patience=5, metric='loss', average=True, 
         test_positive=None, test_negative=None, batch_size_min=16, batch_size_max=64, opt_model=True, train_epochs=25, opt_cv=None,
         opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
-        mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blend_other=1, zoom_range=(0.9,1.1),
-        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0):
+        mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
+        skew_angle=0, zoom_range=(0.9,1.1), limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -211,8 +213,10 @@ class objective_cnn(object):
         self.smote_sampling = smote_sampling
         self.blend_max = blend_max
         self.num_images_to_blend = num_images_to_blend
+        self.blending_func = blending_func
         self.blend_other = blend_other
         self.zoom_range = zoom_range
+        self.skew_angle = skew_angle
 
         if 'all' not in self.metric and 'loss' not in self.metric and 'f1_score' not in self.metric and 'binary_accuracy' not in self.metric:
             raise ValueError("Invalid metric input, options are: 'loss', 'binary_accuracy', 'f1_score', or 'all', and the validation equivalents (add val_ at the beginning).")
@@ -247,17 +251,14 @@ class objective_cnn(object):
         if self.opt_aug:
             rotation = horizontal = vertical = True 
             num_aug = trial.suggest_int('num_aug', self.batch_min, self.batch_max, step=1)
+            blend_multiplier = trial.suggest_float('blend_multiplier', 1.0, self.blend_max, step=0.05) if self.blend_max >= 1.1 else 0
+            skew_angle = trial.suggest_int('skew_angle', 0, self.skew_angle, step=1) if self.skew_angle > 0 else 0
             image_size = trial.suggest_int('image_size', self.image_size_min, self.image_size_max, step=1)
-            if self.blend_max >= 1.1:
-                blend_multiplier = trial.suggest_float('blend_multiplier', 1.0, self.blend_max, step=0.05)
-                blending_func = trial.suggest_categorical('blending_func', ['mean', 'min', 'max', 'random'])
-            else:
-                blend_multiplier, blending_func = 0, 0, 'mean' #Won't be used
 
             augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=num_aug, 
                 width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
                 image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=blend_multiplier, 
-                blending_func=blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range)
+                blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
             #Concat channels since augmentation function returns an output for each filter, e.g. 3 outputs for RGB
             if self.img_num_channels > 1:
@@ -283,8 +284,8 @@ class objective_cnn(object):
             
             augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
                 width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, blending_func=blending_func, 
-                num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range)
+                image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, 
+                blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
             #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
             if self.img_num_channels > 1:
@@ -368,26 +369,12 @@ class objective_cnn(object):
         ### Early Stopping and Pruning Callbacks ###
         if self.patience != 0:
             mode = 'min' if 'loss' in self.metric else 'max' #Need to minimize the metric if evaluating the loss!
-            if self.metric == 'all' or self.metric == 'val_all':
-                print(); print("'Cannot use early stopping callbacks if averaging out all performance metrics for evaluation!")
-                input_timeout = InputTimeout("Input the desired early stopping metric (e.g. loss or val_loss) or enter None: ", 30)
-                try:
-                    user_input = input_timeout.inputimeout()
-                    print("Input the desired early stopping metric (e.g. loss or val_loss) or enter None: ", user_input)             
-                    metric_options = ['None', 'loss', 'binary_accuracy', 'f1_score', 'val_loss', 'val_binary_accuracy', 'val_f1_score']
-                    if user_input == 'None':
-                        print("Input received, disabling early stopping.")
-                        callbacks = None 
-                    else:
-                        if any(keyword in user_input for keyword in metric_options):
-                            mode = 'min' if 'loss' in user_input else 'max'
-                            callbacks = [EarlyStopping(monitor=user_input, mode=mode, patience=self.patience),]
-                            print(f"Input accepted, configuring early stopping if the {user_input} does not improve after {self.patience} epochs.")
-                        else:
-                            raise ValueError("Invalid input! Options are {}.".format(metric_options))
-                except InputTimeout.TimeoutOccurred:
-                    print("Input timeout occurred, continuing with no early stopping criteria.")
-                    callbacks = None 
+            if self.metric == 'val_all':
+                print(); print("'Cannot use early stopping callbacks if averaging out all performance metrics for evaluation! Automatically setting the metric to 'val_loss'. To disable, set patience=0.")
+                callbacks = [EarlyStopping(monitor='val_loss', mode='min', patience=self.patience),]
+            elif self.metric == 'all':
+                print(); print("'Cannot use early stopping callbacks if averaging out all performance metrics for evaluation! Automatically setting the metric to 'loss'. To disable, set patience=0.")
+                callbacks = [EarlyStopping(monitor='loss', mode='min', patience=self.patience),]
             else:
                 callbacks = [EarlyStopping(monitor=self.metric, mode=mode, patience=self.patience),] #TFKerasPruningCallback(trial, monitor=self.metric),
             
@@ -415,7 +402,7 @@ class objective_cnn(object):
 
         ### Learning Rate & Optimizer ###
         lr = trial.suggest_float('lr', 1e-6, 1e-3, step=5e-6) 
-        decay = trial.suggest_float('decay', 0.0, 0.1, step=1e-3)
+        decay=0 #decay = trial.suggest_float('decay', 0.0, 0.1, step=1e-3)
         optimizer = trial.suggest_categorical('optimizer', ['sgd', 'adam', 'adamax', 'nadam', 'adadelta', 'rmsprop'])
 
         #All use inverse time decay, a few use rho as well, and Adam-based optimizers use beta_1 and beta_2 
@@ -450,10 +437,7 @@ class objective_cnn(object):
                 if self.opt_cv is not None:
                     print(); print('***********  CV - 1 ***********'); print()
                 if self.opt_aug:
-                    print(); print('======= Image Parameters ======'); print()
-                    print('Num Augmentations :', num_aug)
-                    print('Image Size : ', image_size)
-                    print('Max Pixel(s) :', max_pix)
+                    print(); print('======= Image Parameters ======'); print(); print('Num Augmentations :', num_aug); print('Image Size : ', image_size); print('Max Pixel(s) :', max_pix)
 
             if self.clf == 'alexnet':
 
@@ -530,7 +514,7 @@ class objective_cnn(object):
 
                 if self.limit_search:   
 
-                    model. history = cnn_model.Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
+                    model, history = cnn_model.Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
                         normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
                         epochs=self.train_epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
                         beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, 
@@ -762,11 +746,11 @@ class objective_cnn(object):
                         channel1, channel2, channel3 = copy.deepcopy(class_1[:,:,:,0]), copy.deepcopy(class_1[:,:,:,1]), None 
                     else:
                         channel1, channel2, channel3 = copy.deepcopy(class_1[:,:,:,0]), copy.deepcopy(class_1[:,:,:,1]), copy.deepcopy(class_1[:,:,:,2])
-            
+
                     augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=num_aug, 
                         width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
                         image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=blend_multiplier, 
-                        blending_func=blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range)
+                        blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
                     if self.img_num_channels > 1:
                         class_1=[]
@@ -780,7 +764,7 @@ class objective_cnn(object):
                     else:
                         class_1 = augmented_images
 
-                    #Perform same augmentation techniques on negative class data, batch=1 by default
+                    #Perform same augmentation techniques on negative class data, batch_other=1 by default
                     if self.img_num_channels == 1:
                         channel1, channel2, channel3 = copy.deepcopy(class_2), None, None 
                     elif self.img_num_channels == 2:
@@ -790,7 +774,8 @@ class objective_cnn(object):
                     
                     augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
                         width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                        image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks)
+                        image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, 
+                        blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
                     #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
                     if self.img_num_channels > 1:
@@ -930,7 +915,7 @@ class objective_cnn(object):
                                 smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
                     elif self.clf == 'resnet18':
                         if self.limit_search:
-                            model. history = cnn_model.Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
+                            model, history = cnn_model.Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
                                 normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
                                 epochs=self.train_epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
                                 beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=loss, activation_conv=activation_conv, activation_dense=activation_dense, 
@@ -1371,7 +1356,7 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
     normalize=True, min_pixel=0, max_pixel=1000, n_iter=25, patience=5, metric='loss', average=True, 
     test_positive=None, test_negative=None, opt_model=True, batch_size_min=16, batch_size_max=64, train_epochs=25, opt_cv=None,
     opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
-    mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blend_other=1, zoom_range=(0.9,1.1),
+    mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, zoom_range=(0.9,1.1), skew_angle=0,
     limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, return_study=True): 
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
@@ -1462,6 +1447,7 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             disables this feature.
         average (bool): If False, the designated metric will be calculated according to its value at the end of the train_epochs. 
             If True, the metric will be averaged out across all train_epochs. Defaults to True.
+
         opt_model (bool): If True, the architecture parameters will be optimized. Defaults to True.
         opt_aug (bool): If True, the augmentation procedure will be optimized. Defaults to False.
         batch_min (int): The minimum number of augmentations to perform per image on the positive class, only applicable 
@@ -1527,6 +1513,13 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
         pass
     else:
         raise ValueError('clf argument must either be "rf", "xgb", "nn", or "alexnet", "vgg16", "resnet18", "custom_cnn".')
+
+    if n_iter == 0:
+        if clf == 'rf' or clf == 'xgb' or clf == 'nn':
+            print('No optimization trials configured (n_iter=0), returning base {} model...'.format(clf))
+            return model_0 
+        else:
+            raise ValueError('No optimization trials configured, set n_iter > 0!')
 
     if clf == 'rf' or clf == 'xgb' or clf == 'nn':
         cv = cross_validate(model_0, data_x, data_y, cv=opt_cv)
@@ -1649,8 +1642,8 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             test_positive=test_positive, test_negative=test_negative, opt_model=opt_model, batch_size_min=batch_size_min, batch_size_max=batch_size_max, train_epochs=train_epochs, opt_cv=opt_cv,
             opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, batch_other=batch_other, balance=balance, image_size_min=image_size_min, image_size_max=image_size_max, 
             shift=shift, opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, mask_size=mask_size, num_masks=num_masks, smote_sampling=smote_sampling, 
-            blend_max=blend_max, num_images_to_blend=num_images_to_blend, blend_other=blend_other, zoom_range=zoom_range, limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, 
-            monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose)      
+            blend_max=blend_max, num_images_to_blend=num_images_to_blend, blending_func=blending_func, blend_other=blend_other, zoom_range=zoom_range, skew_angle=skew_angle,
+            limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose)      
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)#, n_jobs=1)
         params = study.best_trial.params
 
@@ -1921,4 +1914,4 @@ class InputTimeout:
             self.echo('\n')
             termios.tcflush(sys.stdin, termios.TCIFLUSH)
             raise self.TimeoutOccurred
-
+            
