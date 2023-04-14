@@ -149,7 +149,7 @@ When using the XGBoost classifier, the class labels are automatically converted 
    import pandas as pd
 
    stats = pd.read_csv('MicroLIA_Training_Set.csv')
-   data_y = stats.labels
+   data_y = stats.label
 
    model.plot_conf_matrix(data_y=data_y, savefig=True)
 
