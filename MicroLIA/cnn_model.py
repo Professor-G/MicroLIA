@@ -1250,7 +1250,7 @@ class Classifier:
         else:
             plt.show()
 
-    def _plot_positive(self, index=0, channel=0, default_scale=False, vmin=None, vmax=None, cmap='gray', title=''):
+    def _plot_positive(self, index=0, channel=0, default_scale=True, vmin=None, vmax=None, cmap='gray', title=''):
         """
         Plots the sample in the ``positive`` class, located an the specified index.
 
@@ -1265,7 +1265,7 @@ class Classifier:
             channel (int): The channel to plot, can be 0, 1, 2, or 'all'. Defaults to 0.  
             default_scale (bool): If True the figure will be generated using the matplotlib 
                 imshow display, using the default scaling. If False, the vmin and vmax arguments must
-                be input. Defaults to True. 
+                be input, otherwise a robust vmin and vmax will be calculated. Defaults to True. 
             vmin (float): The vmin to control the colorbar scaling.
             vmax (float): The vmax to control the colorbar scaling. 
             cmap (str): Colormap to use when generating the image.
@@ -1275,8 +1275,11 @@ class Classifier:
             AxesImage.
         """
 
-
-        data = self.positive_class[index]
+        if len(self.positive_class.shape) == 3:
+            data = self.positive_class.reshape(self.positive_class.shape[0], self.positive_class.shape[1], self.positive_class.shape[2], 1)
+            data = data[index]
+        else:
+            data = self.positive_class[index]
 
         if channel == 'all':
             if vmin is None and default_scale is False:
@@ -1299,7 +1302,7 @@ class Classifier:
           
         return
 
-    def _plot_negative(self, index=0, channel=1, default_scale=False, vmin=None, vmax=None, cmap='gray', title=''):
+    def _plot_negative(self, index=0, channel=0, default_scale=True, vmin=None, vmax=None, cmap='gray', title=''):
         """
         Plots the sample in the ``negative`` class, located an the specified index.
 
@@ -1314,7 +1317,7 @@ class Classifier:
             channel (int): The channel to plot, can be 0, 1, 2, or 'all'. Defaults to 0.  
             default_scale (bool): If True the figure will be generated using the matplotlib 
                 imshow display, using the default scaling. If False, the vmin and vmax arguments must
-                be input. Defaults to True.     
+                be input, otherwise a robust vmin and vmax will be calculated. Defaults to True. 
             cmap (str): Colormap to use when generating the image.
             vmin (float): The vmin to control the colorbar scaling.
             vmax (float): The vmax to control the colorbar scaling. 
@@ -1324,7 +1327,11 @@ class Classifier:
             AxesImage.
         """
 
-        data = self.negative_class[index]
+        if len(self.negative_class.shape) == 3:
+            data = self.negative_class.reshape(self.negative_class.shape[0], self.negative_class.shape[1], self.negative_class.shape[2], 1)
+            data = data[index]
+        else:
+            data = self.negative_class[index]
 
         if channel == 'all':
             if vmin is None and default_scale is False:
@@ -1343,6 +1350,7 @@ class Classifier:
             if default_scale is False:
                 plt.imshow(data[:,:,channel], vmin=vmin, vmax=vmax, cmap=cmap); plt.title(title); plt.show()
             else:
+                import pdb; pdb.set_trace()
                 plt.imshow(data[:,:,channel], vmin=vmin, vmax=vmax, cmap=cmap); plt.title(title); plt.show()
 
         return
