@@ -1,2 +1,2 @@
-include LIA/data/*
+include MicroLIA/data/*
 Include LIA/test/*
