@@ -145,7 +145,12 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
         mag, amplitude, period = simulate.rrlyr_variable(time, baseline)
-           
+        
+        #Incorrect template fitting yields negative mag! 
+        if np.min(mag) < 0:
+            while np.min(mag) < 0:
+                mag, amplitude, period = simulate.rrlyr_variable(time, baseline)
+                
         if noise is not None:
             mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
         if noise is None:
