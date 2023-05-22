@@ -203,9 +203,9 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
     This simulation is done using the gatspy module provided by AstroML. 
     This module implements a template-based model using RR Lyrae
     lightcurves from Sesar et al. 2010, which contains observations of
-    483 RR Lyrae in Stripe 82 (from SDSS) measured approximately over a 
+    RR Lyrae in Stripe 82 (from SDSS) measured approximately over a 
     decade. For the purpose of simulating variable stars we apply a 
-    single band ('r') template model and modify only the period. We 
+    single band ('g') template model and modify only the period. We 
     currently only provide simulated RR Lyrae (periods < 1 day) or 
     Cepheid Variables which have an average period of 10 days.
     
