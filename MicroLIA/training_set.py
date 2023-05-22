@@ -144,7 +144,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     for k in range(1,n_class+1):
         time = random.choice(timestamps)
         baseline = np.random.uniform(min_mag,max_mag)
-        mag, amplitude, period = simulate.variable(time,baseline)
+        mag, amplitude, period = simulate.rrlyr_variable(time, baseline)
            
         if noise is not None:
             mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)

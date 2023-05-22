@@ -5,6 +5,9 @@ Created on Thu Jun 28 20:30:11 2018
 @author: danielgodinez
 """
 from __future__ import division
+from gatspy import datasets, periodic
+import pkg_resources
+import importlib.util
 import numpy as np
 import os
 
@@ -195,8 +198,89 @@ def constant(timestamps, baseline):
 
     return np.array(mag)
 
+def rrlyr_variable(timestamps, baseline, bailey=None):
+    """Simulates a variable source. 
+    This simulation is done using the gatspy module provided by AstroML. 
+    This module implements a template-based model using RR Lyrae
+    lightcurves from Sesar et al. 2010, which contains observations of
+    483 RR Lyrae in Stripe 82 (from SDSS) measured approximately over a 
+    decade. For the purpose of simulating variable stars we apply a 
+    single band ('r') template model and modify only the period. We 
+    currently only provide simulated RR Lyrae (periods < 1 day) or 
+    Cepheid Variables which have an average period of 10 days.
+    
+    See:
+    Template-based Period Fitting: https://www.astroml.org/gatspy/periodic/template.html
+    Period distribution for RR Lyrae from Sesar et al. 2010 (https://arxiv.org/abs/0910.4611).
+    Period distribution for Cepheids from Becker et al. 1977 (http://adsabs.harvard.edu/abs/1977ApJ...218..633B)
+
+    Parameters
+    ----------
+    timestamps : array
+        Times at which to simulate the lightcurve.
+    baseline : float
+        Baseline at which to simulate the lightcurve.
+    bailey : int, optional 
+        The type of variable to simulate. A bailey
+        value of 1 simulaes RR Lyrae type ab, a value
+        of 2 simulates RR Lyrae type c, and a value of 
+        3 simulates a Cepheid variable. If not provided
+        it defaults to a random choice between the three. 
+
+    Returns
+    -------
+    mag : array
+        Simulated magnitudes given the timestamps.
+    amplitude : float
+        Amplitude of the signal in mag. 
+    period : float
+        Period of the signal in days.
+    """
+
+    if bailey is None:
+        bailey = np.random.randint(1,4)
+    if bailey < 0 or bailey > 3:
+        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
+
+    if bailey == 1:
+        period = np.random.normal(0.6, 0.15)
+    elif bailey == 2:
+        period = np.random.normal(0.33, 0.1)
+    elif bailey == 3:
+        period = np.random.lognormal(0., 0.2)
+        period = 10**period
+    
+    period=np.abs(period) #on rare occassions period is negative which breaks the code
+
+    #Fetch random RRLyrae template 
+    rrlyrae = datasets.fetch_rrlyrae_templates(data_home=get_rrlyr_data_path())
+    unique_id = np.unique([i[:-1] for i in rrlyrae.ids])
+    inx = np.random.randint(len(unique_id)) #Random index to choose RR Lyrae lc
+
+    filt = 'g' #All 23 RRLyr templates have g data! 
+    lcid = unique_id[inx] + filt #rrlyrae.ids[inx]
+    t, mag = rrlyrae.get_template(lcid)
+
+    #Fit to our simulated cadence
+    model = periodic.RRLyraeTemplateModeler(filt)
+    model.fit(t, mag)
+    mag_fit = model.predict(timestamps, period = period)
+
+    #The following fit is only done to extract amplitude.
+    mag_fit_amp = model.predict(np.arange(0, period, 0.01), period = period)
+    amplitude = np.ptp(mag_fit_amp) / 2.0
+
+    #Bring lc down to 0 and add input baseline
+    mag_fit = mag_fit - np.mean(mag_fit_amp)
+    mag_fit = mag_fit+baseline
+
+    return np.array(mag_fit), amplitude, period
+
 def variable(timestamps, baseline, bailey=None):       
     """Simulates a variable star. Theory from McGill et al. (2018).
+    
+    This function is outdated! Replaced with rrlyr_variable which employs the use
+    of templates, thus more representative of true RRLyrae stars.
 
     Parameters
     ----------
@@ -232,21 +316,27 @@ def variable(timestamps, baseline, bailey=None):
     return np.array(lightcurve), amplitude, period 
 
 def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
-    """Simulates LPV - Miras  
-    Miras data from OGLE III: http://www.astrouw.edu.pl/ogle/ogle3/OIII-CVS/blg/lpv/pap.pdf
+    """
+    Simulates a Mira long-period variable (LPV) lightcurve.
 
     Parameters
     ----------
-    timestamps : array
+    timestamps : array-like
         Times at which to simulate the lightcurve.
     baseline : float
         Baseline magnitude at which to simulate the lightcurve.
-    primary_period : 
-    amplitude_pp : 
-    secondary_period :
-    amplitude_sp :
-    tertiary_period :
-    amplitude_tp :
+    primary_period : float
+        Primary period of the Mira.
+    amplitude_pp : float
+        Amplitude of the primary period.
+    secondary_period : float
+        Secondary period of the Mira.
+    amplitude_sp : float
+        Amplitude of the secondary period.
+    tertiary_period : float
+        Tertiary period of the Mira.
+    amplitude_tp : float
+        Amplitude of the tertiary period.
 
     Returns
     -------
@@ -262,9 +352,41 @@ def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp,
 
     return np.array(lc)
 
+
+#McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events.
+
 def parametersRR0():            
     """
-    McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events.
+    Returns the physical parameters for RR0 type variable stars.
+    
+    The f1, f2, and f3 parameters in the Mira lightcurve simulations represent the factors that control 
+    the amplitude of the secondary, tertiary, and higher-order periodic variations in the Mira lightcurve. 
+    These parameters allow for the modulation of the amplitudes of the secondary and tertiary periods relative 
+    to the primary period.
+
+    In the context of the Mira lightcurve simulation, these parameters determine the contribution of the secondary 
+    and tertiary periods to the overall variability of the lightcurve. By adjusting the values of f1, f2, and f3, you 
+    can control the relative strengths of these additional periodic variations.
+
+    These parameters are specific to the simulation model and are chosen based on the desired characteristics of the 
+    simulated Mira lightcurve. They are typically determined based on observational data or theoretical considerations.
+
+    Returns
+    -------
+    a1 : float
+        Parameter a1.
+    ratio12 : float
+        Ratio between parameter 1 and parameter 2.
+    ratio13 : float
+        Ratio between parameter 1 and parameter 3.
+    ratio14 : float
+        Ratio between parameter 1 and parameter 4.
+    f1 : float
+        Parameter f1.
+    f2 : float
+        Parameter f2.
+    f3 : float
+        Parameter f3.
     """
 
     a1=  0.31932222222222223
@@ -278,6 +400,27 @@ def parametersRR0():
     return a1, ratio12, ratio13, ratio14, f1, f2, f3
 
 def parametersRR1():
+    """
+    Returns the physical parameters for RR1 type variable stars.
+
+    Returns
+    -------
+    a1 : float
+        Parameter a1.
+    ratio12 : float
+        Ratio between parameter 1 and parameter 2.
+    ratio13 : float
+        Ratio between parameter 1 and parameter 3.
+    ratio14 : float
+        Ratio between parameter 1 and parameter 4.
+    f1 : float
+        Parameter f1.
+    f2 : float
+        Parameter f2.
+    f3 : float
+        Parameter f3.
+    """
+
     a1 =  0.24711999999999998
     ratio12 = 0.1740045322110716 
     ratio13 = 0.08066256609474477 
@@ -290,19 +433,21 @@ def parametersRR1():
 
 def uncertainties(time, curve, uncertain_factor):       
     """
-    optional, add random uncertainties, controlled by the uncertain_factor
+    Adds random uncertainties to a given curve.
 
     Parameters
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    curve : 
-    uncertain_factor : 
+    time : array-like
+        Times at which the curve is defined.
+    curve : array-like
+        Curve values.
+    uncertain_factor : float
+        Uncertainty factor in percentage.
 
     Returns
     -------
     realcurve : array
-        Real curve with added uncertainties 
+        Curve with added uncertainties.
     """
 
     N = len(time)
@@ -362,25 +507,68 @@ def setup_parameters(timestamps, bailey=None):
 
 def random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
     """
-    Setup of random physical parameters
-    
+    Sets up random physical parameters for simulating Mira lightcurves.
+
     Parameters
     ----------
-    primary_period : 
-    amplitude_pp : 
-    secondary_period :
-    amplitude_sp :
-    tertiary_period :
-    amplitude_tp :
+    primary_period : array-like
+        Array of primary periods.
+    amplitude_pp : array-like
+        Array of amplitudes for the primary periods.
+    secondary_period : array-like
+        Array of secondary periods.
+    amplitude_sp : array-like
+        Array of amplitudes for the secondary periods.
+    tertiary_period : array-like
+        Array of tertiary periods.
+    amplitude_tp : array-like
+        Array of amplitudes for the tertiary periods.
 
     Returns
     -------
-    mag : array
-        Simulated magnitudes given the timestamps.
+    amplitudes : list
+        List of amplitudes for the simulated lightcurve.
+    periods : list
+        List of periods for the simulated lightcurve.
     """
+
     len_miras = len(primary_period)
     rand_idx = np.random.randint(0,len_miras,1)
     amplitudes = [amplitude_pp[rand_idx], amplitude_sp[rand_idx], amplitude_tp[rand_idx]]
     periods = [primary_period[rand_idx], secondary_period[rand_idx], tertiary_period[rand_idx]]
 
     return amplitudes, periods
+
+def get_rrlyr_data_path(data_home=None):
+    """
+    This function retrieves the path to the data directory of the MicroLIA package.
+    If the `data_home` parameter is None, it attempts to locate the MicroLIA package and sets the data_home
+    to the default location inside the package. Otherwise, it uses the provided `data_home` path.
+    
+    The `data_home` path is expanded to the user's home directory if '~' is present.
+    If the directory does not already exist, it is created.
+
+    Args:
+        data_home (str or None): Path to the data directory. If None, the default location inside the MicroLIA package is used.
+
+    Returns:
+        data_home (str): Path to the data directory.
+    """
+
+    if data_home is None:
+        try:
+            spec = importlib.util.find_spec("MicroLIA")
+            if spec is None:
+                raise ValueError("MicroLIA package not found. Please run 'pip install MicroLIA'")
+            microlia_location = spec.origin
+            microlia_dir = os.path.dirname(microlia_location)
+            data_home = os.path.join(microlia_dir, "data")
+        except ImportError:
+            raise ValueError("MicroLIA package not found. Please run 'pip install MicroLIA'")
+
+    data_home = os.path.expanduser(data_home)
+    if not os.path.exists(data_home):
+        os.makedirs(data_home)
+
+    return data_home
+
