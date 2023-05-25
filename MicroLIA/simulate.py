@@ -224,8 +224,9 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
         The type of variable to simulate. A bailey
         value of 1 simulaes RR Lyrae type ab, a value
         of 2 simulates RR Lyrae type c, and a value of 
-        3 simulates a Cepheid variable. If not provided
-        it defaults to a random choice between the three. 
+        3 simulates a Cepheid variable period, but note the amplitude
+        is still derived from the RRLyrae template. If not provided
+        it defaults to a random choice between the 1 and 2. 
 
     Returns
     -------
@@ -237,10 +238,10 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
         Period of the signal in days.
     """
 
-    if bailey is None:
-        bailey = np.random.randint(1,4)
-    if bailey < 0 or bailey > 3:
-        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
+    if bailey is None: 
+        bailey = np.random.randint(1,3) #Removing Bailey=3 option
+    if bailey < 0 or bailey > 2:
+        raise RuntimeError("Bailey out of range, must be between 1 and 2.")
 
     if bailey == 1:
         period = np.random.normal(0.6, 0.15)
@@ -539,36 +540,21 @@ def random_mira_parameters(primary_period, amplitude_pp, secondary_period, ampli
 
     return amplitudes, periods
 
-def get_rrlyr_data_path(data_home=None):
+def get_rrlyr_data_path():
     """
-    This function retrieves the path to the data directory of the MicroLIA package.
-    If the `data_home` parameter is None, it attempts to locate the MicroLIA package and sets the data_home
-    to the default location inside the package. Otherwise, it uses the provided `data_home` path.
-    
-    The `data_home` path is expanded to the user's home directory if '~' is present.
-    If the directory does not already exist, it is created.
+    Retrieves the path to the RRLyrae template data directory within the MicroLIA package.
 
     Args:
-        data_home (str or None): Path to the data directory. If None, the default location inside the MicroLIA package is used.
+        None
 
     Returns:
-        data_home (str): Path to the data directory.
+        data_path (str): Path to the data directory.
     """
 
-    if data_home is None:
-        try:
-            spec = importlib.util.find_spec("MicroLIA")
-            if spec is None:
-                raise ValueError("MicroLIA package not found. Please run 'pip install MicroLIA'")
-            microlia_location = spec.origin
-            microlia_dir = os.path.dirname(microlia_location)
-            data_home = os.path.join(microlia_dir, "data")
-        except ImportError:
-            raise ValueError("MicroLIA package not found. Please run 'pip install MicroLIA'")
+    resource_package = __name__
+    resource_path = '/'.join(('data/Sesar2010', 'RRLyr_ugriz_templates.tar.gz'))
+    data_path = pkg_resources.resource_filename(resource_package, resource_path)
+    
+    return data_path
 
-    data_home = os.path.expanduser(data_home)
-    if not os.path.exists(data_home):
-        os.makedirs(data_home)
-
-    return data_home
-
+   
