@@ -30,7 +30,7 @@ setup(
     include_package_data=True,
     test_suite="nose.collector",
     package_data={
-    '': ['Miras_vo.xml'],
-},
-
+        '': ['Miras_vo.xml'],
+        'data': ['Sesar2010/*']
+    },
 )
