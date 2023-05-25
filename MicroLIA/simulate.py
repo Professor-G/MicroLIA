@@ -552,7 +552,7 @@ def get_rrlyr_data_path():
     """
 
     resource_package = __name__
-    resource_path = '/'.join(('data/Sesar2010', 'RRLyr_ugriz_templates.tar.gz'))
+    resource_path = 'data/Sesar2010'
     data_path = pkg_resources.resource_filename(resource_package, resource_path)
     
     return data_path
