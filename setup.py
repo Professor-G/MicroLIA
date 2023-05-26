@@ -9,7 +9,7 @@ from setuptools import setup, find_packages, Extension
 
 setup(
     name="MicroLIA",
-    version="2.2.2",
+    version="2.2.1",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
@@ -30,6 +30,6 @@ setup(
     include_package_data=True,
     test_suite="nose.collector",
     package_data={
-        'data': ['Miras_vo.xml', 'Sesar2010/*']
+        'MicroLIA': ['data/Miras_vo.xml', 'data/Sesar2010/*']
     },
 )
