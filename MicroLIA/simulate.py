@@ -226,7 +226,7 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
         of 2 simulates RR Lyrae type c, and a value of 
         3 simulates a Cepheid variable period, but note the amplitude
         is still derived from the RRLyrae template. If not provided
-        it defaults to a random choice between the 1 and 2. 
+        it defaults to a random choice between 1 and 2. 
 
     Returns
     -------
@@ -240,8 +240,8 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
 
     if bailey is None: 
         bailey = np.random.randint(1,3) #Removing Bailey=3 option
-    if bailey < 0 or bailey > 2:
-        raise RuntimeError("Bailey out of range, must be between 1 and 2.")
+    if bailey < 0 or bailey > 3:
+        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
 
     if bailey == 1:
         period = np.random.normal(0.6, 0.15)
@@ -552,7 +552,7 @@ def get_rrlyr_data_path():
     """
 
     resource_package = __name__
-    resource_path = 'data/Sesar2010'
+    resource_path = 'data'
     data_path = pkg_resources.resource_filename(resource_package, resource_path)
     
     return data_path
