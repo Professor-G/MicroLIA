@@ -348,48 +348,43 @@ class Classifier:
 
         return
 
-    def predict(self, data):
+    def predict(self, time, mag, magerr, convert=True, apply_weights=True, zp=24):
         """
         Predics the class label of new, unseen data.
 
         Args:
-            data (ndarray): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features.
+            time (ndarray): Array of observation timestamps.
+            mag (ndarray): Array of observed magnitudes.
+            magerr (ndarray): Array of corresponding magnitude errors.
+            convert (bool): If False the features are computed with the input magnitudes.
+                Defaults to True to convert and compute in flux. 
+            apply_weights (bool): Whether to apply the photometric errors when calculating the features. 
+                Defaults to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
+            zp (float): Zeropoint of the instrument, used to convert from magnitude
+                to flux. Defaults to 24.
 
         Returns:
-            2D array containing the classes and the corresponding probability prediction
+            Array containing the classes and the corresponding probability predictions.
         """
 
-        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+        if len(mag) < 30:
+            warn('The number of data points is low -- results may be unstable!')
+
+        #classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
         classes = self.model.classes_
-        output = []
-
+        stat_array=[]
+        
         if self.imputer is None and self.feats_to_use is None:
-            proba = self.model.predict_proba(data)
-            for i in range(len(proba)):
-                index = np.argmax(proba[i])
-                output.append([classes[index], proba[i][index]])
-            return np.array(output)
+            stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp))
+            pred = self.model.predict_proba(stat_array)
+            return np.c_[classes, pred[0]]
+        
+        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp, feats_to_use=self.feats_to_use))        
+        stat_array = self.imputer.transform(stat_array) if self.imputer is not None else stat_array
 
-        if self.feats_to_use is not None:
-            data = data[self.feats_to_use].reshape(1,-1) if len(data.shape) == 1 else data[:,self.feats_to_use]
-            data = self.imputer.transform(data) if self.imputer is not None else data
-            proba = self.model.predict_proba(data)
+        pred = self.model.predict_proba(stat_array)
 
-            for i in range(len(proba)):
-                index = np.argmax(proba[i])
-                output.append([classes[index], proba[i][index]])
-
-            return np.array(output)
-
-        data = self.imputer.transform(data) if self.imputer is not None else data
-        proba = self.model.predict_proba(data)
-
-        for i in range(len(proba)):
-            index = np.argmax(proba[i])
-            output.append([classes[index], proba[i][index]])
-            
-        return np.array(output)
+        return np.c_[classes, pred[0]]
 
     def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, 
         legend_loc='upper center', title='Feature Parameter Space', savefig=False):
@@ -1094,7 +1089,7 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
         predicted_labels_list: 1D array containing the predicted class labels.
         actual_targets: 1D array containing the actual class labels.
         classes (list): A list containing the label of the two training bags. This
-            will be used to set the axis. Ex) classes = ['DIFFUSE', 'OTHER']
+            will be used to set the axis. Ex) classes = ['ML', 'OTHER']
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
@@ -1127,7 +1122,7 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     Args:
         conf_matrix: The confusion matrix generated using the generate_matrix() function.
         classes (list): A list containing the label of the two training bags. This
-            will be used to set the axis. Defaults to a list containing 'DIFFUSE' & 'OTHER'. 
+            will be used to set the axis. Defaults to a list containing 'ML' & 'OTHER'. 
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 

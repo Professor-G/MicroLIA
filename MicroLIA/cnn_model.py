@@ -1163,7 +1163,7 @@ class Classifier:
 
         return
 
-    def predict(self, data, target='DIFFUSE', return_proba=False, cv_model=0):
+    def predict(self, data, target='ML', return_proba=False, cv_model=0):
         """
         Returns the class prediction. The input can either be a single 2D array 
         or a 3D array if there are multiple samples.
@@ -1388,17 +1388,17 @@ class Classifier:
             positive_class = np.reshape(self.positive_class, (self.positive_class.shape[0], self.positive_class.shape[1], self.positive_class.shape[2], 1))
             negative_class = np.reshape(self.negative_class, (self.negative_class.shape[0], self.negative_class.shape[1], self.negative_class.shape[2], 1))
             data = np.r_[positive_class, negative_class]
-            data_y = np.r_[['DIFFUSE Train']*len(positive_class),['OTHER Train']*len(negative_class)]
+            data_y = np.r_[['ML Train']*len(positive_class),['OTHER Train']*len(negative_class)]
             if self.val_positive is not None:
                 val_positive = np.reshape(self.val_positive, (self.val_positive.shape[0], self.val_positive.shape[1], self.val_positive.shape[2], 1))
             if self.val_negative is not None:
                 val_negative = np.reshape(self.val_negative, (self.val_negative.shape[0], self.val_negative.shape[1], self.val_negative.shape[2], 1))
             if self.val_positive is not None and self.val_negative is not None:
                 val_data = np.r_[val_positive, val_negative]
-                val_data_y = np.r_[['DIFFUSE Val']*len(val_positive),['OTHER Val']*len(val_negative)]
+                val_data_y = np.r_[['ML Val']*len(val_positive),['OTHER Val']*len(val_negative)]
             elif self.val_positive is not None and self.val_negative is None:
                 val_data = val_positive
-                val_data_y = np.r_[['DIFFUSE Val']*len(val_data)]
+                val_data_y = np.r_[['ML Val']*len(val_data)]
             elif self.val_positive is None and self.val_negative is not None:
                 val_data = val_negative
                 val_data_y = np.r_[['OTHER Val']*len(val_data)]
@@ -1406,13 +1406,13 @@ class Classifier:
                 val_data = val_data_y = None 
         else:
             data = np.r_[self.positive_class, self.negative_class]
-            data_y = np.r_[['DIFFUSE Train']*len(self.positive_class),['OTHER Train']*len(self.negative_class)]
+            data_y = np.r_[['ML Train']*len(self.positive_class),['OTHER Train']*len(self.negative_class)]
             if self.val_positive is not None and self.val_negative is not None:
                 val_data = np.r_[self.val_positive, self.val_negative]
-                val_data_y = np.r_[['DIFFUSE Val']*len(self.val_positive),['OTHER Val']*len(self.val_negative)]
+                val_data_y = np.r_[['ML Val']*len(self.val_positive),['OTHER Val']*len(self.val_negative)]
             elif self.val_positive is not None and self.val_negative is None:
                 val_data = self.val_positive
-                val_data_y = np.r_[['DIFFUSE Val']*len(val_data)]
+                val_data_y = np.r_[['ML Val']*len(val_data)]
             elif self.val_positive is None and self.val_negative is not None:
                 val_data = self.val_negative
                 val_data_y = np.r_[['OTHER Val']*len(val_data)]
