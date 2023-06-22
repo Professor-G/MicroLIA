@@ -122,21 +122,10 @@ def concat_channels(channel1, channel2, channel3=None):
 
     return np.concatenate(colorized, axis=-1)
 
-
 def normalize_pixels(channels, min_pixel, max_pixel, img_num_channels):
     """
     This function will apply min-max normalization. It returns a 4-d array.
     
-    Note:
-        min_pixel must be a single input, but the max_pixel can either be 
-        an int/float or a list. If it is an int/float then
-
-        Non-subtracted images in the NDWFS Bootes survey data (Bw):
-        NDWFS min 0.01% : 638.186
-        NDWFS max 99.99% : 7350.639
-        Max intensity of expected blobs : ~3000
-    
-
     Args:
         channel (array): 2D array for one image, 3D array for multiple images.
         min_pixel (int, optional): The minimum pixel count, defaults to 0. 
@@ -208,7 +197,7 @@ def process_class(channel, label=None, img_num_channels=1, normalize=True, min_p
     Args:
         channel (array): 2D array for one image, 3D array for multiple images.
         img_num_channels (int): The number of filters used. Defaults to 1.
-        label (int, optional): Class label, 0 for blob, 1 for other. Defaults to None.
+        label (int, optional): Class label. Defaults to None.
         normalize (bool, optional): True will apply min-max normalization.
         min_pixel (int, optional): The minimum pixel count, defaults to 638. 
             Pixels with counts below this threshold will be set to this limit.
@@ -220,6 +209,8 @@ def process_class(channel, label=None, img_num_channels=1, normalize=True, min_p
     """
 
     if normalize:
+        if len(channel) >= 1000:
+            print('Normalizing images...') #For when predictions are being made
         data = normalize_pixels(channel, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
     else:
         images = copy.deepcopy(channel)
@@ -255,7 +246,7 @@ def process_class(channel, label=None, img_num_channels=1, normalize=True, min_p
     
     return data, label
 
-def create_training_set(blob_data, other_data, img_num_channels=1, normalize=True, min_pixel=638, max_pixel=3000):
+def create_training_set(positive_data, negative_data, img_num_channels=1, normalize=True, min_pixel=638, max_pixel=3000):
     """
     Combines image data of known class to create a training set.
     This is used for training the machine learning models. The 
@@ -277,8 +268,8 @@ def create_training_set(blob_data, other_data, img_num_channels=1, normalize=Tru
         >>> training_labels = np.r_[class1_label class2_label, class3_label]
 
     Args:
-        blob_data (array): 3D array containing more than one image of positive objects.
-        other_data (array): 3D array containing more than one image of non-positive objects.
+        positive_data (array): 3D array containing more than one image of positive objects.
+        negative_data (array): 3D array containing more than one image of negative objects.
         img_num_channels (int): The number of filters used. Defaults to 1.
         normalize (bool, optional): True will normalize the data using the input min and max pixels
         min_pixel (int, optional): The minimum pixel count, defaults to 638. 
@@ -290,8 +281,8 @@ def create_training_set(blob_data, other_data, img_num_channels=1, normalize=Tru
         Reshaped data and label arrays.
     """
 
-    class1_data, class1_label = process_class(blob_data, label=1, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
-    class2_data, class2_label = process_class(other_data, label=0, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
+    class1_data, class1_label = process_class(positive_data, label=1, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
+    class2_data, class2_label = process_class(negative_data, label=0, normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, img_num_channels=img_num_channels)
     
     training_data = np.r_[class1_data, class2_data]
     training_labels = np.r_[class1_label, class2_label]

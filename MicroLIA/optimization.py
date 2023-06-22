@@ -5,8 +5,9 @@ Created on Sat Feb  25 10:39:23 2023
 
 @author: daniel
 """
-import os, sys, copy, gc, selectors, termios
-os.environ['PYTHONHASHSEED']= '0' #, os.environ["TF_DETERMINISTIC_OPS"] =1
+import os, sys, copy
+import gc, selectors, termios
+os.environ['PYTHONHASHSEED'], os.environ["TF_DETERMINISTIC_OPS"] = '0', '1'
 import tensorflow as tf
 
 import numpy as np
@@ -16,10 +17,12 @@ from pandas import DataFrame
 from warnings import filterwarnings
 filterwarnings("ignore", category=FutureWarning)
 from collections import Counter 
+from pathlib import Path
+import joblib   
 
 import sklearn.neighbors._base
 sys.modules['sklearn.neighbors.base'] = sklearn.neighbors._base
-from sklearn.impute import KNNImputer
+from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
@@ -30,6 +33,7 @@ from skopt.plots import plot_convergence, plot_objective
 from skopt.space import Real, Integer, Categorical 
 from tensorflow.keras.backend import clear_session 
 from tensorflow.keras.callbacks import EarlyStopping, Callback
+from tensorflow.keras.models import save_model
 
 import optuna
 from BorutaShap import BorutaShap
@@ -98,9 +102,20 @@ class objective_cnn(object):
         val_negative (ndarray, optional): Negative class data to be used for validation. Defaults to None.
         test_positive (ndarray, optional): Positive class data to be used for post-trial testing. Defaults to None.
         test_negative (ndarray, optional): Negative class data to be used for post-trial testing. Defaults to None.
+        test_acc_threshold (float, optional): If input, models that yield test accuracies lower than the threshold will
+            be rejected by the optimizer. The accuracy of both the test_positive and test_negative is asessed, if input.
+            This is used to reject models that have over or under fit the training data. Defaults to None.
+        post_metric (bool): If True, the test_positive and/or test_negative inputs will be included in the final optimization score.
+            This will be the averaged out metric. Defaults to True. Can be set to False to only apply the test_acc_threshold.
         train_epochs (int): Number of epochs to the train the CNN to during the optimization trials. Defaults to 25.
         metric (str): Assesment metric to use when both pruning and scoring the hyperparameter optimization trial.
             Defaults to 'loss'. Options include: 'loss' 'binary_accuracy', 'f1_score' 'all' or the validation equivalents (e.g. 'val_loss').
+        metric2 (str, optional): Additional metric to be used solely for early-stopping purposes. If input, the trial will stop if either
+            metric or metric2 stop improving after the same patience number of epochs, but only the value of metric is used to assess
+            the performance of the model after each trial. Defaults to None.
+        metric3 (str, optional): Additional metric to be used solely for early-stopping purposes. If input, the trial will stop if either
+            metric or metric3 stop improving after the same patience number of epochs, but only the value of metric is used to assess
+            the performance of the model after each trial. Defaults to None.
         patience (int): Number of epochs without improvement before the optimization trial is terminated. Defaults to 0, which
             disables this feature.
         average (bool): If False, the designated metric will be calculated according to its value at the end of the train_epochs. 
@@ -123,9 +138,13 @@ class objective_cnn(object):
             if opt_aug=True. Defaults to 10 pixels.
         mask_size (int, optional): If enabled, this will set the pixel length of a square cutout, to be randomly placed
             somewhere in the augmented image. This cutout will replace the image values with 0, therefore serving as a 
-            regularizer. Only applicable if opt_aug=True. Defaults to None.
-        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. If 
-            this is set to a value greater than one, overlap may occur. 
+            regularizer. Only applicable if opt_aug=True. This value can either be an integer to hard-set the mask size everytime,
+            or can be a tuple representing the lower and upper bounds, respectively, in which case the mask size will be optimized. 
+            Defaults to None.
+        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. Note that if 
+            this is set to a value greater than one, overlap may occur. This value can either be an integer to hard-set the number
+            of masks everytime, or it can be a tuple representing the lower and upper bounds, respectively, in which case the number
+            of masks will be optimized. Defaults to None.
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
         opt_cv (int): Cross-validations to perform when assessing the performance at each
@@ -158,18 +177,29 @@ class objective_cnn(object):
         zoom_range (tuple):
         batch_other (int): Can be set to zero.
         blending_func (str):
-        skew_angle
+        skew_angle (float):
+        rotation (bool):
+        horizontal (bool):
+        vertical (bool): 
+        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
+            just the best one. Defaults to False.
+        save_studies (bool): Whehter to save the study object created by Optuna. If set to True, this study object will be
+            saved and overwritten after each trial. Defaults to False.
+        path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
+            in the home directory.
 
     Returns:
         The performance metric.
     """
 
     def __init__(self, positive_class, negative_class, val_positive=None, val_negative=None, img_num_channels=1, clf='alexnet', 
-        normalize=True, min_pixel=0, max_pixel=1000, patience=5, metric='loss', average=True, 
-        test_positive=None, test_negative=None, batch_size_min=16, batch_size_max=64, opt_model=True, train_epochs=25, opt_cv=None,
-        opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
-        mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
-        skew_angle=0, zoom_range=(0.9,1.1), limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0):
+        normalize=True, min_pixel=0, max_pixel=1000, patience=5, metric='loss', metric2=None, metric3=None, average=True, 
+        test_positive=None, test_negative=None, post_metric=True, test_acc_threshold=None, batch_size_min=16, batch_size_max=64, 
+        opt_model=True, train_epochs=25, opt_cv=None, opt_aug=False, batch_min=2, batch_max=25, batch_other=1, 
+        balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, rotation=False, horizontal=False,
+        vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
+        skew_angle=0, zoom_range=(0.9,1.1), limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0,
+        save_models=False, save_studies=False, path=None):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -181,9 +211,11 @@ class objective_cnn(object):
         self.val_negative = val_negative
         self.test_positive = test_positive
         self.test_negative = test_negative
+        self.post_metric = post_metric
+        self.test_acc_threshold = test_acc_threshold
+
         self.batch_size_min = batch_size_min
         self.batch_size_max = batch_size_max
-        
         self.train_epochs = train_epochs
         self.patience = patience 
         self.opt_model = opt_model  
@@ -197,6 +229,8 @@ class objective_cnn(object):
         self.opt_max_min_pix = opt_max_min_pix
         self.opt_max_max_pix = opt_max_max_pix
         self.metric = metric 
+        self.metric2 = metric2
+        self.metric3 = metric3
         self.average = average
         self.shift = shift 
         self.opt_cv = opt_cv
@@ -217,6 +251,15 @@ class objective_cnn(object):
         self.blend_other = blend_other
         self.zoom_range = zoom_range
         self.skew_angle = skew_angle
+        self.rotation = rotation
+        self.horizontal = horizontal
+        self.vertical = vertical
+
+        self.save_models = save_models
+        self.save_studies = save_studies
+        self.path = path 
+        self.path = str(Path.home()) if self.path is None else self.path
+        self.path += '/' if self.path[-1] != '/' else ''
 
         if 'all' not in self.metric and 'loss' not in self.metric and 'f1_score' not in self.metric and 'binary_accuracy' not in self.metric:
             raise ValueError("Invalid metric input, options are: 'loss', 'binary_accuracy', 'f1_score', or 'all', and the validation equivalents (add val_ at the beginning).")
@@ -233,8 +276,21 @@ class objective_cnn(object):
             if self.opt_max_min_pix is None:
                 raise ValueError('To optimize min/max normalization pixel value, both opt_min_pix and opt_max_pix must be input')
 
+        if not isinstance(self.mask_size, int) and not isinstance(self.mask_size, tuple) and self.mask_size is not None:
+            raise ValueError('The mask_size parameter must either be an integer, tuple, or None!')
+
+        if not isinstance(self.num_masks, int) and not isinstance(self.num_masks, tuple) and self.num_masks is not None:
+            raise ValueError('The num_masks parameter must either be an integerl, tuple, or None!')
+
         if self.balance and self.smote_sampling > 0:
             print('WARNING: balance=True but SMOTE sampling will not be applied if the classes are balanced.')
+
+        if self.test_acc_threshold is not None:
+            if self.test_acc_threshold <= 0 or self.test_acc_threshold > 1:
+                raise ValueError('The test_acc_threshold parameter must be greater than 0 and less than or equal to 1!')
+            if self.test_positive is None and self.test_negative is None:
+                print('WARNING: The test_acc_threshold has been configured but no test data has been input! Setting test_acc_threshold=None...')
+                self.test_acc_threshold = None 
 
     def __call__(self, trial):
 
@@ -249,15 +305,16 @@ class objective_cnn(object):
                 raise ValueError('Only three filters are supported!')
 
         if self.opt_aug:
-            rotation = horizontal = vertical = True 
             num_aug = trial.suggest_int('num_aug', self.batch_min, self.batch_max, step=1)
             blend_multiplier = trial.suggest_float('blend_multiplier', 1.0, self.blend_max, step=0.05) if self.blend_max >= 1.1 else 0
             skew_angle = trial.suggest_int('skew_angle', 0, self.skew_angle, step=1) if self.skew_angle > 0 else 0
             image_size = trial.suggest_int('image_size', self.image_size_min, self.image_size_max, step=1)
+            mask_size = trial.suggest_int('mask_size', self.mask_size[0], self.mask_size[1], step=1) if isinstance(self.mask_size, tuple) else self.mask_size
+            num_masks = trial.suggest_int('num_masks', self.num_masks[0], self.num_masks[1], step=1) if isinstance(self.num_masks, tuple) else self.num_masks
 
             augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=num_aug, 
-                width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=blend_multiplier, 
+                width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                image_size=image_size, mask_size=mask_size, num_masks=num_masks, blend_multiplier=blend_multiplier, 
                 blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
             #Concat channels since augmentation function returns an output for each filter, e.g. 3 outputs for RGB
@@ -283,8 +340,8 @@ class objective_cnn(object):
                 channel1, channel2, channel3 = copy.deepcopy(self.negative_class[:,:,:,0]), copy.deepcopy(self.negative_class[:,:,:,1]), copy.deepcopy(self.negative_class[:,:,:,2])
             
             augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
-                width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, 
+                width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                image_size=image_size, mask_size=mask_size, num_masks=num_masks, blend_multiplier=self.blend_other, 
                 blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
             #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
@@ -378,6 +435,15 @@ class objective_cnn(object):
             else:
                 callbacks = [EarlyStopping(monitor=self.metric, mode=mode, patience=self.patience),] #TFKerasPruningCallback(trial, monitor=self.metric),
             
+            if self.metric2 is not None:
+                mode2 = 'min' if 'loss' in self.metric2 else 'max'
+                callbacks.append(EarlyStopping(monitor=self.metric2, mode=mode2, patience=self.patience))
+                print('Setting additional early stopping criteria: {}'.format(self.metric2))
+            if self.metric3 is not None:
+                mode3 = 'min' if 'loss' in self.metric3 else 'max'
+                callbacks.append(EarlyStopping(monitor=self.metric3, mode=mode3, patience=self.patience))
+                print('Setting additional early stopping criteria: {}'.format(self.metric3))
+                
             if self.monitor1 is not None:
                 if callbacks is not None:
                     callbacks.append(Monitor_Tracker(monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, monitor2_thresh=self.monitor2_thresh))
@@ -424,7 +490,7 @@ class objective_cnn(object):
             """CNN Hyperparameter Search Space"""
 
             ### Activation and Loss Functions ### 
-            activation_conv = trial.suggest_categorical('activation_conv', ['relu',  'sigmoid', 'tanh', 'elu', 'selu'])            
+            activation_conv = trial.suggest_categorical('activation_conv', ['relu', 'sigmoid', 'tanh', 'elu', 'selu'])            
             activation_dense = trial.suggest_categorical('activation_dense', ['relu', 'sigmoid', 'tanh', 'elu', 'selu'])
             loss = trial.suggest_categorical('loss', ['binary_crossentropy', 'hinge', 'squared_hinge', 'kld', 'logcosh'])#, 'focal_loss', 'dice_loss', 'jaccard_loss'])
 
@@ -437,7 +503,7 @@ class objective_cnn(object):
                 if self.opt_cv is not None:
                     print(); print('***********  CV - 1 ***********'); print()
                 if self.opt_aug:
-                    print(); print('======= Image Parameters ======'); print(); print('Num Augmentations :', num_aug); print('Image Size : ', image_size); print('Max Pixel(s) :', max_pix)
+                    print(); print('======= Image Parameters ======'); print(); print('Num Augmentations :', num_aug); print('Image Size : ', image_size); print('Max Pixel(s) :', max_pix); print('Num Masks :', num_masks); print('Mask Size :', mask_size); print('Blend Multiplier :', blend_multiplier); print('Skew Angle :', skew_angle)
 
             if self.clf == 'alexnet':
 
@@ -673,11 +739,8 @@ class objective_cnn(object):
             if self.opt_cv is not None:
                 print(); print('***********  CV - 1 ***********'); print()
             if self.opt_aug:
-                print(); print('======= Image Parameters ======'); print()
-                print('Num Augmentations : ', num_aug)
-                print('Image Size : ', image_size)
-                print('Max Pixel(s) : ', max_pix)
-
+                print(); print('======= Image Parameters ======'); print(); print('Num Augmentations :', num_aug); print('Image Size : ', image_size); print('Max Pixel(s) :', max_pix); print('Num Masks :', num_masks); print('Mask Size :', mask_size); print('Blend Multiplier :', blend_multiplier); print('Skew Angle :', skew_angle)
+     
             if self.clf == 'alexnet':
                 model, history = cnn_model.AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
                     normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
@@ -699,14 +762,14 @@ class objective_cnn(object):
                     epochs=self.train_epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
                     beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, smote_sampling=self.smote_sampling, early_stop_callback=callbacks, checkpoint=False, verbose=self.verbose)
 
-        #If the patience is reached -- return should be a value that contains information regarding the num of completed epochs, otherwise if return 0 every time then the optimizer may get stuck#
+        #If the patience is reached -- return should be a value that contains information regarding the num of completed epochs, otherwise if return 0 every time then the optimizer will get stuck#
         if len(history.history['loss']) != self.train_epochs:
             print(); print('Training patience was reached...'); print()
             return (len(history.history['loss']) * 0.001) - 999.0
 
         #If the output is nan
         if np.isfinite(history.history['loss'][-1]):
-            models, histories = [], []
+            models, histories = [], [] #Will be used to append additional models, it opt_cv is enabled
             models.append(model), histories.append(history)
         else:
             print(); print('Training failed due to numerical instability, returning nan...')
@@ -714,16 +777,16 @@ class objective_cnn(object):
 
         ##### Cross-Validation Routine - implementation in which the validation data is inserted into the training data with the replacement serving as the new validation#####
         if self.opt_cv is not None:
-            if self.val_positive is None and self.val_negative is not None:
-                raise ValueError('CNN cross-validation is currently supported only if validation data is input.')
+            if self.val_positive is None and self.val_negative is None:
+                raise ValueError('CNN cross-validation is only supported if validation data is input.')
             if self.val_positive is not None:
                 if len(self.positive_class) / len(self.val_positive) < self.opt_cv-1:
-                    raise ValueError('Cannot evenly partition the training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
+                    raise ValueError('Cannot evenly partition the positive training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
             if self.val_negative is not None:
                 if len(self.negative_class) / len(self.val_negative) < self.opt_cv-1:
-                    raise ValueError('Cannot evenly partition the training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
+                    raise ValueError('Cannot evenly partition the negative training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
             
-            #The first model already ran therefore sutbract 1      
+            #The first model (therefore the first "fold") already ran, therefore sutbract 1      
             for k in range(self.opt_cv-1):          
                 #Make deep copies to avoid overwriting arrays
                 class_1, class_2 = copy.deepcopy(self.positive_class), copy.deepcopy(self.negative_class)
@@ -731,13 +794,13 @@ class objective_cnn(object):
 
                 #Sort the new data samples, no random shuffling, just a linear sequence
                 if val_class_1 is not None:
-                    val_hold_1 = copy.deepcopy(class_1[k*len(val_class_1):len(val_class_1)*(k+1)]) #The new validation data
-                    class_1[k*len(val_class_1):len(val_class_1)*(k+1)] = copy.deepcopy(val_class_1)
-                    val_class_1 = val_hold_1 #The new validation data
+                    val_hold_1 = copy.deepcopy(class_1[k*len(val_class_1):len(val_class_1)*(k+1)]) #The new positive validation data
+                    class_1[k*len(val_class_1):len(val_class_1)*(k+1)] = copy.deepcopy(val_class_1) #The new class_1, copying to avoid linkage between arrays
+                    val_class_1 = val_hold_1 
                 if val_class_2 is not None:
                     val_hold_2 = copy.deepcopy(class_2[k*len(val_class_2):len(val_class_2)*(k+1)]) #The new validation data
-                    class_2[k*len(val_class_2):len(val_class_2)*(k+1)] = copy.deepcopy(val_class_2)
-                    val_class_2 = val_hold_2 #The new validation data
+                    class_2[k*len(val_class_2):len(val_class_2)*(k+1)] = copy.deepcopy(val_class_2) #The new class_2, copying to avoid linkage between arrays
+                    val_class_2 = val_hold_2 
 
                 if self.opt_aug:
                     if self.img_num_channels == 1:
@@ -748,8 +811,8 @@ class objective_cnn(object):
                         channel1, channel2, channel3 = copy.deepcopy(class_1[:,:,:,0]), copy.deepcopy(class_1[:,:,:,1]), copy.deepcopy(class_1[:,:,:,2])
 
                     augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=num_aug, 
-                        width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                        image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=blend_multiplier, 
+                        width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                        image_size=image_size, mask_size=mask_size, num_masks=num_masks, blend_multiplier=blend_multiplier, 
                         blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
                     if self.img_num_channels > 1:
@@ -773,8 +836,8 @@ class objective_cnn(object):
                         channel1, channel2, channel3 = copy.deepcopy(class_2[:,:,:,0]), copy.deepcopy(class_2[:,:,:,1]), copy.deepcopy(class_2[:,:,:,2])
                     
                     augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
-                        width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                        image_size=image_size, mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, 
+                        width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                        image_size=image_size, mask_size=mask_size, num_masks=num_masks, blend_multiplier=self.blend_other, 
                         blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
                     #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
@@ -947,7 +1010,7 @@ class objective_cnn(object):
         if self.test_positive is not None or self.test_negative is not None:
             if self.test_positive is not None and self.test_negative is not None:
                 positive_test_crop, negative_test_crop = resize(self.test_positive, size=image_size), resize(self.test_negative, size=image_size)
-                X_test, Y_test = create_training_set(positive_test_crop, negative_test_crop, normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, img_num_channels=self.img_num_channels)
+                X_test, Y_test = data_processing.create_training_set(positive_test_crop, negative_test_crop, normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, img_num_channels=self.img_num_channels)
             elif self.test_positive is not None:
                 positive_test_crop = resize(self.test_positive, size=image_size)
                 positive_class_data, positive_class_label = data_processing.process_class(positive_test_crop, label=1, normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, img_num_channels=self.img_num_channels)
@@ -959,12 +1022,20 @@ class objective_cnn(object):
                     X_test, Y_test = positive_class_data, positive_class_label
             else:
                 if self.test_negative is not None:
+                    negative_test_crop = resize(self.test_negative, size=image_size)
                     X_test, Y_test = data_processing.process_class(negative_test_crop, label=0, normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, img_num_channels=self.img_num_channels)
              
             ###Loop through all the models to calculate the performance of each###
             test = []
             for _model_ in models:
+
                 test_loss, test_acc, test_f1_score = _model_.evaluate(X_test, Y_test, batch_size=len(X_test))
+
+                if self.test_acc_threshold is not None:
+                    if test_acc < self.test_acc_threshold:
+                        print(); print('The test data accuracy falls below the test_acc_threshold...'); print()
+                        return (len(history.history['loss']) * 0.001) - 999.0 + test_acc 
+
                 if 'loss' in self.metric:
                     test_metric = 1 - test_loss
                 elif 'acc' in self.metric:
@@ -976,10 +1047,14 @@ class objective_cnn(object):
                 test.append(test_metric)
 
             test_metric = np.mean(test)
-            if self.verbose == 1:
+            if self.verbose == 1 and self.post_metric:
                 print(); print('Post-Trial Metric: '+str(test_metric))
         else:
             test_metric = None
+
+        #The test_metric is calculated even if post_metric=False, for simplicity... Turning off here...
+        if self.post_metric is False:
+            test_metric = None 
 
         ### Calculate the final optimization metric ###
         metrics = ['loss', 'binary_accuracy', 'f1_score']
@@ -1026,8 +1101,15 @@ class objective_cnn(object):
                 final_score = 1 - final_score
             if test_metric is not None:
                 final_score = (final_score + test_metric) / 2.0
-        
+
+        #REMINDER TO MOVE INCLUDE THESE BEFORE EVERY RETURN! IF TRIAL STOPS EARLY IT DOESN'T REACH THE END
+        if self.save_models:
+            save_model(model, path+'model_trial_'+str(trial.number))
+        if self.save_studies:
+            joblib.dump(trial.study, path+'study')
+
         return final_score
+        
 
 class objective_xgb(object):
     """
@@ -1037,7 +1119,7 @@ class objective_xgb(object):
     
     Note:
         If opt_cv is between 0 and 1, a pruning procedure will be initiliazed (a procedure incompatible with cross-validation),
-        so as to speed up the XGB optimization. If opt_cv is between 0 and 1, a random validation data will be generated according to this ratio,
+        so as to speed up the XGB optimization. A random validation data will be generated according to this ratio,
         which will replace the cross-validation method used by default. It will prune according
         to the f1-score of the validation data, which would be 10% of the training data if opt_cv=0.1, for example. 
         Need more testing to make this more robust.
@@ -1257,6 +1339,61 @@ class objective_rf(object):
 
         return final_score
 
+class ObjectiveOneClassSVM(object):
+    """
+    Optimization objective function for the scikit-learn implementation of the
+    One-Class SVM. The Optuna software for hyperparameter optimization
+    was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
+
+    Args:
+        data_x (ndarray): 2D array of size (n x m), where n is the number of samples,
+            and m is the number of features.
+        data_y (ndarray, str): 1D array containing the corresponding labels.
+        opt_cv (int): Cross-validations to perform when assessing the performance at each
+            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
+            will be assessed according to the 3-fold cross-validation accuracy.
+
+    Returns:
+        The performance metric, determined using the cross-fold validation method.
+    """
+
+    def __init__(self, data_x, data_y, opt_cv):
+        self.data_x = data_x
+        self.data_y = data_y
+        self.opt_cv = opt_cv
+
+    def __call__(self, trial):
+        """
+        Define the optimization objective function for the One-Class SVM.
+
+        Args:
+            trial (optuna.trial.Trial): A Trial object containing the current state of the optimization.
+
+        Returns:
+            float: The performance metric, determined using cross-validation.
+        """
+
+        kernel = trial.suggest_categorical('kernel', ['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'])
+        degree = trial.suggest_int('degree', 0, 10)
+        gamma = trial.suggest_categorical('gamma', ['scale', 'auto'])
+        coef0 = trial.suggest_float('coef0', 0.0, 1.0)
+        tol = trial.suggest_float('tol', 1e-6, 1e-2, log=True)
+        nu = trial.suggest_float('nu', 0.1, 1.0)
+        shrinking = trial.suggest_categorical('shrinking', [True, False])
+        cache_size = trial.suggest_float('cache_size', 100, 1000)
+
+        try:
+            clf = OneClassSVM(kernel=kernel, degree=degree, gamma=gamma, coef0=coef0, tol=tol,
+                nu=nu, shrinking=shrinking, cache_size=cache_size)
+        except:
+            print("Invalid hyperparameter combination, skipping trial")
+            return 0.0
+
+        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
+        final_score = np.mean(cv['test_score'])
+
+        return final_score
+
 class Monitor_Tracker(Callback):
     """
     Custom callback that allows for two different monitors.
@@ -1351,13 +1488,12 @@ class Monitor_Tracker(Callback):
                     self.best_metric = current_metric
                     self.best_weights = self.model.get_weights()
 
-
 def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels=1, clf='alexnet', 
-    normalize=True, min_pixel=0, max_pixel=1000, n_iter=25, patience=5, metric='loss', average=True, 
-    test_positive=None, test_negative=None, opt_model=True, batch_size_min=16, batch_size_max=64, train_epochs=25, opt_cv=None,
+    normalize=True, min_pixel=0, max_pixel=1000, n_iter=25, patience=5, metric='loss', metric2=None, metric3=None, average=True, 
+    test_positive=None, test_negative=None, test_acc_threshold=None, post_metric=True, opt_model=True, batch_size_min=16, batch_size_max=64, train_epochs=25, opt_cv=None,
     opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
-    mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, zoom_range=(0.9,1.1), skew_angle=0,
-    limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, return_study=True): 
+    rotation=False, horizontal=False, vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
+    zoom_range=(0.9,1.1), skew_angle=0, limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, return_study=True, save_models=False, save_studies=False, path=None): 
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
 
@@ -1440,6 +1576,11 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
         val_negative (ndarray, optional): Negative class data to be used for validation. Defaults to None.
         test_positive (ndarray, optional): Positive class data to be used for post-trial testing. Defaults to None.
         test_negative (ndarray, optional): Negative class data to be used for post-trial testing. Defaults to None.
+        test_acc_threshold (float, optional): If input, models that yield test accuracies lower than the threshold will
+            be rejected by the optimizer. The accuracy of both the test_positive and test_negative is asessed, if input.
+            This is used to reject models that have over or under fit the training data. Defaults to None.
+        post_metric (bool): If True, the test_positive and/or test_negative inputs will be included in the final optimization score.
+            This will be the averaged out metric. Defaults to True. Can be set to False to only apply the test_acc_threshold.
         train_epochs (int): Number of epochs to the train the CNN to during the optimization trials. Defaults to 25.
         metric (str): Assesment metric to use when both pruning and scoring the hyperparameter optimization trial.
             Defaults to 'loss'. Options include: 'loss' 'binary_accuracy', 'f1_score' 'all' or the validation equivalents (e.g. 'val_loss').
@@ -1447,7 +1588,6 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             disables this feature.
         average (bool): If False, the designated metric will be calculated according to its value at the end of the train_epochs. 
             If True, the metric will be averaged out across all train_epochs. Defaults to True.
-
         opt_model (bool): If True, the architecture parameters will be optimized. Defaults to True.
         opt_aug (bool): If True, the augmentation procedure will be optimized. Defaults to False.
         batch_min (int): The minimum number of augmentations to perform per image on the positive class, only applicable 
@@ -1466,14 +1606,24 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             if opt_aug=True. Defaults to 10 pixels.
         mask_size (int, optional): If enabled, this will set the pixel length of a square cutout, to be randomly placed
             somewhere in the augmented image. This cutout will replace the image values with 0, therefore serving as a 
-            regularizer. Only applicable if opt_aug=True. Defaults to None.
-        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. If 
-            this is set to a value greater than one, overlap may occur. 
+            regularizer. Only applicable if opt_aug=True. This value can either be an integer to hard-set the mask size everytime,
+            or can be a tuple representing the lower and upper bounds, respectively, in which case the mask size will be optimized. 
+            Defaults to None.
+        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. Note that if 
+            this is set to a value greater than one, overlap may occur. This value can either be an integer to hard-set the number
+            of masks everytime, or it can be a tuple representing the lower and upper bounds, respectively, in which case the number
+            of masks will be optimized. Defaults to None.
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
         smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
             ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
-        
+        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
+            just the best one. Defaults to False.
+        save_studies (bool): Whehter to save the study object created by Optuna. If set to True, this study object will be
+            saved and overwritted after each trial. Defaults to False.
+        path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
+            in the home directory.
+
     The folllowing arguments can be used to set early-stopping callbacks. These can be used to terminate trials that exceed
     pre-determined thresholds, which may be indicative of an overfit model.
 
@@ -1638,13 +1788,15 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
        
     else:
         objective = objective_cnn(data_x, data_y, val_positive=val_X, val_negative=val_Y, img_num_channels=img_num_channels, clf=clf, 
-            normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, patience=patience, metric=metric, average=average,  
-            test_positive=test_positive, test_negative=test_negative, opt_model=opt_model, batch_size_min=batch_size_min, batch_size_max=batch_size_max, train_epochs=train_epochs, opt_cv=opt_cv,
-            opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, batch_other=batch_other, balance=balance, image_size_min=image_size_min, image_size_max=image_size_max, 
-            shift=shift, opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, mask_size=mask_size, num_masks=num_masks, smote_sampling=smote_sampling, 
+            normalize=normalize, min_pixel=min_pixel, max_pixel=max_pixel, patience=patience, metric=metric, metric2=metric2, metric3=metric3, average=average,  
+            test_positive=test_positive, test_negative=test_negative, test_acc_threshold=test_acc_threshold, post_metric=post_metric, opt_model=opt_model, batch_size_min=batch_size_min, batch_size_max=batch_size_max, 
+            train_epochs=train_epochs, opt_cv=opt_cv, opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, batch_other=batch_other, balance=balance, image_size_min=image_size_min, image_size_max=image_size_max, 
+            shift=shift, opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, rotation=rotation, horizontal=horizontal, vertical=vertical, mask_size=mask_size, num_masks=num_masks, smote_sampling=smote_sampling, 
             blend_max=blend_max, num_images_to_blend=num_images_to_blend, blending_func=blending_func, blend_other=blend_other, zoom_range=zoom_range, skew_angle=skew_angle,
-            limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose)      
-        study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)#, n_jobs=1)
+            limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose,
+            save_models=save_models, save_studies=save_studies, path=path)      
+        #study_stop_cb = StopWhenTrialKeepBeingPrunedCallback(prune_threshold)
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)# callbacks=[study_stop_cb]), n_jobs=1)
         params = study.best_trial.params
 
     final_score = study.best_value
@@ -1758,8 +1910,68 @@ def boruta_opt(data_x, data_y):
 
     feats = np.array([str(feat) for feat in feat_selector.support_])
     index = np.where(feats == 'True')[0]
+
     print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support)))
+
     return index
+
+def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_value=0):
+    """
+    Impute missing values in the input data array using various imputation strategies.
+    By default the imputer will be created and returned, unless
+    the imputer argument is set, in which case only the transformed
+    data is output. 
+    
+    Note:
+        As the KNN imputation method bundles neighbors according to their eucledian distance,
+        it is sensitive to outliers. Furthermore, it can also yield weak predictions if the
+        training features are heaviliy correlated. Tang & Ishwaran 2017 reported that if there is 
+        low to medium correlation in the dataset, Random Forest imputation algorithms perform 
+        better than KNN imputation
+
+    Args:
+        data (ndarray): Input data array with missing values.
+        imputer (optional): A KNNImputer class instance, configured using sklearn.impute.KNNImputer.
+            Defaults to None, in which case the transformation is created using
+            the data itself. 
+        strategy (str, optional): Imputation strategy to use. Defaults to 'knn'.
+            - 'mean': Fill missing values with the mean of the non-missing values in the same column.
+            - 'median': Fill missing values with the median of the non-missing values in the same column.
+            - 'mode': Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
+            - 'constant': Fill missing values with a constant value provided by the user.
+            - 'knn': Fill missing values using k-Nearest Neighbor imputation.
+        k (int, optional): Number of nearest neighbors to consider for k-Nearest Neighbor imputation.
+            Only applicable if strategy is set to 'knn'. Defaults to 3.
+        constant_value (float or int, optional): Constant value to use for constant imputation.
+            Only applicable if strategy is set to 'constant'. Defaults to 0 if used.
+
+    Returns:
+        The first output is the data array with with the missing values filled in. 
+        The second output is the KNN Imputer that should be used to transform
+        new data, prior to predictions. 
+    """
+
+    if imputer is None:
+        if strategy == 'mean':
+            imputer = SimpleImputer(strategy='mean')
+        elif strategy == 'median':
+            imputer = SimpleImputer(strategy='median')
+        elif strategy == 'mode':
+            imputer = SimpleImputer(strategy='most_frequent')
+        elif strategy == 'constant':
+            if constant_value is None:
+                raise ValueError("The constant_value parameter must be provided if strategy='constant'.")
+            imputer = SimpleImputer(strategy='constant', fill_value=constant_value)
+        elif strategy == 'knn':
+            imputer = KNNImputer(n_neighbors=k)
+        else:
+            raise ValueError("Invalid imputation strategy. Please choose from 'mean', 'median', 'mode', 'constant', or 'knn'.")
+
+        imputer.fit(data)
+        imputed_data = imputer.transform(data)
+        return imputed_data, imputer
+
+    return imputer.transform(data) 
 
 def Strawman_imputation(data):
     """
@@ -1811,67 +2023,33 @@ def Strawman_imputation(data):
 
     return imputed_data 
 
-def KNN_imputation(data, imputer=None, k=3):
+class StopWhenTrialKeepBeingPrunedCallback:
     """
-    Performs k-Nearest Neighbor imputation and transformation.
-    By default the imputer will be created and returned, unless
-    the imputer argument is set, in which case only the transformed
-    data is output. 
-
-    As this bundles neighbors according to their eucledian distance,
-    it is sensitive to outliers. Can also yield weak predictions if the
-    training features are heaviliy correlated.
+    Class to create a custom callback that will stop
+    the Optuna optimization routine if a given number of
+    trials are pruned in a row. This value is controlled
+    by the threshold parameter. Not currently employed!
+    """
     
-    Args:
-        imputer (optional): A KNNImputer class instance, configured using sklearn.impute.KNNImputer.
-            Defaults to None, in which case the transformation is created using
-            the data itself. 
-        data (ndarray): 1D array if single parameter is input. If
-            data is 2-dimensional, the medians will be calculated
-            using the non-missing values in each corresponding column.
-        k (int, optional): If imputer is None, this is the number
-            of nearest neighbors to consider when computing the imputation.
-            Defaults to 3. If imputer argument is set, this variable is ignored.
+    def __init__(self, threshold: int):
+        self.threshold = threshold
+        self._consequtive_pruned_count = 0
 
-    Note:
-        Tang & Ishwaran 2017 reported that if there is low to medium
-        correlation in the dataset, RF imputation algorithms perform 
-        better than KNN imputation
+    def __call__(self, study: optuna.study.Study, trial: optuna.trial.FrozenTrial) -> None:
+        if trial.state == optuna.trial.TrialState.PRUNED:
+            self._consequtive_pruned_count += 1
+        else:
+            self._consequtive_pruned_count = 0
 
-    Example:
-        If we have our training data in an array called training_set, we 
-        can create the imputer so that we can call it to transform new data
-        when making on-the-field predictions.
-
-        >>> imputed_data, knn_imputer = KNN_imputation(data=training_set, imputer=None)
-        
-        Now we can use the imputed data to create our machine learning model.
-        Afterwards, when new data is input for prediction, we will insert our 
-        imputer into the pipelinen by calling this function again, but this time
-        with the imputer argument set:
-
-        >>> new_data = knn_imputation(new_data, imputer=knn_imputer)
-
-    Returns:
-        The first output is the data array with with the missing values filled in. 
-        The second output is the KNN Imputer that should be used to transform
-        new data, prior to predictions. 
-    """
-
-    if imputer is None:
-        imputer = KNNImputer(n_neighbors=k)
-        imputer.fit(data)
-        imputed_data = imputer.transform(data)
-        return imputed_data, imputer
-
-    return imputer.transform(data) 
+        if self._consequtive_pruned_count >= self.threshold:
+            study.stop()
 
 class InputTimeout:
     """
     A class for reading user input with a timeout on Linux, used in the CNN optimization routine. 
+    Not currently used by the program!
 
     Example:
-
         input_timeout = InputTimeout("Enter your input: ", 5)
         try:
             user_input = input_timeout.inputimeout()
@@ -1914,4 +2092,3 @@ class InputTimeout:
             self.echo('\n')
             termios.tcflush(sys.stdin, termios.TCIFLUSH)
             raise self.TimeoutOccurred
-            

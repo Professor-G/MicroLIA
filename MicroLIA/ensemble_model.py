@@ -14,24 +14,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors 
 from matplotlib.ticker import ScalarFormatter,AutoMinorLocator
+from cycler import cycler
 from warnings import warn
 from pathlib import Path
 from collections import Counter  
 
 from sklearn import decomposition
+from xgboost import XGBClassifier
+from sklearn.svm import OneClassSVM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, auc, RocCurveDisplay
 from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
+from scikitplot.metrics import plot_roc
 from sklearn.manifold import TSNE
 
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
-from MicroLIA.optimization import hyper_opt, borutashap_opt, KNN_imputation
-from MicroLIA import extract_features
-from xgboost import XGBClassifier
-import scikitplot as skplt
-
+from MicroLIA.optimization import hyper_opt, borutashap_opt, impute_missing_values
 
 class Classifier:
     """
@@ -56,8 +56,12 @@ class Classifier:
         impute (bool): If False no data imputation will be performed. Defaults to True,
             which will result in two outputs, the classifier and the imputer to save
             for future transformations. 
-        imp_method (str): The imputation techinque to apply, can either be 'KNN' for k-nearest
-            neighbors imputation, or...?. Defaults to 'KNN'.
+        imp_method (str, optional): Imputation strategy to use. Defaults to 'knn'.
+            - 'mean': Fill missing values with the mean of the non-missing values in the same column.
+            - 'median': Fill missing values with the median of the non-missing values in the same column.
+            - 'mode': Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
+            - 'constant': Fill missing values with a constant value provided by the user.
+            - 'knn': Fill missing values using k-Nearest Neighbor imputation.
         n_iter (int): The maximum number of iterations to perform during 
             the hyperparameter search. Defaults to 25. 
         boruta_trials (int): The number of trials to run when running Boruta for
@@ -70,11 +74,11 @@ class Classifier:
             are imbalanced. This is only applied if the classification is a binary task. 
             Defaults to True.        
         csv_file (DataFrame, optional): The csv file output after generating the training set. This can be
-            input in lieu of the data_x and data_y arguments.
+            input in lieu of the data_x and data_y arguments. Note that the csv_file must have a "label" column!
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        limit_search=True, impute=True, imp_method='KNN', n_iter=25, 
+        limit_search=True, impute=True, imp_method='knn', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
 
         self.data_x = data_x
@@ -108,7 +112,7 @@ class Classifier:
                 print('NOTE: data_x and data_y parameters are required to output visualizations.')
         
         if self.data_y is not None:
-            self.data_y_ = copy.deepcopy(self.data_y) #For plotting purposes, save the original label array as it will be overwrite with the numerical labels when plotting only
+            self.data_y_ = copy.deepcopy(self.data_y) #For plotting purposes, save the original label array as it will be overwritten with the numerical labels when plotting
             if self.clf == 'xgb':
                 if all(isinstance(val, (int, str)) for val in self.data_y):
                     print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
@@ -123,10 +127,13 @@ class Classifier:
         else:
             self.data_y_ = None 
 
-    def create(self):
+    def create(self, overwrite_training=True):
         """
         Creates the machine learning engine, current options are either a
         Random Forest, XGBoost, or a Neural Network classifier. 
+
+        overwrite_training (bool): Whether to replace the original input data_x with the pre-processed
+            data_x. Defaults to True.
         
         Returns:
             Trained and optimized classifier.
@@ -154,33 +161,40 @@ class Classifier:
                     y[index] = i
                 self.data_y = y 
                 print('________________________________')
-
+        elif self.clf == 'ocsvm':
+            if self.data_y is not None:
+                if len(np.unique(self.data_y)) != 1:
+                    raise ValueError('The clf parameter has been set to "ocsvm" but OneClassSVM requires that only the positive class be input!')
+            model = OneClassSVM()
         else:
-            raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
+            raise ValueError('clf argument must either be "rf", "nn", "ocsvm", or "xgb".')
         
+        self.data_x[np.isinf(self.data_x)] = np.nan
+
         if self.impute is False and self.optimize is False:
+            data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
             if np.any(np.isfinite(self.data_x)==False):
                 raise ValueError('data_x array contains nan values but impute is set to False! Set impute=True and run again.')
             print("Returning base {} model...".format(self.clf))
             model.fit(self.data_x, self.data_y)
             self.model = model
+            self.data_x = data if overwrite_training else self.data_x
+
             return
 
         if self.impute:
-            if self.imp_method == 'KNN':
-                data, self.imputer = KNN_imputation(data=self.data_x, imputer=None)
-            else:
-                raise ValueError('Invalid imputation method, currently only k-NN is supported.')
-            
+            data, self.imputer = impute_missing_values(self.data_x, strategy=self.imp_method)
+            data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
             if self.optimize is False:
                 data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
                 print("Returning base {} model...".format(self.clf))
                 model.fit(data, self.data_y)
                 self.model = model 
+                self.data_x = data if overwrite_training else self.data_x
+
                 return
-                
         else:
-            data = self.data_x[:]
+            data = copy.deepcopy(self.data_x)
             data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
 
         if self.feats_to_use is None:
@@ -189,24 +203,22 @@ class Classifier:
                 print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
                 self.feats_to_use = np.arange(data.shape[1])
         else:
-            print('feats_to_use attribute already exists, skipping feature selection...')
+            print('The feats_to_use attribute already exists, skipping feature selection...')
 
-        #Re-construct the imputer with the selected features as
-        #new predictions will only compute these metrics, need to fit again!
-        if self.imp_method == 'KNN':
-            data_x, self.imputer = KNN_imputation(data=self.data_x[:,self.feats_to_use], imputer=None)
-        else: 
-            data_x = self.data_x[:,self.feats_to_use]
+        #Re-construct the imputer with the selected features as new predictions will only compute these metrics, so need to fit again!
+        data_x, self.imputer = impute_missing_values(self.data_x[:,self.feats_to_use], strategy=self.imp_method) if self.impute else self.data_x[:,self.feats_to_use]
 
         if self.n_iter > 0:
-            self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
-                balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
+            self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, 
+                return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
         else:
             print("Fitting and returning final model...")
-            self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, 
-                balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
+            self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
 
         self.model.fit(data_x, self.data_y)
+        self.data_x = data if overwrite_training else self.data_x
+
+        return
         
     def save(self, dirname=None, path=None, overwrite=False):
         """
@@ -227,22 +239,19 @@ class Classifier:
         if self.model is None and self.imputer is None and self.feats_to_use is None:
             raise ValueError('The models have not been created! Run the create() method first.')
 
-        if path is None:
-            path = str(Path.home())
-        if path[-1] != '/':
-            path+='/'
-
+        path = str(Path.home()) if path is None else path 
+        path = path + '/' if path[-1] != '/' else path 
+        
         if dirname is not None:
-            if dirname[-1] != '/':
-                dirname+='/'
-            path = path+dirname
+            dirname = dirname + '/' if dirname[-1] != '/' else dirname
+            path = path + dirname
             try:
                 os.makedirs(path)
             except FileExistsError:
                 raise ValueError('The dirname folder already exists!')
 
         try:
-            os.mkdir(path+'MicroLIA_ensemble_model')
+            os.mkdir(path + 'MicroLIA_ensemble_model')
         except FileExistsError:
             if overwrite:
                 try:
@@ -268,6 +277,7 @@ class Classifier:
             joblib.dump(self.best_params, path+'Best_Params')
         if self.feature_history is not None:
             joblib.dump(self.feature_history, path+'FeatureOpt_Results')
+
         print('Files saved in: {}'.format(path))
 
         self.path = path
@@ -286,11 +296,8 @@ class Classifier:
                 local home directory.
         """
 
-        if path is None:
-            path = str(Path.home())
-        if path[-1] != '/':
-            path+='/'
-
+        path = str(Path.home()) if path is None else path 
+        path = path+'/' if path[-1] != '/' else path 
         path += 'MicroLIA_ensemble_model/'
 
         try:
@@ -341,44 +348,48 @@ class Classifier:
 
         return
 
-    def predict(self, time, mag, magerr, convert=True, apply_weights=True, zp=24):
+    def predict(self, data):
         """
         Predics the class label of new, unseen data.
 
         Args:
-            time (ndarray): Array of observation timestamps.
-            mag (ndarray): Array of observed magnitudes.
-            magerr (ndarray): Array of corresponding magnitude errors.
-            convert (bool): If False the features are computed with the input magnitudes.
-                Defaults to True to convert and compute in flux. 
-            apply_weights (bool): Whether to apply the photometric errors when calculating the features. 
-                Defaults to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
-            zp (float): Zeropoint of the instrument, used to convert from magnitude
-                to flux. Defaults to 24.
+            data (ndarray): 2D array of size (n x m), where n is the
+                number of samples, and m the number of features.
 
         Returns:
-            Array containing the classes and the corresponding probability predictions.
+            2D array containing the classes and the corresponding probability prediction
         """
 
-        if len(mag) < 30:
-            warn('The number of data points is low -- results may be unstable')
-
-        #classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
+        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
         classes = self.model.classes_
-        stat_array=[]
-        
-        if self.imputer is None and self.feats_to_use is None:
-            stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp))
-            pred = self.model.predict_proba(stat_array)
-            return np.c_[classes, pred[0]]
-        
-        stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp, feats_to_use=self.feats_to_use))
-        
-        if self.imputer is not None:
-            stat_array = self.imputer.transform(stat_array)
-        pred = self.model.predict_proba(stat_array)
+        output = []
 
-        return np.c_[classes, pred[0]]
+        if self.imputer is None and self.feats_to_use is None:
+            proba = self.model.predict_proba(data)
+            for i in range(len(proba)):
+                index = np.argmax(proba[i])
+                output.append([classes[index], proba[i][index]])
+            return np.array(output)
+
+        if self.feats_to_use is not None:
+            data = data[self.feats_to_use].reshape(1,-1) if len(data.shape) == 1 else data[:,self.feats_to_use]
+            data = self.imputer.transform(data) if self.imputer is not None else data
+            proba = self.model.predict_proba(data)
+
+            for i in range(len(proba)):
+                index = np.argmax(proba[i])
+                output.append([classes[index], proba[i][index]])
+
+            return np.array(output)
+
+        data = self.imputer.transform(data) if self.imputer is not None else data
+        proba = self.model.predict_proba(data)
+
+        for i in range(len(proba)):
+            index = np.argmax(proba[i])
+            output.append([classes[index], proba[i][index]])
+            
+        return np.array(output)
 
     def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, 
         legend_loc='upper center', title='Feature Parameter Space', savefig=False):
@@ -413,27 +424,17 @@ class Classifier:
         """
 
         if self.feats_to_use is not None:
-            if len(self.data_x.shape) == 1:
-                data = self.data_x[self.feats_to_use].reshape(1,-1)
-            else:
-                data = self.data_x[:,self.feats_to_use]
+            data = self.data_x[self.feats_to_use].reshape(1,-1) if len(self.data_x.shape) == 1 else self.data_x[:,self.feats_to_use] 
         else:
-            data = self.data_x[:]
+            data = copy.deepcopy(self.data_x)
 
         if np.any(np.isnan(data)):
-            #print('Automatically imputing NaN values with KNN imputation...')
-            if self.imputer is not None and self.imp_method == 'KNN':
-                data = KNN_imputation(data=data, imputer=self.imputer)
-            else:
-                data = KNN_imputation(data=data)[0]
-
+            data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
+            
         data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
         
-        if len(data) > 5e3:
-            method = 'barnes_hut' #Scales with O(N)
-        else:
-            method = 'exact' #Scales with O(N^2)
-
+        method = 'barnes_hut' if len(data) > 5e3 else 'exact' #bh Scales with O(N), exact scales with O(N^2)
+        
         if norm:
             scaler = MinMaxScaler()
             data = scaler.fit_transform(data)
@@ -443,8 +444,7 @@ class Classifier:
             pca_transformation.fit(data) 
             data = pca_transformation.transform(data)
 
-        feats = TSNE(n_components=2, method=method, learning_rate=1000, 
-            perplexity=35, init='random').fit_transform(data)
+        feats = TSNE(n_components=2, method=method, learning_rate=1000, perplexity=35, init='random').fit_transform(data)
         x, y = feats[:,0], feats[:,1]
      
         markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*']
@@ -490,18 +490,18 @@ class Classifier:
                 raise ValueError('The data_y array does not contain the value input in the special_class parameter.')
             plt.scatter(x[mask], y[mask], marker='*', c='red', label=special_class, s=200, alpha=1.0)
         
-        plt.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)#prop={'size': 14}
-        plt.title(title)#, size=18)
-        plt.xticks()#fontsize=14)
-        plt.yticks()#fontsize=14)
-        plt.ylabel('t-SNE Dimension 1')
-        plt.xlabel('t-SNE Dimension 2')
+        plt.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)
+        plt.title(title); plt.ylabel('t-SNE Dimension 1'); plt.xlabel('t-SNE Dimension 2')
+        plt.xticks(); plt.yticks()
 
         if savefig:
+            _set_style_()
             plt.savefig('tSNE_Projection.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
+
+        return
 
     def plot_conf_matrix(self, data_y=None, norm=False, pca=False, k_fold=10, normalize=True, 
         title='Confusion Matrix', savefig=False):
@@ -533,7 +533,8 @@ class Classifier:
         """
 
         if self.data_x is None or self.data_y is None:
-            raise ValueError('Input data_x and data_y!')
+            raise ValueError('The data_x and data_y have not been input!')
+
         if self.model is None:
             raise ValueError('No model has been created! Run .create() first.')
 
@@ -554,15 +555,11 @@ class Classifier:
             else:
                 data = self.data_x[:,self.feats_to_use]
         else:
-            data = self.data_x[:]
+            data = copy.deepcopy(self.data_x)
 
         if np.any(np.isnan(data)):
-            #print('Automatically imputing NaN values with KNN imputation...')
-            if self.imputer is not None and self.imp_method == 'KNN':
-                data = KNN_imputation(data=data, imputer=self.imputer)
-            else:
-                data = KNN_imputation(data=data)[0]
-
+            data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
+          
         data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
 
         if norm:
@@ -608,15 +605,11 @@ class Classifier:
             else:
                 data = self.data_x[:,self.feats_to_use]
         else:
-            data = self.data_x[:]
+            data = copy.deepcopy(self.data_x)
 
         if np.any(np.isnan(data)):
-            print('Automatically imputing NaN values with KNN imputation...')
-            if self.imputer is not None and self.imp_method == 'KNN':
-                data = KNN_imputation(data=data, imputer=self.imputer)
-            else:
-                data = KNN_imputation(data=data)[0]
-
+            data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
+          
         data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
 
         if pca:
@@ -630,88 +623,55 @@ class Classifier:
             X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=0.2, random_state=0)
             model0.fit(X_train, y_train)
             y_probas = model0.predict_proba(X_test)
-            skplt.metrics.plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='cividis', plot_macro=False, plot_micro=False)
+            plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='cividis', plot_macro=False, plot_micro=False)
             plt.show()
             return
 
         cv = StratifiedKFold(n_splits=k_fold)
         
-        tprs = []
-        aucs = []
+        tprs, aucs = [], []
         mean_fpr = np.linspace(0, 1, 100)
 
-        train = data
         fig, ax = plt.subplots()
 
-        for i, (data_x, test) in enumerate(cv.split(train, self.data_y)):
-            model0.fit(train[data_x], self.data_y[data_x])
-            viz = RocCurveDisplay.from_estimator(
-                model0,
-                train[test],
-                self.data_y[test],
-                alpha=0,#0.3,
-                lw=1,
-                ax=ax,
-                name="ROC fold {}".format(i+1),
-            )
+        for i, (data_x, test) in enumerate(cv.split(data, self.data_y)):
+            model0.fit(data[data_x], self.data_y[data_x])
+            viz = RocCurveDisplay.from_estimator(model0, data[test], self.data_y[test], alpha=0, lw=1, ax=ax, name="ROC fold {}".format(i+1))
             interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
             interp_tpr[0] = 0.0
-            tprs.append(interp_tpr)
-            aucs.append(viz.roc_auc)
+            tprs.append(interp_tpr); aucs.append(viz.roc_auc)
 
         mean_tpr = np.mean(tprs, axis=0)
         mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
-        std_auc = np.std(aucs)
-        lns1, = ax.plot(
-            mean_fpr,
-            mean_tpr,
-            color="b",
-            #label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
-            label=r"Mean (AUC = %0.2f)" % (mean_auc),
-            lw=2,
-            alpha=0.8,
-        )
+        mean_auc, std_auc = auc(mean_fpr, mean_tpr), np.std(aucs)
+        lns1, = ax.plot(mean_fpr, mean_tpr, color="b", label=r"Mean (AUC = %0.2f)" % (mean_auc), lw=2, alpha=0.8) #label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
 
         std_tpr = np.std(tprs, axis=0)
-        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-        lns_sigma = ax.fill_between(
-            mean_fpr,
-            tprs_lower,
-            tprs_upper,
-            color="grey",
-            alpha=0.2,
-            label=r"$\pm$ 1$\sigma$",
-        )
+        tprs_upper, tprs_lower = np.minimum(mean_tpr + std_tpr, 1), np.maximum(mean_tpr - std_tpr, 0)
+        lns_sigma = ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color="grey", alpha=0.2, label=r"$\pm$ 1$\sigma$")
 
-        ax.set(
-            xlim=[0, 1.0],
-            ylim=[0.0, 1.0],
-            title="Receiver Operating Characteristic Curve",
-        )
-        
+        ax.set(xlim=[0, 1.0], ylim=[0.0, 1.0], title="Receiver Operating Characteristic Curve")
         lns2, = ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Random (AUC=0.5)", alpha=0.8)
 
-        #handles, labels = ax.get_legend_handles_labels()
-        #ax.legend(handles[-3:], labels[-3:], loc="lower center", ncol=3, frameon=False, handlelength=2)
         ax.legend([lns2, (lns1, lns_sigma)], ['Random (AUC = 0.5)', r"Mean (AUC = %0.2f)" % (mean_auc)], loc='lower center', ncol=2, frameon=False, handlelength=2)
-
+        plt.title(label=title); plt.ylabel('True Positive Rate'); plt.xlabel('False Positive Rate')
         ax.set_facecolor("white")
-        plt.ylabel('True Positive Rate')#, size=14)
-        plt.xlabel('False Positive Rate')#, size=14)
-        plt.title(label=title)#,fontsize=18)
 
         if savefig:
+            _set_style_()
             plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
-    def plot_hyper_opt(self, baseline=None, xlim=None, ylim=None, xlog=True, ylog=False, 
-        savefig=False):
+        return
+
+    def plot_hyper_opt(self, baseline=None, xlim=None, ylim=None, xlog=True, ylog=False, savefig=False):
         """
         Plots the hyperparameter optimization history.
+
+        Note:
+            The Optuna API has its own plot function: plot_optimization_history(self.optimization_results)
     
         Args:
             baseline (float): Baseline accuracy achieved when using only
@@ -731,7 +691,6 @@ class Classifier:
             AxesImage
         """
 
-        #fig = plot_optimization_history(self.optimization_results)
         trials = self.optimization_results.get_trials()
         trial_values, best_value = [], []
         for trial in range(len(trials)):
@@ -759,16 +718,28 @@ class Classifier:
         else:
             ncol=2
 
-        plt.plot(range(len(trials)), best_value, color='r', alpha=0.83, linestyle='-', label='Best Model')
+        plt.plot(range(len(trials)), best_value, color='r', alpha=0.83, linestyle='-', label='Optimized Model')
         plt.scatter(range(len(trials)), trial_values, c='b', marker='+', s=35, alpha=0.45, label='Trial')
         plt.xlabel('Trial #', alpha=1, color='k')
-        plt.ylabel('Accuracy', alpha=1, color='k')
-       # if self.clf == 'xgb':
-        plt.title('Hyperparameter Optimization')#, size=18) Make this a f" string option!!
-        #plt.xticks(fontsize=14)#, color='k')
-        #plt.yticks(fontsize=14)#, color='k')
-        #plt.grid(True, color='k', alpha=0.35, linewidth=1.5, linestyle='--')
+
+        if self.opt_cv > 0:
+            plt.ylabel(str(self.opt_cv)+'-Fold CV Accuracy', alpha=1, color='k')
+        else:
+            plt.ylabel('Accuracy', alpha=1, color='k')
+        
+        if self.clf == 'xgb':
+            plt.title('XGBoost Hyperparameter Optimization')
+        elif self.clf == 'rf':
+            plt.title('RF Hyperparameter Optimization')
+        elif self.clf == 'ocsvm':
+            plt.title('OneClass SVM Hyperparameter Optimization')
+        elif self.clf == 'nn':
+            plt.title('Neural Network Hyperparameter Optimization')
+
+        plt.legend(loc='upper center', ncol=ncol, frameon=False)
+        plt.rcParams['axes.facecolor']='white'
         plt.grid(False)
+
         if xlim is not None:
             plt.xlim(xlim)
         else:
@@ -779,16 +750,15 @@ class Classifier:
             plt.xscale('log')
         if ylog:
             plt.yscale('log')
-        #plt.tight_layout()
-        #plt.legend(prop={'size': 12}, loc='upper left')
-        plt.legend(loc='upper center', ncol=ncol, frameon=False)#, handlelength=4)#prop={'size': 14}
-        plt.rcParams['axes.facecolor']='white'
         
         if savefig:
+            _set_style_()
             plt.savefig('Ensemble_Hyperparameter_Optimization.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
+
+        return
 
     def plot_feature_opt(self, feat_names=None, top='all', include_other=True, include_shadow=True, 
         include_rejected=False, flip_axes=True, save_data=False, savefig=False):
@@ -825,14 +795,17 @@ class Classifier:
             AxesImage
         """
 
-        fname = str(Path.home())+'/__borutaimportances__' #Temporary file
+        fname = str(Path.home()) + '/__borutaimportances__' #Temporary file
+
         try:
             self.feature_history.results_to_csv(filename=fname)
         except AttributeError:
             raise ValueError('No optimization history found for feature selection, run .create() with optimize=True!')
 
         csv_data = pd.read_csv(fname+'.csv')
-        #os.remove(fname+'.csv')
+        if save_data is False:
+            os.remove(fname+'.csv')
+
         accepted_indices = np.where(csv_data.Decision == 'Accepted')[0]
         if top == 'all':
             top = len(accepted_indices)
@@ -854,8 +827,7 @@ class Classifier:
             y.append(float(csv_data.iloc[i]['Average Feature Importance']))
             y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
             
-        if len(accepted_indices) == top:
-            include_other = False
+        include_other = False if len(accepted_indices) == top else True
 
         if include_other:
             mean, std = [], []
@@ -871,41 +843,22 @@ class Classifier:
             x.append(int(ix))
 
         if feat_names is not None:  
-            if isinstance(feat_names, np.ndarray) is False: 
-                feat_names = np.array(feat_names)
+            feat_names = np.array(feat_names) if isinstance(feat_names, np.ndarray) is False else feat_names
             if include_shadow is False:
-                if include_other is False:
-                    x_names = feat_names[x] #By default x is the index of the feature
-                else:
-                    x_names = np.r_[feat_names[x[:-1]], ['Other Accepted']]
+                x_names = feat_names[x] if include_other is False else np.r_[feat_names[x[:-1]], ['Other Accepted']] #By default x is the index of the feature
             else:
-                if include_other is False:
-                    x_names = np.r_[feat_names[x[:-1]], ['Max Shadow']]
-                else:
-                    x_names = np.r_[feat_names[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+                x_names = np.r_[feat_names[x[:-1]], ['Max Shadow']] if include_other is False else np.r_[feat_names[x[:-2]], ['Other Accepted'], ['Max Shadow']]
         else:
             if self.csv_file is None:
                 if include_other is False:
-                    if include_shadow is False:
-                        x_names = csv_data.iloc[x].Features
-                    else:
-                        x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
+                    x_names = csv_data.iloc[x].Features if include_shadow is False else np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
                 else:
-                    if include_shadow is False:
-                        x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
-                    else:
-                        x_names = np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Max Shadow']]
+                    x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']] if include_shadow is False else np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Max Shadow']]
             else:
                 if include_other is False:
-                    if include_shadow is False:
-                        x_names = self.csv_file.columns[x[:-1]]
-                    else:
-                        x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
+                    x_names = self.csv_file.columns[x[:-1]] if include_shadow is False else np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
                 else:
-                    if include_shadow is False:
-                        x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
-                    else:
-                        x_names = np.r_[self.csv_file.columns[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+                    x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']] if include_shadow is False else np.r_[self.csv_file.columns[x[:-2]], ['Other Accepted'], ['Max Shadow']]
 
         if include_rejected:
             x = []
@@ -922,20 +875,18 @@ class Classifier:
                 y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
 
             if feat_names is None:
-                if self.csv_file is None:
-                    x_names = np.r_[x_names, csv_data.iloc[x].Features]
-                else:
-                    x_names = np.r_[x_names, self.csv_file.columns[x]]
+                x_names = np.r_[x_names, csv_data.iloc[x].Features] if self.csv_file is None else np.r_[x_names, self.csv_file.columns[x]]
             else:
                 x_names = np.r_[x_names, feat_names[x]]
         
         y, y_err = np.array(y), np.array(y_err)
+
         fig, ax = plt.subplots()
         if flip_axes:
             lns, = ax.plot(y, np.arange(len(x_names)), 'k*--', lw=0.77)
             lns_sigma = ax.fill_betweenx(np.arange(len(x_names)), y-y_err, y+y_err, color="grey", alpha=0.2)
-            ax.set_xlabel('Z Score', alpha=1, color='k')
-            ax.set_yticks(np.arange(len(x_names)), x_names)#, rotation=90)
+            ax.set_xlabel('Z Score', alpha=1, color='k'); ax.set_yticks(np.arange(len(x_names)), x_names)#, rotation=90)
+            
             for t in ax.get_yticklabels():
                 txt = t.get_text()
                 if 'Max Shadow' in txt:
@@ -948,12 +899,11 @@ class Classifier:
 
             ax.set_ylim((np.arange(len(x_names))[0]-0.5, np.arange(len(x_names))[-1]+0.5))
             ax.set_xlim((np.min(y)-1, np.max(y)+1))
-            ax.invert_yaxis(), ax.invert_xaxis()
+            ax.invert_yaxis(); ax.invert_xaxis()
         else:
             lns, = ax.plot(np.arange(len(x_names)), y, 'k*--', lw=0.77)#, label='XGBoost', lw=0.77)
             lns_sigma = ax.fill_between(np.arange(len(x_names)), y-y_err, y+y_err, color="grey", alpha=0.2)
-            ax.set_ylabel('Z Score', alpha=1, color='k')
-            ax.set_xticks(np.arange(len(x_names)), x_names, rotation=90)
+            ax.set_ylabel('Z Score', alpha=1, color='k'); ax.set_xticks(np.arange(len(x_names)), x_names, rotation=90)
             for t in ax.get_xticklabels():
                 txt = t.get_text()
                 if 'Max Shadow' in txt:
@@ -962,19 +912,25 @@ class Classifier:
             ax.set_xlim((np.arange(len(x_names))[0]-0.5, np.arange(len(x_names))[-1]+0.5))
             ax.set_ylim((np.min(y)-1, np.max(y)+1))
 
-        ax.set_title('Feature Importance')#, size=18)
         ax.legend([(lns, lns_sigma)], [r'$\pm$ 1$\sigma$'], loc='upper right', ncol=1, frameon=False, handlelength=2)
+        ax.set_title('Feature Importance')
 
         if savefig:
+            _set_style_()
             plt.savefig('Feature_Importance.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
+
+        return
 
     def plot_hyper_param_importance(self, plot_time=True, savefig=False):
         """
         Plots the hyperparameter optimization history.
     
+        Note:
+            The Optuna API provides its own plotting function: plot_param_importances(self.optimization_results)
+
         Args:
             plot_tile (bool): If True, the importance on the duration will also be included. Defaults to True.
             savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
@@ -1010,28 +966,26 @@ class Classifier:
         xtick_labels = format_labels(params)
 
         fig, ax = plt.subplots()
-        #fig.subplots_adjust(top=0.8)
         ax.barh(xtick_labels, importance, label='Importance for Classification', color=mcolors.TABLEAU_COLORS["tab:blue"], alpha=0.87)
         if plot_time:
             ax.barh(xtick_labels, duration_importance, label='Impact on Engine Speed', color=mcolors.TABLEAU_COLORS["tab:orange"], alpha=0.7, hatch='/')
 
-        ax.set_ylabel("Hyperparameter")
-        ax.set_xlabel("Importance Evaluation")
+        ax.set_ylabel("Hyperparameter"); ax.set_xlabel("Importance Evaluation")
         ax.legend(ncol=2, frameon=False, handlelength=2, bbox_to_anchor=(0.5, 1.1), loc='upper center')
-        ax.set_xscale('log')
+        ax.set_xscale('log'); plt.xlim((0, 1.))
         plt.gca().invert_yaxis()
-        plt.xlim((0, 1.))#np.max(importance+duration_importance)))#np.max(importance+duration_importance)))
-        #fig = plot_param_importances(self.optimization_results)
-        #fig = plot_param_importances(self.optimization_results, target=lambda t: t.duration.total_seconds(), target_name="duration")
-        #plt.tight_layout()
+
         if savefig:
+            _set_style_()
             if plot_time:
                 plt.savefig('Ensemble_Hyperparameter_Importance.png', bbox_inches='tight', dpi=300)
             else:
                 plt.savefig('Ensemble_Hyperparameter_Duration_Importance.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
+
+        return
 
     def save_hyper_importance(self):
         """
@@ -1051,10 +1005,7 @@ class Classifier:
         print('Calculating and saving importances, this could take up to an hour...')
 
         try:
-            if isinstance(self.path, str):
-                path = self.path  
-            else:
-                path = str(Path.home())
+            path = self.path if isinstance(self.path, str) else str(Path.home())
         except:
             path = str(Path.home())
 
@@ -1070,7 +1021,6 @@ class Classifier:
         self.path = path
 
         return  
-
 
 #Helper functions below to generate confusion matrix
 def format_labels(labels: list) -> list:
@@ -1089,14 +1039,11 @@ def format_labels(labels: list) -> list:
     for label in labels:
         label = label.replace("_", " ")
         if label == "eta":
-            new_labels.append("Learning Rate")
-            continue
+            new_labels.append("Learning Rate"); continue
         if label == "n estimators":
-            new_labels.append("Num of Trees")
-            continue
+            new_labels.append("Num of Trees"); continue
         if label == "colsample bytree":
-            new_labels.append("ColSample ByTree")
-            continue
+            new_labels.append("ColSample ByTree"); continue
         new_labels.append(label.title())
 
     return new_labels
@@ -1109,9 +1056,9 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
     Args:
         classifier: The machine learning classifier to optimize.
         data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-        normalize (bool, optional): If False the confusion matrix will display the
+            number of samples, and m is the number of features.
+        data_y (ndarray, str): 1D array containing the corresponding labels.
+        normalize (bool, optional): If False, the confusion matrix will display the
             total number of objects in the sample. Defaults to True, in which case
             the values are normalized between 0 and 1. 
         k_fold (int, optional): The number of cross-validations to perform.
@@ -1123,22 +1070,20 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
         The second output is the 1D array of the predicted class labels.
     """
 
-    k_fold = KFold(k_fold, shuffle=True)#, random_state=1)
-    #k_fold = StratifiedKFold(k_fold, shuffle=False)#, random_state=8)
+    kf = KFold(n_splits=k_fold, shuffle=True, random_state=42)
+    predicted_targets = []
+    actual_targets = []
 
-    predicted_targets = np.array([])
-    actual_targets = np.array([])
+    for train_index, test_index in kf.split(data_x):
+        classifier.fit(data_x[train_index], data_y[train_index])
+        predicted_targets.extend(classifier.predict(data_x[test_index]))
+        actual_targets.extend(data_y[test_index])
 
-    for train_ix, test_ix in k_fold.split(data_x, data_y):
-        train_x, train_y, test_x, test_y = data_x[train_ix], data_y[train_ix], data_x[test_ix], data_y[test_ix]
-        # Fit the classifier
-        classifier.fit(train_x, train_y)
-        # Predict the labels of the test set samples
-        predicted_labels = classifier.predict(test_x)
-        predicted_targets = np.append(predicted_targets, predicted_labels)
-        actual_targets = np.append(actual_targets, test_y)
+    predicted_targets = np.array(predicted_targets)
+    actual_targets = np.array(actual_targets)
 
     return predicted_targets, actual_targets
+
 
 def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=True, 
     title='Confusion Matrix', savefig=False):
@@ -1165,12 +1110,13 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
     plt.figure()
     if normalize:
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
-    elif normalize == False:
+    else:
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
     
     if savefig:
+        _set_style_()
         plt.savefig('Ensemble_Confusion_Matrix.png', bbox_inches='tight', dpi=300)
-        plt.clf()
+        plt.clf(); plt.style.use('default')
     else:
         plt.show()
     
@@ -1194,26 +1140,19 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
         conf_matrix = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
 
     plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.get_cmap('Blues'))
-    plt.title(title)#, fontsize=20)
-    plt.colorbar()
+    plt.title(title); plt.colorbar()
 
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, alpha=1, color='k')#rotation=45, fontsize=14,
-    plt.yticks(tick_marks, classes, alpha=1, color='k', rotation=90)#fontsize=14,
-    #plt.xticks(tick_marks, ['DIFFUSE','OTHER'], rotation=45, fontsize=14)
-    #plt.yticks(tick_marks, ['DIFFUSE','OTHER'], fontsize=14)
+    plt.xticks(tick_marks, classes, alpha=1, color='k'); plt.yticks(tick_marks, classes, alpha=1, color='k', rotation=90)
 
     fmt = '.4f' if normalize is True else 'd'
     thresh = conf_matrix.max() / 2.
 
     for i, j in itertools.product(range(conf_matrix.shape[0]), range(conf_matrix.shape[1])):
-        plt.text(j, i, format(conf_matrix[i, j], fmt), horizontalalignment="center",
-                 color="white" if conf_matrix[i, j] > thresh else "black")#fontsize=14,
+        plt.text(j, i, format(conf_matrix[i, j], fmt), horizontalalignment="center", color="white" if conf_matrix[i, j] > thresh else "black")
 
-    plt.grid(False)
-    plt.ylabel('True label', alpha=1, color='k')#fontsize=18
-    plt.xlabel('Predicted label',alpha=1, color='k')#fontsize=18
-    plt.tight_layout()
+    plt.ylabel('True label', alpha=1, color='k'); plt.xlabel('Predicted label',alpha=1, color='k')
+    plt.grid(False); plt.tight_layout()
 
     return conf_matrix
 
@@ -1234,9 +1173,58 @@ def min_max_norm(data_x):
     new_array = np.zeros((Ny, Nx))
     
     for i in range(Nx):
-        print((np.max(data_x[:,i]) - np.min(data_x[:,i])))
         new_array[:,i] = (data_x[:,i] - np.min(data_x[:,i])) / (np.max(data_x[:,i]) - np.min(data_x[:,i]))
 
     return new_array
     
+def _set_style_():
+    """
+    Function to configure the matplotlib.pyplot style. This function is called before any images are saved,
+    after which the style is reset to the default.
+    """
 
+    plt.rcParams["xtick.color"] = "323034"
+    plt.rcParams["ytick.color"] = "323034"
+    plt.rcParams["text.color"] = "323034"
+    plt.rcParams["lines.markeredgecolor"] = "black"
+    plt.rcParams["patch.facecolor"] = "#bc80bd"  # Replace with a valid color code
+    plt.rcParams["patch.force_edgecolor"] = True
+    plt.rcParams["patch.linewidth"] = 0.8
+    plt.rcParams["scatter.edgecolors"] = "black"
+    plt.rcParams["grid.color"] = "#b1afb5"  # Replace with a valid color code
+    plt.rcParams["axes.titlesize"] = 16
+    plt.rcParams["legend.title_fontsize"] = 12
+    plt.rcParams["xtick.labelsize"] = 16
+    plt.rcParams["ytick.labelsize"] = 16
+    plt.rcParams["font.size"] = 15
+    plt.rcParams["axes.prop_cycle"] = (cycler('color', ['#bc80bd', '#fb8072', '#b3de69', '#fdb462', '#fccde5', '#8dd3c7', '#ffed6f', '#bebada', '#80b1d3', '#ccebc5', '#d9d9d9']))  # Replace with valid color codes
+    plt.rcParams["mathtext.fontset"] = "stix"
+    plt.rcParams["font.family"] = "STIXGeneral"
+    plt.rcParams["lines.linewidth"] = 2
+    plt.rcParams["lines.markersize"] = 6
+    plt.rcParams["legend.frameon"] = True
+    plt.rcParams["legend.framealpha"] = 0.8
+    plt.rcParams["legend.fontsize"] = 13
+    plt.rcParams["legend.edgecolor"] = "black"
+    plt.rcParams["legend.borderpad"] = 0.2
+    plt.rcParams["legend.columnspacing"] = 1.5
+    plt.rcParams["legend.labelspacing"] = 0.4
+    plt.rcParams["text.usetex"] = False
+    plt.rcParams["axes.labelsize"] = 17
+    plt.rcParams["axes.titlelocation"] = "center"
+    plt.rcParams["axes.formatter.use_mathtext"] = True
+    plt.rcParams["axes.autolimit_mode"] = "round_numbers"
+    plt.rcParams["axes.labelpad"] = 3
+    plt.rcParams["axes.formatter.limits"] = (-4, 4)
+    plt.rcParams["axes.labelcolor"] = "black"
+    plt.rcParams["axes.edgecolor"] = "black"
+    plt.rcParams["axes.linewidth"] = 1
+    plt.rcParams["axes.grid"] = False
+    plt.rcParams["axes.spines.right"] = True
+    plt.rcParams["axes.spines.left"] = True
+    plt.rcParams["axes.spines.top"] = True
+    plt.rcParams["figure.titlesize"] = 18
+    plt.rcParams["figure.autolayout"] = True
+    plt.rcParams["figure.dpi"] = 300
+
+    return

@@ -84,7 +84,7 @@ def augmentation(channel1, channel2=None, channel3=None, batch=1, width_shift=0,
             Can be set to: {"constant", "nearest", "reflect", "wrap"}.
         image_size (int, bool): The length/width of the cropped image. This can be used to remove
             anomalies caused by the fill (defaults to 50). This can also be set to None in which case 
-            the image in its original size is returned.
+            the image in its original size is returned. Defaults to None.
         mask_size (int): The size of the cutout mask. Defaults to None to disable random cutouts.
         num_masks (int): Number of masks to apply to each image. Defaults to None, must be an integer
             if mask_size is used as this designates how many masks of that size to randomly place in the image.
@@ -110,10 +110,10 @@ def augmentation(channel1, channel2=None, channel3=None, batch=1, width_shift=0,
     """
 
     if batch == 0: #Setting this in case the negative class is not set to be augmented during the CNN optimization routine.
-        if channel_2 is None:
+        if channel2 is None:
             return channel1 
         else:
-            if channel_3 is None:
+            if channel3 is None:
                 return channel1, channel2
             else:
                 return channel1, channel2, channel3
@@ -536,6 +536,10 @@ def resize(data, size=50):
     """
     Resizes the data by cropping out the outer boundaries outside the size x size limit.
     Can be either a 2D array containing one sample, or a 3D array for multiple samples.
+    
+    Note:
+        By design this function will not work if the data is a single sample, multiple channels (img_width, img_height, img_num_channels). 
+        In this case, reshape to be 4-D: data = data.reshape(1, img_width, img_height, img_num_channels)
 
     Args:
         data (array): 2D array to resize.
@@ -694,5 +698,3 @@ def plot(data, cmap='gray', title=''):
     plt.imshow(data, vmin=vmin, vmax=vmax, cmap=cmap)
     plt.title(title)
     plt.show()
-
-

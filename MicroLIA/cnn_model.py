@@ -17,9 +17,10 @@ import pkg_resources
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from cycler import cycler
+
 from sklearn.manifold import TSNE
 from tensorflow.keras.utils import to_categorical
-
 import random as python_random
 ##https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development##
 np.random.seed(1909), python_random.seed(1909), tf.random.set_seed(1909)
@@ -41,11 +42,11 @@ from MicroLIA.data_processing import process_class, create_training_set, concat_
 from MicroLIA.data_augmentation import augmentation, resize, smote_oversampling, plot
 from MicroLIA import optimization
 
-
 class Classifier:
     """
     Creates and trains the convolutional neural network. The built-in methods can be used predict new samples, and also optimize the engine and output visualizations.
-    
+    REMINDER: horizontal = vertical = rotation = True 
+
     Note:
         The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
         ratio of the minority class to the majority class after oversampling the majority.
@@ -68,6 +69,11 @@ class Classifier:
         val_negative (ndarray, optional): Negative class data to be used for validation. Defaults to None.
         test_positive (ndarray, optional): Positive class data to be used for post-trial testing. Defaults to None.
         test_negative (ndarray, optional): Negative class data to be used for post-trial testing. Defaults to None.
+        test_acc_threshold (float, optional): If input, models that yield test accuracies lower than the threshold will
+            be rejected by the optimizer. The accuracy of both the test_positive and test_negative is asessed, if input.
+            This is used to reject models that have over or under fit the training data. Defaults to None.
+        post_metric (bool): If True, the test_positive and/or test_negative inputs will be included in the final optimization score.
+            This will be the averaged out metric. Defaults to True. Can be set to False to only apply the test_acc_threshold.
         optimize (bool): If True the Boruta algorithm will be run to identify the features
             that contain useful information, after which the optimal Random Forest hyperparameters will be calculated 
             using Bayesian optimization. 
@@ -83,7 +89,13 @@ class Classifier:
             is not 1, the max_pixel should be a list containing two values, one for each band.
         metric (str): Assesment metric to use when both pruning and scoring the hyperparameter optimization trial.
             Defaults to 'loss'. Options include: 'loss' 'binary_accuracy', 'f1_score' 'all' or the validation equivalents (e.g. 'val_loss').
-        patience (int): Number of epochs without improvement before the optimization trial is terminated. Defaults to 0, which
+        metric2 (str, optional): Additional metric to be used solely for early-stopping purposes. If input, the trial will stop if either
+            metric or metric2 stop improving after the same patience number of epochs, but only the value of metric is used to assess
+            the performance of the model after each trial. Defaults to None.        patience (int): Number of epochs without improvement before the optimization trial is terminated. Defaults to 0, which
+            disables this feature.
+        metric3 (str, optional): Additional metric to be used solely for early-stopping purposes. If input, the trial will stop if either
+            metric or metric3 stop improving after the same patience number of epochs, but only the value of metric is used to assess
+            the performance of the model after each trial. Defaults to None.        patience (int): Number of epochs without improvement before the optimization trial is terminated. Defaults to 0, which
             disables this feature.
         average (bool): If False, the designated metric will be calculated according to its value at the end of the train_epochs. 
             If True, the metric will be averaged out across all train_epochs. Defaults to True.
@@ -105,9 +117,13 @@ class Classifier:
             if opt_aug=True. Defaults to 10 pixels.
         mask_size (int, optional): If enabled, this will set the pixel length of a square cutout, to be randomly placed
             somewhere in the augmented image. This cutout will replace the image values with 0, therefore serving as a 
-            regularizear. Only applicable if opt_aug=True. Defaults to None.
-        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. If 
-            this is set to a value greater than one, overlap may occur. 
+            regularizer. Only applicable if opt_aug=True. This value can either be an integer to hard-set the mask size everytime,
+            or can be a tuple representing the lower and upper bounds, respectively, in which case the mask size will be optimized. 
+            Defaults to None.
+        num_masks (int, optional): The number of masks to create, to be used alongside the mask_size parameter. Note that if 
+            this is set to a value greater than one, overlap may occur. This value can either be an integer to hard-set the number
+            of masks everytime, or it can be a tuple representing the lower and upper bounds, respectively, in which case the number
+            of masks will be optimized. Defaults to None.
         verbose (int): Controls the amount of output printed during the training process. A value of 0 is for silent mode, 
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
         opt_cv (int): Cross-validations to perform when assesing the performance at each
@@ -139,15 +155,21 @@ class Classifier:
             when opt_aug=True, set to to greater than or equal to 1.1 (a minimum of 10% increase), which would thus try different values for this
             during the optimization between 1 and 1.1.
         blend_other (float): Greater than or equal to 1. Can be zero to not apply augmentation to the majority class.
-    
+        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
+            just the best one. Defaults to False.
+        save_studies (bool): Whether to save the study object created by Optuna. If set to True, this study object will be
+            saved and overwritten after each trial. Can be used to resume studies. Defaults to False. 
+        path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
+            in the home directory.
+
     """
 
     def __init__(self, positive_class=None, negative_class=None, val_positive=None, val_negative=None, img_num_channels=1, clf='alexnet', 
-        normalize=False, min_pixel=0, max_pixel=100, optimize=False, n_iter=25, batch_size_min=16, batch_size_max=64, epochs=25, patience=5, metric='loss', 
-        average=True, test_positive=None, test_negative=None, opt_model=True, train_epochs=25, opt_cv=None,
-        opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
-        mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, blending_func='mean', num_images_to_blend=2, blend_other=1, zoom_range=(0.9,1.1), skew_angle=0,
-        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, path=None, use_gpu=False):
+        normalize=False, min_pixel=0, max_pixel=100, optimize=False, n_iter=25, batch_size_min=16, batch_size_max=64, epochs=25, patience=5, metric='loss', metric2=None, metric3=None,
+        average=True, test_positive=None, test_negative=None, test_acc_threshold=None, post_metric=True, opt_model=True, train_epochs=25, opt_cv=None,
+        opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, opt_max_min_pix=None, opt_max_max_pix=None, 
+        shift=10, rotation=False, horizontal=False, vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, blending_func='mean', num_images_to_blend=2, blend_other=1, zoom_range=(0.9,1.1), skew_angle=0,
+        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, save_models=False, save_studies=False, path=None, use_gpu=False):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -170,9 +192,13 @@ class Classifier:
         self.epochs = epochs
         self.patience = patience
         self.metric = metric
+        self.metric2 = metric2
+        self.metric3 = metric3
         self.average = average
         self.test_positive = test_positive
         self.test_negative = test_negative
+        self.test_acc_threshold = test_acc_threshold
+        self.post_metric = post_metric
         self.opt_model = opt_model
         self.train_epochs = train_epochs
         self.opt_cv = opt_cv
@@ -185,11 +211,14 @@ class Classifier:
         self.balance = balance
         self.image_size_min = image_size_min
         self.image_size_max = image_size_max
-        self.shift = shift
         self.opt_max_min_pix = opt_max_min_pix
         self.opt_max_max_pix = opt_max_max_pix
 
         #Image augmentation procedures
+        self.shift = shift
+        self.rotation = rotation
+        self.horizontal = horizontal
+        self.vertical = vertical
         self.mask_size = mask_size
         self.num_masks = num_masks
         self.smote_sampling = smote_sampling
@@ -212,6 +241,10 @@ class Classifier:
         self.path = path
         #Whether to turn off GPU
         self.use_gpu = use_gpu
+        #Controls whether the models are saved after each optimization trial
+        self.save_models = save_models
+        #Controls whether the study object as the trials progress
+        self.save_studies = save_studies
 
         if self.use_gpu is False:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1' 
@@ -219,10 +252,35 @@ class Classifier:
         if self.clf not in ['alexnet', 'vgg16', 'resnet18', 'custom_cnn']:
             raise ValueError('Invalid clf input, options are: "alexnet", "vgg16", "resnet18", or "custom_cnn".')
 
-        if self.val_positive is not None:
+        if self.positive_class is not None:
             if len(self.positive_class.shape) == 4 and self.img_num_channels != self.positive_class.shape[-1]:
                 print('NOTE: Detected {} filters but img_num_channels was set to {}, setting img_numg_channels={}'.format(self.positive_class.shape[-1], self.img_num_channels, self.positive_class.shape[-1]))
                 self.img_num_channels = self.positive_class.shape[-1]
+            if len(self.positive_class.shape) == 4 and self.img_num_channels == 1: #If it's just one filter convert to 3-D array
+                self.positive_class = np.squeeze(self.positive_class)
+            if len(self.negative_class.shape) == 4 and self.img_num_channels == 1: #If it's just one filter convert to 3-D array
+                self.negative_class = np.squeeze(self.negative_class)
+            if self.val_positive is not None:
+                if len(self.val_positive.shape) == 4 and self.img_num_channels == 1: #If it's just one filter convert to 3-D array
+                    self.val_positive = np.squeeze(self.val_positive)
+                if len(self.val_positive.shape) == 2:
+                    if self.img_num_channels != 1:
+                        raise ValueError('Single image detected as the positive validation data, img_num_channels must be 1!')
+                    else:
+                        self.val_positive = np.reshape(self.val_positive, (1, self.val_positive.shape[0], self.val_positive.shape[1]))
+            if self.val_negative is not None:
+                if len(self.val_negative.shape) == 4 and self.img_num_channels == 1: #If it's just one filter convert to 3-D array
+                    self.val_negative = np.squeeze(self.val_negative)
+                if len(self.val_negative.shape) == 2:
+                    if self.img_num_channels != 1:
+                        raise ValueError('Single image detected as the negative validation data, img_num_channels must be 1!')
+                    else:
+                        self.val_negative = np.reshape(self.val_negative, (1, self.val_negative.shape[0], self.val_negative.shape[1]))
+
+        if self.test_positive is not None or self.test_negative is not None:
+            if self.post_metric is False and self.test_acc_threshold is None:
+                raise ValueError('NOTE: Test data has been input but both post_metric=False and test_acc_threshold=None -- enable at least one option or set the test data to None!')
+
 
         #These will be the model attributes
         self.model = None
@@ -242,6 +300,9 @@ class Classifier:
             Trained classifier.
         """
 
+        if self.positive_class is None or self.negative_class is None:
+            raise ValueError('No training data found! Input both the positive_class and the negative_class.')
+            
         if self.optimize is False and self.best_params is None:
             if self.clf == 'alexnet':
                 print("Returning base AlexNet model...")
@@ -263,21 +324,35 @@ class Classifier:
                 self.model, self.history = custom_model(self.positive_class, self.negative_class, img_num_channels=self.img_num_channels, normalize=self.normalize,
                     min_pixel=self.min_pixel, max_pixel=self.max_pixel, val_positive=self.val_positive, val_negative=self.val_negative, epochs=self.epochs, 
                     smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, save_training_data=save_training, path=self.path)          
+            
+            print(); print('Complete! To save the final model and optimization results, call the save() method.') 
+            if overwrite_training:
+                print(); print("Can only use overwrite_training=True if optimizing the model!")
+
             return      
 
         if self.best_params is None:
             self.best_params, self.optimization_results = optimization.hyper_opt(self.positive_class, self.negative_class, val_X=self.val_positive, val_Y=self.val_negative, img_num_channels=self.img_num_channels, clf=self.clf,
-                normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, n_iter=self.n_iter, patience=self.patience, metric=self.metric, average=self.average,
-                test_positive=self.test_positive, test_negative=self.test_negative, opt_model=self.opt_model, batch_size_min=self.batch_size_min, batch_size_max=self.batch_size_max, train_epochs=self.train_epochs, opt_cv=self.opt_cv,
-                opt_aug=self.opt_aug, batch_min=self.batch_min, batch_max=self.batch_max, batch_other=self.batch_other, balance=self.balance, image_size_min=self.image_size_min, image_size_max=self.image_size_max, shift=self.shift, 
-                opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, mask_size=self.mask_size, num_masks=self.num_masks, smote_sampling=self.smote_sampling, blend_max=self.blend_max, blend_other=self.blend_other, 
+                normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, n_iter=self.n_iter, patience=self.patience, metric=self.metric, metric2=self.metric2, metric3=self.metric3, average=self.average,
+                test_positive=self.test_positive, test_negative=self.test_negative, test_acc_threshold=self.test_acc_threshold, post_metric=self.post_metric, opt_model=self.opt_model, batch_size_min=self.batch_size_min, batch_size_max=self.batch_size_max, 
+                train_epochs=self.train_epochs, opt_cv=self.opt_cv, opt_aug=self.opt_aug, batch_min=self.batch_min, batch_max=self.batch_max, batch_other=self.batch_other, balance=self.balance, image_size_min=self.image_size_min, image_size_max=self.image_size_max, 
+                shift=self.shift, rotation=self.rotation, horizontal=self.horizontal, vertical=self.vertical, opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, mask_size=self.mask_size, num_masks=self.num_masks, smote_sampling=self.smote_sampling, blend_max=self.blend_max, blend_other=self.blend_other, 
                 num_images_to_blend=self.num_images_to_blend, blending_func=self.blending_func, zoom_range=self.zoom_range, skew_angle=self.skew_angle, limit_search=self.limit_search, monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, 
-                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, return_study=True)
+                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, save_models=self.save_models, save_studies=self.save_studies, path=self.path, return_study=True)
             print("Fitting and returning final model...")
         else:
-            print('Fitting model using the loaded best_params...')
-            
-        if self.epochs != 0:
+            if self.epochs != 0:
+                print(); print('Fitting model using the best_params, if the class attributes were not loaded ensure they have been enabled...')
+            else:
+                print(); print('The epochs parameter is zero, returning nothing...')
+                return 
+
+        if self.epochs == 0:
+
+            print(); print('The epochs parameter is zero, skipping final model training...')
+            return
+
+        else:
 
             clear_session()
 
@@ -301,13 +376,16 @@ class Classifier:
                 else:
                     min_pix, max_pix = self.min_pixel, self.max_pixel
 
-                horizontal = vertical = rotation = True 
                 blend_multiplier = self.best_params['blend_multiplier'] if self.blend_max >= 1.1 else 0
                 skew_angle = self.best_params['skew_angle'] if self.skew_angle > 0 else 0
+                mask_size = self.best_params['mask_size'] if isinstance(self.mask_size, tuple) else self.mask_size
+                num_masks = self.best_params['num_masks'] if isinstance(self.num_masks, tuple) else self.num_masks
+
+                print(); print('======= Image Parameters ======'); print(); print('Num Augmentations :', self.best_params['num_aug']); print('Image Size : ', self.best_params['image_size']); print('Max Pixel(s) :', max_pix); print('Num Masks :', num_masks); print('Mask Size :', mask_size); print('Blend Multiplier :', blend_multiplier); print('Skew Angle :', skew_angle)
 
                 augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.best_params['num_aug'], 
-                    width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                    image_size=self.best_params['image_size'], mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=blend_multiplier, 
+                    width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                    image_size=self.best_params['image_size'], mask_size=mask_size, num_masks=num_masks, blend_multiplier=blend_multiplier, 
                     blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
 
                 #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
@@ -332,8 +410,8 @@ class Classifier:
                     channel1, channel2, channel3 = copy.deepcopy(self.negative_class[:,:,:,0]), copy.deepcopy(self.negative_class[:,:,:,1]), copy.deepcopy(self.negative_class[:,:,:,2])
                 
                 augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
-                    width_shift=self.shift, height_shift=self.shift, horizontal=horizontal, vertical=vertical, rotation=rotation, 
-                    image_size=self.best_params['image_size'], mask_size=self.mask_size, num_masks=self.num_masks, blend_multiplier=self.blend_other, 
+                    width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                    image_size=self.best_params['image_size'], mask_size=mask_size, num_masks=num_masks, blend_multiplier=self.blend_other, 
                     blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
                 
                 #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
@@ -416,16 +494,19 @@ class Classifier:
                 beta_1 = beta_2 = 0; amsgrad = False
             elif optimizer == 'adam' or optimizer == 'adamax' or optimizer == 'nadam':
                 beta_1 = self.best_params['beta_1']
-                beta_2 = self.best_params['beta_1']
+                beta_2 = self.best_params['beta_2']
                 amsgrad = self.best_params['amsgrad'] if optimizer == 'adam' else False
                 momentum, nesterov = 0.0, False
             elif optimizer == 'adadelta' or optimizer == 'rmsprop':
                 rho = self.best_params['rho']
                 momentum = beta_1 = beta_2 = 0; nesterov = amsgrad = False
 
+            if self.opt_cv is not None and self.verbose == 1:
+                    print(); print('***********  CV - 1 ***********'); print()
+
             if self.opt_model:
                 #If opt_model=True, the optimization routine will tune the model regularizer and the pooling types
-                #If limit_search=False, the layer parameters (filters, pool sizes, etc) will be tuned as well (might crash machine!)
+                #If limit_search=False, the layer parameters (filters, pool sizes, etc) will be tuned as well (might crash machine due to memory allocation error!)
                 if self.clf == 'alexnet':
                     if self.limit_search:
                         self.model, self.history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
@@ -554,11 +635,313 @@ class Classifier:
                         batch_size=batch_size, optimizer=optimizer, lr=lr, momentum=momentum, decay=decay, nesterov=nesterov, 
                         smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
         
-        print('Complete! To save the final model and optimization results, use save().') 
-        if overwrite_training:
-            self.positive_class, self.negative_class, self.val_positive, self.val_negative = class_1, class_2, val_class_1, val_class_2
+            #################################
 
-        return
+            ##### Cross-Validation Routine - implementation in which the validation data is inserted into the training data with the replacement serving as the new validation#####
+            if self.opt_cv is not None:
+
+                models, histories = [], [] #Will be used to append additional models, it opt_cv is enabled
+
+                models.append(self.model); histories.append(self.history) #Appending the already created first model & history
+
+                if self.val_positive is None and self.val_negative is None:
+                    raise ValueError('CNN cross-validation is only supported if validation data is input.')
+                if self.val_positive is not None:
+                    if len(self.positive_class) / len(self.val_positive) < self.opt_cv-1:
+                        raise ValueError('Cannot evenly partition the positive training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
+                if self.val_negative is not None:
+                    if len(self.negative_class) / len(self.val_negative) < self.opt_cv-1:
+                        raise ValueError('Cannot evenly partition the negative training/validation data, refer to the MicroLIA API documentation for instructions on how to use the opt_cv parameter.')
+                
+                #The first model (therefore the first "fold") already ran, therefore sutbract 1      
+                for k in range(self.opt_cv-1):        
+
+                    #Make deep copies to avoid overwriting arrays
+                    class_1, class_2 = copy.deepcopy(self.positive_class), copy.deepcopy(self.negative_class)
+                    val_class_1, val_class_2 = copy.deepcopy(self.val_positive), copy.deepcopy(self.val_negative)
+
+                    #Sort the new data samples, no random shuffling, just a linear sequence
+                    if val_class_1 is not None:
+                        val_hold_1 = copy.deepcopy(class_1[k*len(val_class_1):len(val_class_1)*(k+1)]) #The new positive validation data
+                        class_1[k*len(val_class_1):len(val_class_1)*(k+1)] = copy.deepcopy(val_class_1) #The new class_1, copying to avoid linkage between arrays
+                        val_class_1 = val_hold_1 
+                    if val_class_2 is not None:
+                        val_hold_2 = copy.deepcopy(class_2[k*len(val_class_2):len(val_class_2)*(k+1)]) #The new validation data
+                        class_2[k*len(val_class_2):len(val_class_2)*(k+1)] = copy.deepcopy(val_class_2) #The new class_2, copying to avoid linkage between arrays
+                        val_class_2 = val_hold_2 
+
+                    if self.opt_aug:
+                        if self.img_num_channels == 1:
+                            channel1, channel2, channel3 = copy.deepcopy(class_1), None, None 
+                        elif self.img_num_channels == 2:
+                            channel1, channel2, channel3 = copy.deepcopy(class_1[:,:,:,0]), copy.deepcopy(class_1[:,:,:,1]), None 
+                        else:
+                            channel1, channel2, channel3 = copy.deepcopy(class_1[:,:,:,0]), copy.deepcopy(class_1[:,:,:,1]), copy.deepcopy(class_1[:,:,:,2])
+
+                        augmented_images = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.best_params['num_aug'], 
+                            width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                            image_size=self.best_params['image_size'], mask_size=mask_size, num_masks=num_masks, blend_multiplier=blend_multiplier, 
+                            blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
+
+                        if self.img_num_channels > 1:
+                            class_1=[]
+                            if self.img_num_channels == 2:
+                                for i in range(len(augmented_images[0])):
+                                    class_1.append(concat_channels(augmented_images[0][i], augmented_images[1][i]))
+                            else:
+                                for i in range(len(augmented_images[0])):
+                                    class_1.append(concat_channels(augmented_images[0][i], augmented_images[1][i], augmented_images[2][i]))
+                            class_1 = np.array(class_1)
+                        else:
+                            class_1 = augmented_images
+
+                        #Perform same augmentation techniques on negative class data, batch_other=1 by default
+                        if self.img_num_channels == 1:
+                            channel1, channel2, channel3 = copy.deepcopy(class_2), None, None 
+                        elif self.img_num_channels == 2:
+                            channel1, channel2, channel3 = copy.deepcopy(class_2[:,:,:,0]), copy.deepcopy(class_2[:,:,:,1]), None 
+                        elif self.img_num_channels == 3:
+                            channel1, channel2, channel3 = copy.deepcopy(class_2[:,:,:,0]), copy.deepcopy(class_2[:,:,:,1]), copy.deepcopy(class_2[:,:,:,2])
+                        
+                        augmented_images_negative = augmentation(channel1=channel1, channel2=channel2, channel3=channel3, batch=self.batch_other, 
+                            width_shift=self.shift, height_shift=self.shift, horizontal=self.horizontal, vertical=self.vertical, rotation=self.rotation, 
+                            image_size=self.best_params['image_size'], mask_size=mask_size, num_masks=num_masks, blend_multiplier=self.blend_other, 
+                            blending_func=self.blending_func, num_images_to_blend=self.num_images_to_blend, zoom_range=self.zoom_range, skew_angle=skew_angle)
+
+                        #The augmentation routine returns an output for each filter, e.g. 3 outputs for RGB
+                        if self.img_num_channels > 1:
+                            class_2=[]
+                            if self.img_num_channels == 2:
+                                for i in range(len(augmented_images_negative[0])):
+                                    class_2.append(concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i]))
+                            else:
+                                for i in range(len(augmented_images_negative[0])):
+                                    class_2.append(concat_channels(augmented_images_negative[0][i], augmented_images_negative[1][i], augmented_images_negative[2][i]))
+                            class_2 = np.array(class_2)
+                        else:
+                            class_2 = augmented_images_negative
+
+                        #Balance the class sizes if necessary
+                        if self.balance:
+                            if self.batch_other > 1: #Must shuffle!!!
+                                ix = np.random.permutation(len(class_2))
+                                class_2 = class_2[ix]
+                            class_2 = class_2[:len(class_1)]   
+
+                        if self.img_num_channels == 1:
+                            class_2 = resize(class_2, size=self.best_params['image_size'])
+                        else:
+                            channel1 = resize(class_2[:,:,:,0], size=self.best_params['image_size'])
+                            channel2 = resize(class_2[:,:,:,1], size=self.best_params['image_size'])
+                            if self.img_num_channels == 2:
+                                class_2 = concat_channels(channel1, channel2)
+                            else:
+                                channel3 = resize(class_2[:,:,:,2], size=self.best_params['image_size'])
+                                class_2 = concat_channels(channel1, channel2, channel3)
+
+                        if val_class_1 is not None:
+                            if self.img_num_channels == 1:
+                                val_class_1 = resize(val_class_1, size=self.best_params['image_size'])
+                            else:
+                                val_channel1 = resize(val_class_1[:,:,:,0], size=self.best_params['image_size'])
+                                val_channel2 = resize(val_class_1[:,:,:,1], size=self.best_params['image_size'])
+                                if self.img_num_channels == 2:
+                                    val_class_1 = concat_channels(val_channel1, val_channel2)
+                                else:
+                                    val_channel3 = resize(val_class_1[:,:,:,2], size=self.best_params['image_size'])
+                                    val_class_1 = concat_channels(val_channel1, val_channel2, val_channel3)
+
+                        if val_class_2 is not None:
+                            if self.img_num_channels == 1:
+                                val_class_2 = resize(val_class_2, size=self.best_params['image_size'])
+                            elif self.img_num_channels > 1:
+                                val_channel1 = resize(val_class_2[:,:,:,0], size=self.best_params['image_size'])
+                                val_channel2 = resize(val_class_2[:,:,:,1], size=self.best_params['image_size'])
+                                if self.img_num_channels == 2:
+                                    val_class_2 = concat_channels(val_channel1, val_channel2)
+                                else:
+                                    val_channel3 = resize(val_class_2[:,:,:,2], size=self.best_params['image_size'])
+                                    val_class_2 = concat_channels(val_channel1, val_channel2, val_channel3)
+
+                    if self.verbose == 1:
+                        print(); print('***********  CV - {} ***********'.format(k+2)); print()
+
+                    clear_session()
+
+                    if self.opt_model is False:
+                        if self.clf == 'alexnet':
+                            model, history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, 
+                                checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                        elif self.clf == 'custom_cnn':
+                            model, history = custom_model(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, 
+                                checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                        elif self.clf == 'vgg16':
+                            model, history = VGG16(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, 
+                                checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                        elif self.clf == 'resnet18':
+                            model, history = Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, 
+                                checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                    else:
+                        if self.clf == 'alexnet':
+                            if self.limit_search:
+                                model, history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], 
+                                    model_reg=self.best_params['model_reg'], pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], pooling_3=self.best_params['pooling_3'], 
+                                    smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                            else:
+                                model, history = AlexNet(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], model_reg=self.best_params['model_reg'], 
+                                    filter_1=self.best_params['filter_1'], filter_size_1=self.best_params['filter_size_1'], strides_1=self.best_params['strides_1'], pooling_1=self.best_params['pooling_1'], pool_size_1=self.best_params['pool_size_1'], pool_stride_1=self.best_params['pool_stride_1'],
+                                    filter_2=self.best_params['filter_2'], filter_size_2=self.best_params['filter_size_2'], strides_2=self.best_params['strides_2'], pooling_2=self.best_params['pooling_2'], pool_size_2=self.best_params['pool_size_2'], pool_stride_2=self.best_params['pool_stride_2'],
+                                    filter_3=self.best_params['filter_3'], filter_size_3=self.best_params['filter_size_3'], strides_3=self.best_params['strides_3'], pooling_3=self.best_params['pooling_3'], pool_size_3=self.best_params['pool_size_3'], pool_stride_3=self.best_params['pool_stride_3'], 
+                                    filter_4=self.best_params['filter_4'], filter_size_4=self.best_params['filter_size_4'], strides_4=self.best_params['strides_4'], 
+                                    filter_5=self.best_params['filter_5'], filter_size_5=self.best_params['filter_size_5'], strides_5=self.best_params['strides_5'], 
+                                    dense_neurons_1=self.best_params['dense_neurons_1'], dense_neurons_2=self.best_params['dense_neurons_2'], dropout_1=self.best_params['dropout_1'], dropout_2=self.best_params['dropout_2'],
+                                    smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+
+                        elif self.clf == 'resnet18':
+                            if self.limit_search:
+                                model, history = Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], 
+                                    model_reg=self.best_params['model_reg'], pooling=self.best_params['pooling'],
+                                    smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                            else:
+                                model, history = Resnet18(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], 
+                                    model_reg=self.best_params['model_reg'], filters=self.best_params['filters'], filter_size=self.best_params['filter_size'], strides=self.best_params['strides'],  
+                                    pooling=self.best_params['pooling'], pool_size=self.best_params['pool_size'], pool_stride=self.best_params['pool_stride'], block_filters_1=self.best_params['block_filters_1'], 
+                                    block_filters_2=self.best_params['block_filters_2'], block_filters_3=self.best_params['block_filters_3'], block_filters_4=self.best_params['block_filters_4'], 
+                                    block_filters_size=self.best_params['block_filters_size'], smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                        
+                        elif self.clf == 'vgg16':
+                            if self.limit_search:
+                                model, history = VGG16(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], 
+                                    model_reg=self.best_params['model_reg'], pooling_1=self.best_params['pooling_1'], pooling_2=self.best_params['pooling_2'], pooling_3=self.best_params['pooling_3'], 
+                                    pooling_4=self.best_params['pooling_4'], pooling_5=self.best_params['pooling_5'], smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                            else:
+                                model, history = VGG16(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                    normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                    epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                    beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                    activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], model_reg=self.best_params['model_reg'],                 
+                                    filter_1=self.best_params['filter_1'], filter_size_1=self.best_params['filter_size_1'], strides_1=self.best_params['strides_1'], pooling_1=self.best_params['pooling_1'], pool_size_1=self.best_params['pool_size_1'], pool_stride_1=self.best_params['pool_stride_1'],
+                                    filter_2=self.best_params['filter_2'], filter_size_2=self.best_params['filter_size_2'], strides_2=self.best_params['strides_2'], pooling_2=self.best_params['pooling_2'], pool_size_2=self.best_params['pool_size_2'], pool_stride_2=self.best_params['pool_stride_2'],
+                                    filter_3=self.best_params['filter_3'], filter_size_3=self.best_params['filter_size_3'], strides_3=self.best_params['strides_3'], pooling_3=self.best_params['pooling_3'], pool_size_3=self.best_params['pool_size_3'], pool_stride_3=self.best_params['pool_stride_3'],
+                                    filter_4=self.best_params['filter_4'], filter_size_4=self.best_params['filter_size_4'], strides_4=self.best_params['strides_4'], pooling_4=self.best_params['pooling_4'], pool_size_4=self.best_params['pool_size_4'], pool_stride_4=self.best_params['pool_stride_4'],
+                                    filter_5=self.best_params['filter_5'], filter_size_5=self.best_params['filter_size_5'], strides_5=self.best_params['strides_5'], pooling_5=self.best_params['pooling_5'], pool_size_5=self.best_params['pool_size_5'], pool_stride_5=self.best_params['pool_stride_5'],
+                                    dense_neurons_1=self.best_params['dense_neurons_1'], dense_neurons_2=self.best_params['dense_neurons_2'], dropout_1=self.best_params['dropout_1'], dropout_2=self.best_params['dropout_2'],
+                                    smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+                        
+                        elif self.clf == 'custom_cnn':
+                            #Need to extract the second and third layers manually 
+                            #Conv2D and Pooling Layers
+                            strides_1 = pool_stride_1 = 1 
+                            if self.best_params['num_conv_layers'] == 1:
+                                filter_2 = filter_size_2 = strides_2 = pool_size_2 = pool_stride_2 = filter_3 = filter_size_3 = strides_3 = pool_size_3 = pool_stride_3 = 0; pooling_2 = pooling_3 = None
+                            if self.best_params['num_conv_layers'] >= 2:
+                                filter_2 = self.best_params['filter_2']
+                                filter_size_2 = self.best_params['filter_size_2'] 
+                                pooling_2 = self.best_params['pooling_2']
+                                pool_size_2 = self.best_params['pool_size_2']
+                                strides_2 = pool_stride_2 = 1; filter_3 = filter_size_3 = strides_3 = pool_size_3 = pool_stride_3 = 0; pooling_3 = None
+                            if self.best_params['num_conv_layers'] == 3:
+                                filter_3 = self.best_params['filter_3']
+                                filter_size_3 = self.best_params['filter_size_3']
+                                pooling_3 = self.best_params['pooling_3']
+                                pool_size_3 = self.best_params['pool_size_3']
+                                strides_3 = pool_stride_3 = 1
+                            #Dense Layers
+                            if self.best_params['num_dense_layers'] == 1:
+                                dense_neurons_2 = dropout_2 = dense_neurons_3 = dropout_3 = 0
+                            if self.best_params['num_dense_layers'] >= 2:
+                                dense_neurons_2 = self.best_params['dense_neurons_2']
+                                dropout_2 = self.best_params['dropout_2'] 
+                                dense_neurons_3 = dropout_3 = 0
+                            if self.best_params['num_dense_layers'] == 3:
+                                dense_neurons_3 =  self.best_params['dense_neurons_3']                         
+                                dropout_3 = self.best_params['dropout_3'] 
+
+                            model, history = custom_model(class_1, class_2, img_num_channels=self.img_num_channels, 
+                                normalize=self.normalize, min_pixel=min_pix, max_pixel=max_pix, val_positive=val_class_1, val_negative=val_class_2, 
+                                epochs=self.epochs, batch_size=batch_size, optimizer=optimizer, lr=lr, decay=decay, momentum=momentum, nesterov=nesterov, 
+                                beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad, loss=self.best_params['loss'], activation_conv=self.best_params['activation_conv'], 
+                                activation_dense=self.best_params['activation_dense'], conv_init=self.best_params['conv_init'], dense_init=self.best_params['dense_init'], model_reg=self.best_params['model_reg'],
+                                filter_1=self.best_params['filter_1'], filter_size_1=self.best_params['filter_size_1'], strides_1=strides_1, pooling_1=self.best_params['pooling_1'], pool_size_1=self.best_params['pool_size_1'], pool_stride_1=pool_stride_1, 
+                                filter_2=filter_2, filter_size_2=filter_size_2, strides_2=strides_2, pooling_2=pooling_2, pool_size_2=pool_size_2, pool_stride_2=pool_stride_2, 
+                                filter_3=filter_3, filter_size_3=filter_size_3, strides_3=strides_3, pooling_3=pooling_3, pool_size_3=pool_size_3, pool_stride_3=pool_stride_3, 
+                                dense_neurons_1=self.best_params['dense_neurons_1'], dense_neurons_2=dense_neurons_2, dense_neurons_3=dense_neurons_3, 
+                                dropout_1=self.best_params['dropout_1'], dropout_2=dropout_2, dropout_3=dropout_3, 
+                                smote_sampling=self.smote_sampling, patience=self.patience, metric=self.metric, checkpoint=False, verbose=self.verbose, save_training_data=save_training, path=self.path)
+
+                    models.append(model), histories.append(history)
+
+                    try:
+                        if np.isfinite(history.history['loss'][-1]) is False:
+                            print(); print(f"NOTE: Training failed during fold {k} due to numerical instability!")
+                    except Exception as e:    
+                        print(); print(f"ERROR: Training failed during fold {k} due to error: {e}!")
+                        return
+
+            #################################
+
+            if self.opt_cv is None:
+                self.model_train_metrics = np.c_[self.history.history['binary_accuracy'], self.history.history['loss'], self.history.history['f1_score']]
+                if self.val_positive is not None:
+                    self.model_val_metrics = np.c_[self.history.history['val_binary_accuracy'], self.history.history['val_loss'], self.history.history['val_f1_score']]
+                print('Complete! To save the final model and optimization results, call the save() method.') 
+            else:
+                self.model, self.history = models, histories
+                self.model_train_metrics = [] 
+                for i in range(100): #If more than 100 CVs then this will break 
+                    try:
+                        model_train_metrics = np.c_[self.history[i].history['binary_accuracy'], self.history[i].history['loss'], self.history[i].history['f1_score']]
+                        self.model_train_metrics.append(model_train_metrics)
+                    except:
+                        break
+
+                if self.val_positive is not None:
+                    self.model_val_metrics = []
+                    for i in range(100): #If more than 100 CVs then this will break 
+                        try:
+                            model_val_metrics = np.c_[self.history[i].history['val_binary_accuracy'], self.history[i].history['val_loss'], self.history[i].history['val_f1_score']]
+                            self.model_val_metrics.append(model_val_metrics)
+                        except:
+                            break
+
+                print('Complete!'); print('NOTE: Cross-validation was enabled, therefore the model and history class attribute are lists containing all. To save, call the save() method.') 
+
+            if overwrite_training:
+                self.positive_class, self.negative_class, self.val_positive, self.val_negative = class_1, class_2, val_class_1, val_class_2
+
+            return
 
     def save(self, dirname=None, overwrite=False):
         """
@@ -605,11 +988,18 @@ class Classifier:
         
         path += 'MicroLIA_cnn_model/'
         if self.model is not None:
-            save_model(self.model, path+'Keras_Model.h5')#,  custom_objects={'f1_score': f1_score})
-            np.savetxt(path+'model_train_metrics', np.c_[self.history.history['binary_accuracy'], self.history.history['loss'], self.history.history['f1_score']], header='binary_accuracy\tloss\tf1_score')
-            if self.val_positive is not None:
-                np.savetxt(path+'model_val_metrics', np.c_[self.history.history['val_binary_accuracy'], self.history.history['val_loss'], self.history.history['val_f1_score']], header='val_binary_accuracy\tval_loss\tval_f1_score')
-            
+            if isinstance(self.model, list) is False:
+                save_model(self.model, path+'Keras_Model.h5')#,  custom_objects={'f1_score': f1_score})
+                np.savetxt(path+'model_train_metrics', np.c_[self.history.history['binary_accuracy'], self.history.history['loss'], self.history.history['f1_score']], header='binary_accuracy\tloss\tf1_score')
+                if self.val_positive is not None:
+                    np.savetxt(path+'model_val_metrics', np.c_[self.history.history['val_binary_accuracy'], self.history.history['val_loss'], self.history.history['val_f1_score']], header='val_binary_accuracy\tval_loss\tval_f1_score')
+            else:
+                for counter in range(len(self.model)):
+                    save_model(self.model[counter], path+'Keras_Model_CV_'+str(counter+1)+'.h5')#,  custom_objects={'f1_score': f1_score})
+                    np.savetxt(path+'model_train_metrics_CV_'+str(counter+1), np.c_[self.history[counter].history['binary_accuracy'], self.history[counter].history['loss'], self.history[counter].history['f1_score']], header='binary_accuracy\tloss\tf1_score')
+                    if self.val_positive is not None:
+                        np.savetxt(path+'model_val_metrics_CV_'+str(counter+1), np.c_[self.history[counter].history['val_binary_accuracy'], self.history[counter].history['val_loss'], self.history[counter].history['val_f1_score']], header='val_binary_accuracy\tval_loss\tval_f1_score')
+
         if self.best_params is not None:
             joblib.dump(self.best_params, path+'Best_Params')
         if self.optimization_results is not None:
@@ -650,24 +1040,78 @@ class Classifier:
         path += 'MicroLIA_cnn_model/'
 
         try:
+            attrs_dict = joblib.load(path + 'class_attributes.pkl')
+            for attr, value in attrs_dict.items():
+                setattr(self, attr, value)
+            class_attributes = ', class_attributes'
+        except:
+            class_attributes = ''
+
+        try:
             self.model = load_model(path+'Keras_Model.h5', compile=False) #custom_objects={'f1_score': f1_score, 'loss': loss})
             model = 'model'
         except:
-            print('Could not load model!')
-            model = ''
-                
+            try:
+                self.model = []
+                for i in range(1, 101): #If more than 100 CVs then this will break 
+                    try:
+                        model = load_model(path+'Keras_Model_CV_'+str(i)+'.h5', compile=False) #custom_objects={'f1_score': f1_score, 'loss': loss})
+                        self.model.append(model)
+                    except:
+                        break
+
+                if len(self.model) >= 1:
+                    model = 'models'
+                else:
+                    print('Could not load models!')
+                    model = ''
+            except:
+                print('Could not load model!')
+                model = ''
+
         try:
             self.model_train_metrics = np.loadtxt(path+'model_train_metrics')
             train_metrics = ', training_history'
         except:
-            print('Could not load training history!')
-            train_metrics = ''
+            try:
+                self.model_train_metrics = [] 
+                for i in range(1, 101): #If more than 100 CVs then this will break 
+                    try:
+                        model_train_metrics = np.loadtxt(path+'model_train_metrics_CV_'+str(i)) 
+                        self.model_train_metrics.append(model_train_metrics)
+                    except:
+                        continue
+
+                if len(self.model_train_metrics) >= 1:
+                    train_metrics = ', training_histories'
+                else:
+                    print('Could not load training histories!')
+                    train_metrics = ''
+            except:
+                print('Could not load training history!')
+                train_metrics = ''
 
         try:
             self.model_val_metrics = np.loadtxt(path+'model_val_metrics')
             val_metrics = ', val_training_history'
         except:
-            val_metrics = ''
+            try:
+                self.model_val_metrics = []
+                for i in range(1, 101): #If more than 100 CVs then this will break 
+                    try:
+                        model_val_metrics = np.loadtxt(path+'model_val_metrics_CV_'+str(i)) 
+                        self.model_val_metrics.append(model_val_metrics)
+                    except:
+                        continue
+
+                if len(self.model_val_metrics) >= 1:
+                    val_metrics = ', val_training_histories'
+                else:
+                    print('Could not load validation training histories!')
+                    val_metrics = ''
+            except:
+                print('Could not load training history!')
+                val_metrics = ''
 
         try:
             self.optimization_results = joblib.load(path+'HyperOpt_Results')
@@ -681,16 +1125,12 @@ class Classifier:
         except:
             best_params = '' 
 
-        try:
-            attrs_dict = joblib.load(path + 'class_attributes.pkl')
-            for attr, value in attrs_dict.items():
-                setattr(self, attr, value)
-            class_attributes = ', class_attributes'
-        except:
-            class_attributes = ''
-
         if load_training_data:
-            print('IMPORTANT: If re-creating a model, set opt_aug=False and normalize=False if applicable to avoid re-augmenting and re-normalizing the loaded data!')
+            if self.opt_cv is None:
+                print('IMPORTANT: If re-creating the model with loaded data, set opt_aug=False and normalize=False to avoid re-augmenting and re-normalizing the loaded data!')
+            else:
+                print('IMPORTANT: If re-creating the model with loaded data, set opt_aug=False and normalize=False to avoid re-augmenting and re-normalizing the loaded data! Also, set opt_cv=None if the training data has been augmented!')
+            
             try:
                 self.positive_class = np.load(path+'class_1.npy')
                 positive_class = ', positive_class'
@@ -720,10 +1160,10 @@ class Classifier:
             print('Successfully loaded the following: {}{}{}{}{}{}'.format(model, train_metrics, val_metrics, optimization_results, best_params, class_attributes))
 
         self.path = path
-        
+
         return
 
-    def predict(self, data, target='LENS', return_proba=False):
+    def predict(self, data, target='DIFFUSE', return_proba=False, cv_model=0):
         """
         Returns the class prediction. The input can either be a single 2D array 
         or a 3D array if there are multiple samples.
@@ -734,39 +1174,76 @@ class Classifier:
                 which there is an 'OTHER' class. Defaults to 'ML'. 
             return_proba (bool): If True the output will return the probability prediction.
                 Defaults to False. 
+            cv_model (int): Index of the model to use. Only applicable if the model class
+                attribute is a list containing multiple models due to cross-validation.
+                Defaults to 0, the first model in the list. Can be set to 'all', in which case
+                all models will be used and an averaged prediction will be output.
 
         Returns:
             The class prediction(s).
         """
-        
+
         data = process_class(data, normalize=self.normalize, min_pixel=self.min_pixel, max_pixel=self.max_pixel, img_num_channels=self.img_num_channels)
         if self.normalize:
             data[data > 1] = 1; data[data < 0] = 0
 
-        image_size = self.model.layers[0].input_shape[1:][0]
+        model = self.model[0] if isinstance(self.model, list) else self.model 
+        image_size = model.layers[0].input_shape[1:][0]
+
         if data.shape[1] != image_size:
             if data.shape[1] < image_size:
                 raise ValueError('Model requires images of size {}, but the input images are size {}!'.format(image_size, data.shape[1]))
             print('Incorrect image size, the model requires size {}, resizing...'.format(image_size))
             data = resize(data, image_size)
     
-        predictions = self.model.predict(data)
 
-        output, probas = [], [] 
-        for i in range(len(predictions)):
-            if np.argmax(predictions[i]) == 1:
-                prediction = target
-                probas.append(predictions[i][1])
-            else:
-                prediction = 'OTHER'
-                probas.append(predictions[i][0])
+        if isinstance(self.model, list) is False or isinstance(cv_model, int):
 
-            output.append(prediction)
+            model = self.model[cv_model] if isinstance(self.model, list) else self.model
+            predictions = model.predict(data)
 
-        if return_proba:
-            output = np.c_[output, probas]
+            output, probas = [], [] 
+            for i in range(len(predictions)):
+                if np.argmax(predictions[i]) == 1:
+                    prediction = target
+                    probas.append(predictions[i][1])
+                else:
+                    prediction = 'OTHER'
+                    probas.append(predictions[i][0])
+                output.append(prediction)
+
+            output = np.c_[output, probas] if return_proba else np.array(output)
             
-        return np.array(output)
+        else: #cv_model='all' 
+
+            model_outputs, model_probas = [], []
+            for __model__ in self.model:
+
+                predictions = __model__.predict(data)
+
+                output, probas = [], []                 
+                for i in range(len(predictions)):
+                    if np.argmax(predictions[i]) == 1:
+                        prediction = target
+                        probas.append(predictions[i][1])
+                    else:
+                        prediction = 'OTHER'
+                        probas.append(predictions[i][0])
+                    output.append(prediction)
+
+                model_outputs.append(output); model_probas.append(probas)
+
+            average_output, average_proba = [], [] 
+            for j in range(len(model_outputs[0])):
+                column = [model_outputs[i][j] for i in range(len(model_outputs))]
+                avg_output = target if column.count(target) >= column.count('OTHER') else 'OTHER'
+                avg_proba = np.mean([model_probas[i][j] for i in range(len(model_probas))])
+
+                average_output.append(avg_output); average_proba.append(avg_proba)
+
+            output = np.c_[average_output, average_proba] if return_proba else np.array(average_output)
+            
+        return output
 
     def augment_positive(self, batch=1, width_shift=0, height_shift=0, horizontal=False, vertical=False, 
         rotation=False, fill='nearest', image_size=None, zoom_range=None, mask_size=None, num_masks=None, 
@@ -903,22 +1380,25 @@ class Classifier:
             AxesImage. 
         """
 
+        if not (hasattr(self, 'positive_class') and hasattr(self, 'negative_class')):
+            raise ValueError('The training data is missing! Make sure the positive_class and negative_class are input.')
+
         #Reshape if 3D array (single-band) -- need 4D array first.
         if len(self.positive_class.shape) == 3:
             positive_class = np.reshape(self.positive_class, (self.positive_class.shape[0], self.positive_class.shape[1], self.positive_class.shape[2], 1))
             negative_class = np.reshape(self.negative_class, (self.negative_class.shape[0], self.negative_class.shape[1], self.negative_class.shape[2], 1))
             data = np.r_[positive_class, negative_class]
-            data_y = np.r_[['LENS Train']*len(positive_class),['OTHER Train']*len(negative_class)]
+            data_y = np.r_[['DIFFUSE Train']*len(positive_class),['OTHER Train']*len(negative_class)]
             if self.val_positive is not None:
                 val_positive = np.reshape(self.val_positive, (self.val_positive.shape[0], self.val_positive.shape[1], self.val_positive.shape[2], 1))
             if self.val_negative is not None:
                 val_negative = np.reshape(self.val_negative, (self.val_negative.shape[0], self.val_negative.shape[1], self.val_negative.shape[2], 1))
             if self.val_positive is not None and self.val_negative is not None:
                 val_data = np.r_[val_positive, val_negative]
-                val_data_y = np.r_[['LENS Val']*len(val_positive),['OTHER Val']*len(val_negative)]
+                val_data_y = np.r_[['DIFFUSE Val']*len(val_positive),['OTHER Val']*len(val_negative)]
             elif self.val_positive is not None and self.val_negative is None:
                 val_data = val_positive
-                val_data_y = np.r_[['LENS Val']*len(val_data)]
+                val_data_y = np.r_[['DIFFUSE Val']*len(val_data)]
             elif self.val_positive is None and self.val_negative is not None:
                 val_data = val_negative
                 val_data_y = np.r_[['OTHER Val']*len(val_data)]
@@ -926,13 +1406,13 @@ class Classifier:
                 val_data = val_data_y = None 
         else:
             data = np.r_[self.positive_class, self.negative_class]
-            data_y = np.r_[['LENS Train']*len(self.positive_class),['OTHER Train']*len(self.negative_class)]
+            data_y = np.r_[['DIFFUSE Train']*len(self.positive_class),['OTHER Train']*len(self.negative_class)]
             if self.val_positive is not None and self.val_negative is not None:
                 val_data = np.r_[self.val_positive, self.val_negative]
-                val_data_y = np.r_[['LENS Val']*len(self.val_positive),['OTHER Val']*len(self.val_negative)]
+                val_data_y = np.r_[['DIFFUSE Val']*len(self.val_positive),['OTHER Val']*len(self.val_negative)]
             elif self.val_positive is not None and self.val_negative is None:
                 val_data = self.val_positive
-                val_data_y = np.r_[['LENS Val']*len(val_data)]
+                val_data_y = np.r_[['DIFFUSE Val']*len(val_data)]
             elif self.val_positive is None and self.val_negative is not None:
                 val_data = self.val_negative
                 val_data_y = np.r_[['OTHER Val']*len(val_data)]
@@ -959,7 +1439,18 @@ class Classifier:
         feats = TSNE(n_components=2, method=method, learning_rate=1000, 
             perplexity=35, init='random').fit_transform(data_x)
         x, y = feats[:,0], feats[:,1]
-     
+
+        markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*']
+        color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf']
+
+        feats = np.unique(data_y)
+
+        for count, feat in enumerate(feats):
+            marker = markers[count % len(markers)]  # Wrap around the markers list
+            color_val = color[count % len(color)]  # Wrap around the color list
+            mask = np.where(data_y == feat)[0]
+            plt.scatter(x[mask], y[mask], marker=marker, c=color_val, label=str(feat), alpha=0.44)
+        """
         markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*']
         #color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'b', 'g', 'r', 'c']
         color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf']
@@ -971,7 +1462,7 @@ class Classifier:
                 count = -1
             mask = np.where(data_y == feat)[0]
             plt.scatter(x[mask], y[mask], marker=markers[count], c=color[count], label=str(feat), alpha=0.44)
-
+        """
         plt.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)#prop={'size': 14}
         plt.title(title)#, size=18)
         plt.xticks()#fontsize=14)
@@ -980,8 +1471,9 @@ class Classifier:
         plt.xlabel('t-SNE Dimension 2')
 
         if savefig:
+            _set_style_()
             plt.savefig('Images_tSNE_Projection.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
@@ -1038,9 +1530,9 @@ class Classifier:
         else:
             ncol=2
 
-        if self.metric == 'val_accuracy':
+        if self.metric == 'val_accuracy' or self.metric == 'val_binary_accuracy':
             ylabel = 'Validation Accuracy'
-        elif self.metric == 'accuracy':
+        elif self.metric == 'accuracy' or self.metric == 'acc':
             ylabel = 'Training Accuracy'
         elif self.metric == 'val_loss':
             ylabel = '1 - Validation Loss'
@@ -1071,8 +1563,9 @@ class Classifier:
         plt.rcParams['axes.facecolor']='white'
         
         if savefig:
+            _set_style_()
             plt.savefig('CNN_Hyperparameter_Optimization.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
@@ -1130,24 +1623,23 @@ class Classifier:
         #fig = plot_param_importances(self.optimization_results, target=lambda t: t.duration.total_seconds(), target_name="duration")
         #plt.tight_layout()
         if savefig:
+            _set_style_()
             if plot_time:
                 plt.savefig('CNN_Hyperparameter_Importance.png', bbox_inches='tight', dpi=300)
             else:
                 plt.savefig('CNN_Hyperparameter_Duration_Importance.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
     def save_hyper_importance(self):
         """
-        Calculates and saves binary files containing
-        dictionaries with importance information, one
+        Calculates and saves binary files containing dictionaries with importance information, one
         for the importance and one for the duration importance
 
         Note:
-            This procedure is time-consuming but must be run once before
-            plotting the importances. This function will save
-            two files in the model folder for future use. 
+            This procedure can be time-consuming but must be run once before the importances can be displayed. 
+            This function will save two files in the model folder for future use. 
 
         Returns:
             Saves two binary files, importance and duration importance.
@@ -1176,8 +1668,8 @@ class Classifier:
 
         return  
 
-    def plot_performance(self, metric='acc', combine=False, ylabel=None, title=None,
-        xlim=None, ylim=None, xlog=False, ylog=False, savefig=False):
+    def plot_performance(self, metric='acc', combine=False, cv_model=0, ylabel=None, title=None,
+        xlim=None, ylim=None, xlog=False, ylog=False, legend_loc=9, savefig=False):
         """
         Plots the training/performance histories.
     
@@ -1191,37 +1683,78 @@ class Classifier:
             xlog (bool): Whether to log-scale the x-axis. Defaults to False.
             ylog (bool): Whether to log-scale the y-axis. Defaults to False.
             savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
+            cv_model (int): Index of the model to use. Only applicable if the model_train_metrics class
+                attribute is a list containing multiple models due to cross-validation.
+                Defaults to 0, the first history object in the list. Can be set to 'all', in which case
+                all histories will be used and plotted.
+            legend_loc (int, str, optional): The location of the legend, using the matplotlib.pyplot conventino.
+                Defaults to 0 aka 'upper center'.
 
         Returns:
             AxesImage
         """
 
+        if not hasattr(self, 'model_train_metrics'):
+            raise ValueError('Training history not found! Run the load() method first!')
+
+        if combine and not hasattr(self, 'model_val_metrics'):
+            raise ValueError('combine=True but no validation metrics found!')
+
         if metric == 'acc':
             index = 0 
         elif metric == 'loss':
             index = 1 
-        else:
+        elif metric == 'f1':
             index = 2
+        else:
+            raise ValueError('Invalid metric input! Valid options include: "acc", "loss" and "f1"')
 
-        try:
-            metric1 = self.model_train_metrics
+        if isinstance(self.model_train_metrics, list) is False or isinstance(cv_model, int):
+            metric1 = self.model_train_metrics[cv_model] if isinstance(self.model_train_metrics, list) else self.model_train_metrics
             metric1 = metric1[:,index]
-        except:
-            raise ValueError('Training history not found! Run the load() method first!')
-
-        if combine:
-            try:
-                metric2 = self.model_val_metrics
+        
+            if combine:
+                metric2 = self.model_val_metrics[cv_model] if isinstance(self.model_val_metrics, list) else self.model_val_metrics
                 metric2 = metric2[:,index]
                 label1, label2 = 'Training', 'Validation'
-            except:
-                raise ValueError('combine=True but no validation metrics found!')
+            else:
+                label1 = 'Training'
+        else: #cv_model='all'
+            metric1 = []
+            for _metric_ in self.model_train_metrics:
+                metric1.append(_metric_[:,index])
+
+            if combine:
+                metric2 = []
+                for _metric_ in self.model_val_metrics:
+                    metric2.append(_metric_[:,index])
+                label1, label2 = 'Training', 'Validation'
+            else:
+                label1 = 'Training'
+        
+        if cv_model == 'all':
+            markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*']
+            color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf']
+
+            for i in range(len(metric1)):
+                marker = markers[i % len(markers)]  # Wrap around the markers list
+                plt.plot(range(1, len(metric1[i])+1), metric1[i], color=color[i % len(color)], alpha=0.83, linestyle='-', label=label1+' CV '+str(i+1))
+
+            if combine:
+                for i in range(len(metric2)):
+                    marker = markers[i % len(markers)]  # Wrap around the markers list
+                    plt.plot(range(1, len(metric2[i])+1), metric2[i], color=color[i % len(color)], alpha=0.83, linestyle='--', label=label2+' CV '+str(i+1))
+                plt.legend(loc=legend_loc, frameon=False, ncol=2)
+            else:
+                plt.legend(loc=legend_loc, frameon=False)
+
         else:
-            label1 = 'Training'
-            
-        plt.plot(range(1, len(metric1)+1), metric1, color='r', alpha=0.83, linestyle='-', label=label1)
-        if combine:
-            plt.plot(range(1, len(metric2)+1), metric2, color='b', alpha=0.83, linestyle='--', label=label2)
+            plt.plot(range(1, len(metric1)+1), metric1, color='r', alpha=0.83, linestyle='-', label=label1)
+            if combine:
+                plt.plot(range(1, len(metric2)+1), metric2, color='b', alpha=0.83, linestyle='--', label=label2)
+                plt.legend(loc=legend_loc, frameon=False, ncol=2)
+            else:
+                plt.legend(loc=legend_loc, frameon=False)
 
         if ylabel is None:
             ylabel = metric
@@ -1234,19 +1767,25 @@ class Classifier:
         if xlim is not None:
             plt.xlim(xlim)
         else:
-            plt.xlim((1, len(metric1)))
+            if cv_model == 'all':
+                len_ = []
+                for _metric_ in self.model_train_metrics:
+                    len_.append(len(_metric_))
+                plt.xlim(1, np.max(len_))
+            else:
+                plt.xlim((1, len(metric1)))
         if ylim is not None:
             plt.ylim(ylim)
         if xlog:
             plt.xscale('log')
         if ylog:
             plt.yscale('log')
-        plt.legend(loc='upper center', frameon=False) #ncol
+
         plt.rcParams['axes.facecolor']='white'
-        
         if savefig:
+            _set_style_()
             plt.savefig('CNN_Training_History_'+metric+'.png', bbox_inches='tight', dpi=300)
-            plt.clf()
+            plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
@@ -1350,7 +1889,6 @@ class Classifier:
             if default_scale is False:
                 plt.imshow(data[:,:,channel], vmin=vmin, vmax=vmax, cmap=cmap); plt.title(title); plt.show()
             else:
-                import pdb; pdb.set_trace()
                 plt.imshow(data[:,:,channel], vmin=vmin, vmax=vmax, cmap=cmap); plt.title(title); plt.show()
 
         return
@@ -1374,8 +1912,8 @@ def custom_model(positive_class, negative_class, img_num_channels=1, normalize=T
     Batch normalization is hard-coded after every Conv2D layer.        
 
     Args:
-        positive_class (ndarray): 3D array containing more than one image of diffuse objects.
-        negative_class (ndarray): 3D array containing more than one image of non-diffuse objects.
+        positive_class (ndarray): 3D array containing more than one image of the positive objects.
+        negative_class (ndarray): 3D array containing more than one image of negative objects.
         img_num_channels (int): The number of filters used. Defaults to 1, as MicroLIA version 1
             has been trained with only blue broadband data.
         normalize (bool, optional): If True the data will be min-max normalized using the 
@@ -1490,7 +2028,7 @@ def custom_model(positive_class, negative_class, img_num_channels=1, normalize=T
             dense_init, activation_dense, filter_1, filter_2, filter_3, filter_4, filter_5, filter_size_1, filter_size_2, 
             filter_size_3, filter_size_4, filter_size_5, pooling_1, pooling_2, pooling_3, pooling_4, pooling_5, pool_size_1, 
             pool_size_2, pool_size_3, pool_size_4, pool_size_5, conv_reg, dense_reg, dense_neurons_1, dense_neurons_2, 
-            dense_neurons_3, dropout_1, dropout_2, dropout_3)
+            dense_neurons_3, dropout_1, dropout_2, dropout_3, beta_1, beta_2, amsgrad, rho)
 
     #Uniform scaling initializer
     conv_init = VarianceScaling(scale=1.0, mode='fan_in', distribution='uniform', seed=None) if conv_init == 'uniform_scaling' else conv_init
@@ -1619,8 +2157,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
     weight=None, verbose=1, save_training_data=False, path=None):
     """
     The CNN model infrastructure presented by the 2012 ImageNet Large Scale 
-    Visual Recognition Challenge, AlexNet. Parameters were adapted for
-    our astronomy case of detecting diffuse emission.
+    Visual Recognition Challenge, AlexNet. 
 
     To avoid exploding gradients we need to normalize our pixels to be 
     between 0 and 1. By default normalize=True, which will perform
@@ -1656,8 +2193,8 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         original image format to be used as input to a CNN model.
 
     Args:
-        positive_class (ndarray): 3D array containing more than one image of diffuse objects.
-        negative_class (ndarray): 3D array containing more than one image of non-diffuse objects.
+        positive_class (ndarray): 3D array containing more than one image of the positive objects.
+        negative_class (ndarray): 3D array containing more than one image of negative objects.
         img_num_channels (int): The number of filters used. Defaults to 1, as MicroLIA version 1
             has been trained with only blue broadband data.
         normalize (bool, optional): If True the data will be min-max normalized using the 
@@ -1768,7 +2305,7 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
             dense_init, activation_dense, filter_1, filter_2, filter_3, filter_4, filter_5, filter_size_1, filter_size_2, 
             filter_size_3, filter_size_4, filter_size_5, pooling_1, pooling_2, pooling_3, pooling_4, pooling_5, pool_size_1, 
             pool_size_2, pool_size_3, pool_size_4, pool_size_5, conv_reg, dense_reg, dense_neurons_1, dense_neurons_2, 
-            dense_neurons_3, dropout_1, dropout_2, dropout_3)
+            dense_neurons_3, dropout_1, dropout_2, dropout_3, beta_1, beta_2, amsgrad, rho)
 
     #Uniform scaling initializer
     conv_init = VarianceScaling(scale=1.0, mode='fan_in', distribution='uniform', seed=None) if conv_init == 'uniform_scaling' else conv_init
@@ -1896,8 +2433,8 @@ def VGG16(positive_class, negative_class, img_num_channels=1, normalize=True,
     layers with small 3x3 filters, followed by a max pooling layer with a 2x2 filter (repeated 5 times).
 
     Args:
-        positive_class (ndarray): 3D array containing more than one image of diffuse objects.
-        negative_class (ndarray): 3D array containing more than one image of non-diffuse objects.
+        positive_class (ndarray): 3D array containing more than one image of the positive objects.
+        negative_class (ndarray): 3D array containing more than one image of the negative objects.
         img_num_channels (int): The number of filters used. Defaults to 1, as MicroLIA version 1
             has been trained with only blue broadband data.
         normalize (bool, optional): If True the data will be min-max normalized using the 
@@ -2008,7 +2545,7 @@ def VGG16(positive_class, negative_class, img_num_channels=1, normalize=True,
             dense_init, activation_dense, filter_1, filter_2, filter_3, filter_4, filter_5, filter_size_1, filter_size_2, 
             filter_size_3, filter_size_4, filter_size_5, pooling_1, pooling_2, pooling_3, pooling_4, pooling_5, pool_size_1, 
             pool_size_2, pool_size_3, pool_size_4, pool_size_5, conv_reg, dense_reg, dense_neurons_1, dense_neurons_2, 
-            dense_neurons_3, dropout_1, dropout_2, dropout_3)
+            dense_neurons_3, dropout_1, dropout_2, dropout_3, beta_1, beta_2, amsgrad, rho)
 
     #Uniform scaling initializer
     conv_init = VarianceScaling(scale=1.0, mode='fan_in', distribution='uniform', seed=None) if conv_init == 'uniform_scaling' else conv_init
@@ -2121,7 +2658,7 @@ def VGG16(positive_class, negative_class, img_num_channels=1, normalize=True,
 
     #Compile the Model
     model.compile(loss=loss, optimizer=optimizer, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
-    
+
     #Wheter to maximize or minimize the metric
     mode = 'min' if 'loss' in metric else 'max'
 
@@ -2196,6 +2733,8 @@ def Resnet18(positive_class, negative_class, img_num_channels=1, normalize=True,
     Returns:
         The trained CNN model and accompanying history.
     """
+
+    raise ValueError('ResNet-18 Model is not currently stable, please use another!')
 
     if batch_size < 16 and model_reg == 'batch_norm':
         print("Batch Normalization can be unstable with low batch sizes, if loss returns nan try a larger batch size and/or smaller learning rate.")
@@ -2313,10 +2852,10 @@ def Resnet18(positive_class, negative_class, img_num_channels=1, normalize=True,
 
     model = Model(inputs=input_tensor, outputs=x)
 
-    # Call the appropriate tf.keras.optimizers function
+    #Call the appropriate tf.keras.optimizers function
     optimizer = get_optimizer(optimizer, lr, momentum=momentum, decay=decay, rho=rho, nesterov=nesterov, beta_1=beta_1, beta_2=beta_2, amsgrad=amsgrad)
 
-    # Compile the Model
+    #Compile the Model
     model.compile(loss=loss, optimizer=optimizer, metrics=[tf.keras.metrics.BinaryAccuracy(), f1_score])
 
     #Wheter to maximize or minimize the metric
@@ -2414,7 +2953,7 @@ def f1_score(y_true, y_pred):
     Returns:
         The F1 score between true and predicted labels.
     """
-
+    
     tp = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true * y_pred, 0, 1)))
     fp = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred - y_true, 0, 1)))
     fn = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_true - y_pred, 0, 1)))
@@ -2422,7 +2961,38 @@ def f1_score(y_true, y_pred):
     precision = tp / (tp + fp + tf.keras.backend.epsilon())
     recall = tp / (tp + fn + tf.keras.backend.epsilon())
 
-    return 2.0 * precision * recall / (precision + recall + tf.keras.backend.epsilon())
+    f1 = 2.0 * (precision * recall) / (precision + recall + tf.keras.backend.epsilon())
+
+    return f1
+
+def calculate_tp_fp(model, sample, y_true):
+    """
+    Computes the true positives (tp) and false positives (fp) for a single sample using a given model.
+
+    Args:
+        model: The trained model.
+        sample: The input sample (image) for prediction.
+        y_true (array): The ground truth labels for the sample(s). Must be the same length as the input sample argument.
+
+    Returns:
+        tp: The number of true positives.
+        fp: The number of false positives.
+    """
+    # Make a prediction using the model
+    y_pred = model.predict(sample)
+
+    # Convert y_true and y_pred to binary values
+    y_true_binary = tf.keras.backend.round(tf.keras.backend.clip(y_true, 0, 1))
+    y_pred_binary = tf.keras.backend.round(tf.keras.backend.clip(y_pred, 0, 1))
+
+    # Calculate true positives (tp)
+    tp = tf.keras.backend.sum(y_true_binary * y_pred_binary)
+
+    # Calculate false positives (fp)
+    fp = tf.keras.backend.sum(tf.keras.backend.round(tf.keras.backend.clip(y_pred_binary - y_true_binary, 0, 1)))
+
+    return tp, fp
+
 
 def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25):
     """
@@ -2614,7 +3184,7 @@ def print_params(batch_size, lr, decay, momentum, nesterov, loss, optimizer,
     filter_size_3, filter_size_4, filter_size_5, pooling_1, pooling_2, pooling_3,
     pooling_4, pooling_5, pool_size_1, pool_size_2, pool_size_3, pool_size_4, pool_size_5,
     conv_reg, dense_reg, dense_neurons_1, dense_neurons_2, dense_neurons_3, dropout_1, dropout_2, 
-    dropout_3):
+    dropout_3, beta_1, beta_2, amsgrad, rho):
     """
     Prints the model training parameters and architecture parameters.
 
@@ -2633,31 +3203,27 @@ def print_params(batch_size, lr, decay, momentum, nesterov, loss, optimizer,
         activation_dense (str): The activation function used for the dense layers.
     """
 
-    print()
-    print('===== Training Parameters =====')
-    print()
+    print(); print('===== Training Parameters ====='); print()
     print('|| Batch Size : '+str(batch_size), '|| Loss Function : '+loss, '||')
+
     if optimizer == 'sgd':
         print('|| Optimizer : '+optimizer, '|| lr : '+str(np.round(lr, 7)), '|| Decay : '+str(np.round(decay, 5)), '|| Momentum : '+str(momentum), '|| Nesterov : '+str(nesterov)+' ||')
-    elif optimizer == 'rmsprop':
-        print('|| Optimizer : '+optimizer, '|| lr : '+str(np.round(lr, 7)), '|| Decay : '+str(np.round(decay, 5))+' ||')
-    else:
-        print('|| Optimizer : '+optimizer, '|| lr : '+str(np.round(lr, 7))+' ||')
-    print()
-    print('=== Architecture Parameters ===')
-    print()
+    elif optimizer == 'adadelta' or optimizer == 'rmsprop':
+        print('|| Optimizer : '+optimizer, '|| lr : '+str(np.round(lr, 7)), '|| rho : '+str(np.round(rho, 5)), '|| Decay : '+str(np.round(decay, 5))+' ||')
+    elif optimizer == 'adam' or optimizer == 'adamax' or optimizer == 'nadam':
+        print('|| Optimizer : '+optimizer, '|| lr : '+str(np.round(lr, 7)), '|| Beta 1 : '+str(np.round(beta_1, 5)), '|| Beta 2 : '+str(np.round(beta_2, 5)), '||  amsgrad : '+str(amsgrad)+' ||')
+    
+    print(); print('=== Architecture Parameters ==='); print()
     print('Model Regularizer : '+ str(model_reg))
     print('Convolutional L2 Regularizer : '+ str(conv_reg))
     print('Convolutional Initializer : '+ conv_init)
     print('Convolutional Activation Fn : '+ activation_conv)
     print('Dense L2 Regularizer : '+ str(dense_reg))
     print('Dense Initializer : '+ dense_init)
-    print('Dense Activation Fn : '+ activation_dense)
-    print()
+    print('Dense Activation Fn : '+ activation_dense); print()
 
     if dropout_3 != 'N/A': #This is AlexNet and custom_model since droput_3 = N/A is set for VGG16 and Resnet-18 only
-        print('======= Conv2D Layer Parameters ======')
-        print()
+        print('======= Conv2D Layer Parameters ======'); print()
         print('Filter 1 || Num: {}, Size : {}, Pooling : {}, Pooling Size : {}'.format(filter1, filter_size_1, pooling_1, pool_size_1))
         if filter_size_2 > 0:
             print('Filter 2 || Num: {}, Size : {}, Pooling : {}, Pooling Size : {}'.format(filter2, filter_size_2, pooling_2, pool_size_2))
@@ -2667,21 +3233,17 @@ def print_params(batch_size, lr, decay, momentum, nesterov, loss, optimizer,
             print('Filter 4 || Num: {}, Size : {}, Pooling : {}, Pooling Size : {}'.format(filter4, filter_size_4, pooling_4, pool_size_4))
         if filter_size_5 > 0:
             print('Filter 5 || Num: {}, Size : {}, Pooling : {}, Pooling Size : {}'.format(filter5, filter_size_5, pooling_5, pool_size_5))
-        print()
-        print('======= Dense Layer Parameters ======')
-        print()
+        
+        print(); print('======= Dense Layer Parameters ======'); print()
         print('Neurons 1 || Num : {}, Dropout : {}'.format(dense_neurons_1, dropout_1))
         if dense_neurons_2 > 0:
             print('Neurons 2 || Num : {}, Dropout : {}'.format(dense_neurons_2, dropout_2))
         if dense_neurons_3 > 0:
             print('Neurons 3 || Num : {}, Dropout : {}'.format(dense_neurons_3, dropout_3))
-        print()
-        print('===============================')
-        print()
+        print(); print('==============================='); print()
     else:
         if activation_dense == 'N/A': #For Resnet-18 
-            print('======= Conv2D Layer Parameters ======')
-            print()
+            print('======= Conv2D Layer Parameters ======'); print()
             print('Filter 1 || Num: {}, Size : {}, Pooling : {}'.format(filter1, filter_size_1, pooling_1, pool_size_1))
             if filter_size_2 > 0:
                 print('Residual Block 1 || Num: {}, Size : {}'.format(filter2, filter_size_2))
@@ -2691,25 +3253,18 @@ def print_params(batch_size, lr, decay, momentum, nesterov, loss, optimizer,
                 print('Residual Block 3 || Num: {}, Size : {}'.format(filter4, filter_size_4))
             if filter_size_5 > 0:
                 print('Residual Block 4 || Num: {}, Size : {},'.format(filter5, filter_size_5))
-            print()
-            print('===============================')
-            print()
+            print(); print('==============================='); print()
         else: #For VGG16
-            print('======= Conv2D Layer Parameters ======')
-            print()
+            print('======= Conv2D Layer Parameters ======'); print()
             print('Block 1 || Num: {}, Size : {}, Pooling : {}'.format(filter1, filter_size_1, pooling_1, pool_size_1))
             print('Block 2 || Num: {}, Size : {}'.format(filter2, filter_size_2))
             print('Block 3 || Num: {}, Size : {}'.format(filter3, filter_size_3))
             print('Block 4 || Num: {}, Size : {}'.format(filter4, filter_size_4))
             print('Block 5 || Num: {}, Size : {},'.format(filter5, filter_size_5))
-            print()
-            print('======= Dense Layer Parameters ======')
-            print()
+            print(); print('======= Dense Layer Parameters ======'); print()
             print('Neurons 1 || Num : {}, Dropout : {}'.format(dense_neurons_1, dropout_1))
             print('Neurons 2 || Num : {}, Dropout : {}'.format(dense_neurons_2, dropout_2))    
-            print()
-            print('===============================')
-            print()
+            print(); print('==============================='); print()
 
 def format_labels(labels: list) -> list:
     """
@@ -2732,4 +3287,56 @@ def format_labels(labels: list) -> list:
         new_labels.append(label.title())
 
     return new_labels
+
+def _set_style_():
+    """
+    Function to configure the matplotlib.pyplot style. This function is called before any images are saved,
+    after which the style is reset to the default.
+    """
+
+    plt.rcParams["xtick.color"] = "323034"
+    plt.rcParams["ytick.color"] = "323034"
+    plt.rcParams["text.color"] = "323034"
+    plt.rcParams["lines.markeredgecolor"] = "black"
+    plt.rcParams["patch.facecolor"] = "#bc80bd"  # Replace with a valid color code
+    plt.rcParams["patch.force_edgecolor"] = True
+    plt.rcParams["patch.linewidth"] = 0.8
+    plt.rcParams["scatter.edgecolors"] = "black"
+    plt.rcParams["grid.color"] = "#b1afb5"  # Replace with a valid color code
+    plt.rcParams["axes.titlesize"] = 16
+    plt.rcParams["legend.title_fontsize"] = 12
+    plt.rcParams["xtick.labelsize"] = 16
+    plt.rcParams["ytick.labelsize"] = 16
+    plt.rcParams["font.size"] = 15
+    plt.rcParams["axes.prop_cycle"] = (cycler('color', ['#bc80bd', '#fb8072', '#b3de69', '#fdb462', '#fccde5', '#8dd3c7', '#ffed6f', '#bebada', '#80b1d3', '#ccebc5', '#d9d9d9']))  # Replace with valid color codes
+    plt.rcParams["mathtext.fontset"] = "stix"
+    plt.rcParams["font.family"] = "STIXGeneral"
+    plt.rcParams["lines.linewidth"] = 2
+    plt.rcParams["lines.markersize"] = 6
+    plt.rcParams["legend.frameon"] = True
+    plt.rcParams["legend.framealpha"] = 0.8
+    plt.rcParams["legend.fontsize"] = 13
+    plt.rcParams["legend.edgecolor"] = "black"
+    plt.rcParams["legend.borderpad"] = 0.2
+    plt.rcParams["legend.columnspacing"] = 1.5
+    plt.rcParams["legend.labelspacing"] = 0.4
+    plt.rcParams["text.usetex"] = False
+    plt.rcParams["axes.labelsize"] = 17
+    plt.rcParams["axes.titlelocation"] = "center"
+    plt.rcParams["axes.formatter.use_mathtext"] = True
+    plt.rcParams["axes.autolimit_mode"] = "round_numbers"
+    plt.rcParams["axes.labelpad"] = 3
+    plt.rcParams["axes.formatter.limits"] = (-4, 4)
+    plt.rcParams["axes.labelcolor"] = "black"
+    plt.rcParams["axes.edgecolor"] = "black"
+    plt.rcParams["axes.linewidth"] = 1
+    plt.rcParams["axes.grid"] = False
+    plt.rcParams["axes.spines.right"] = True
+    plt.rcParams["axes.spines.left"] = True
+    plt.rcParams["axes.spines.top"] = True
+    plt.rcParams["figure.titlesize"] = 18
+    plt.rcParams["figure.autolayout"] = True
+    plt.rcParams["figure.dpi"] = 300
+
+    return
 
