@@ -227,9 +227,12 @@ With the optimized model saved, as well as the imputer and indices of useful fea
 
    prediction = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)
 
-When predicting, the statistis are computed for the input lightcurve(s). Note that by default ``convert`` = True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This ``zp`` must match whatever value was used when creating the training set, in this example ``zp`` = 22. Likewise, since ``apply_weights`` was enabled when the training set was generated, we must insure we compute the statistics the same way by accordingly setting this flag when doing the predictions.
+.. figure:: _static/prediction_1.png
+    :align: center
+|
+When predicting, the relevant statistis are computed for the input lightcurve(s). Note that by default ``convert`` = True, which will convert the magnitude input to flux, therefore we must set the appropriate zeropoint argument. This ``zp`` must match whatever value was used when creating the training set, in this example ``zp`` = 22. Likewise, since ``apply_weights`` was enabled when the training set was generated, we must insure we compute the statistics the same way by also setting this flag when doing the predictions.
 
-The prediction output is the label and probability prediction of each class, ordered in alphabetical order. The predicted class in this case is 'ML', as the corresponding classification accuracy of this class is higher than all the others. Finally, let's load all 214 lightcurves and check the overall prediction accuracy:
+The prediction output is the label and probability prediction of each class, ordered in alphabetical/numerical order. The predicted class in this case is '1' corresponding to the 'CV' class, as the corresponding classification accuracy of this class is higher than all the others; followed by label '3' which is 'ML'. Finally, let's load all 214 lightcurves and check the overall prediction accuracy:
 
 .. code-block:: python
 
@@ -241,15 +244,21 @@ The prediction output is the label and probability prediction of each class, ord
       prediction = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
-   accuracy = len(np.argwhere(predictions == 'ML')) / len(predictions)
+   predictions = np.array(predictions)
+   accuracy = len(np.argwhere(predictions == 3)) / len(predictions)
    print('Total accuracy :{}'.format(np.round(accuracy, 4)))
 
-The accuracy is over 0.97, that's very good, but to be more certain, let's classify some random variable lightcurves. The photometry for 91 OGLE II variable stars can be :download:`downloaded here <variables.zip>`. 
+.. figure:: _static/accuracy_1.png
+    :align: center
+|
+The accuracy is 0.87, that's very good, but to be more certain, let's classify some random variable lightcurves. The photometry for 91 OGLE II variable stars can be :download:`downloaded here <variables.zip>`. 
 
 .. code-block:: python
 
    path = 'variables/'
    filenames = [file for file in os.listdir(path) if '.dat' in file]
+
+   predictions = []
 
    for name in filenames:
       data = np.loadtxt(path+name)
@@ -258,9 +267,12 @@ The accuracy is over 0.97, that's very good, but to be more certain, let's class
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    predictions = np.array(predictions)
-   false_alert = len(np.argwhere(predictions == 'ML'))/len(predictions)
+   false_alert = len(np.argwhere(predictions == 3))/len(predictions)
    print('False alert rate: {}'.format(np.round(false_alert, 4)))
 
+.. figure:: _static/false_alerts_1.png
+    :align: center
+|
 A false-positive rate of ~0.15 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, to show this we can re-create our training data and include this sample of variables as well. We will simulate lightcurves with this particular cadence and noise, and while we can set a ``filename`` argument to avoid overwriting files with the same as per our previous run, in this instance we will simply set ``save_file`` to False:
 
 .. code-block:: python
@@ -324,7 +336,6 @@ The false-positive rate in this instance is ~0.03, very nice! But what if we now
 Thus the best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. 
 
 IMPORTANT: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
-
 
 Important Note
 -----------
