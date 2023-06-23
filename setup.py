@@ -6,7 +6,6 @@ Created on Fri Aug 3 13:30:11 2018
 """
 from setuptools import setup, find_packages, Extension
 
-
 setup(
     name="MicroLIA",
     version="2.2.7",
