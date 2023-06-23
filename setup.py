@@ -29,6 +29,7 @@ setup(
     include_package_data=True,
     test_suite="nose.collector",
     package_data={
-        'MicroLIA': ['data/Miras_vo.xml', 'data/Sesar2010/*']
+        'MicroLIA': ['data/Miras_vo.xml', 'data/Sesar2010/*', 'test/test_model/*', 'test/test_classifier.py', 
+            'test/test_features.py', 'test/MicroLIA_Training_Set.csv', 'test/test_ogle_lc.dat']
     },
 )
