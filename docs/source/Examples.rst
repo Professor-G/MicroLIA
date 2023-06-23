@@ -218,7 +218,6 @@ It would be nice to include the parameter space of the real OGLE II microlensing
 
 .. code-block:: python
    
-   import copy
    from MicroLIA.extract_features import extract_all
 
    path = 'OGLE_II/' 
@@ -226,24 +225,30 @@ It would be nice to include the parameter space of the real OGLE II microlensing
 
    ogle_data_x, ogle_data_y = [], []
 
-   # Save the stats of each ML lightcurve manually, using the optimized feats_to_use
+   # Save the stats of each ML lightcurve manually
    for name in filenames:
      data = np.loadtxt(path+name)
      time, mag, magerr = data[:,0], data[:,1], data[:,2]
-     stats = extract_all(time, mag, magerr, feats_to_use=model.feats_to_use, convert=True, zp=22, apply_weights=True)
+     stats = extract_all(time, mag, magerr, convert=True, zp=22, apply_weights=True)
      ogle_data_x.append(stats); ogle_data_y.append('OGLE_ML')
 
    ogle_data_x, ogle_data_y = np.array(ogle_data_x), np.array(ogle_data_y)
 
-   # Copy the original model
-   new_model = copy.deepcopy(model)
+   # Create a new model, only need to specify the training set csv
+   new_model = ensemble_model.Classifier(csv_file=csv)
+   new_model.load('test_model')
 
-   # Set this new_model's training data arrays
-   new_model.data_x = np.concatenate((model.data_x, ogle_data_x))
-   new_model.data_y = np.r_[y_labels, ogle_data_y]
+   # Add the OGLE ML data arrays
+   new_model.data_x = np.concatenate((new_model.data_x, ogle_data_x))
+   new_model.data_y = np.r_[new_model.data_y, ogle_data_y]
 
    # Plot the t-SNE projection
-   new_model.plot_tsne(savefig=True)
+   new_model.plot_tsne(data_y=new_model.data_y,savefig=True)
+
+.. figure:: _static/tSNE_Projection_2.png
+    :align: center
+|
+As expected, the simulated microlensing lightcurves (ML) overlap with the real OGLE II microlensing events (OGLE_ML). Unlike simulations, real data can be messy and difficult to properly preprocess. If you notice a lot of misclassifications, it would be because the simulations don't reflect the real data; therefore it is good to double check by visualizing the high-dimensional feature space of the simulated and target lightcurves.
 
 Model Performance
 -----------
