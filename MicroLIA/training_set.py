@@ -411,7 +411,10 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     df = DataFrame(data_x, columns=feature_names)
     df['label'] = data_y
-    df.to_csv(path+'MicroLIA_Training_Set_'+filename+'_.csv', index=False)
+    if filename == '':
+        df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
+    else:
+        df.to_csv(path+'MicroLIA_Training_Set_'+filename+'.csv', index=False)
     print("Complete! Files saved in: {}".format(path))
 
     return data_x, data_y

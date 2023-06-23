@@ -32,6 +32,7 @@ from sklearn.manifold import TSNE
 
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from MicroLIA.optimization import hyper_opt, borutashap_opt, impute_missing_values
+from MicroLIA import extract_features
 
 class Classifier:
     """
@@ -140,6 +141,7 @@ class Classifier:
         Returns:
             Trained and optimized classifier.
         """
+
         if self.optimize is False:
             if len(np.unique(self.data_y)) == 2:
                 counter = Counter(self.data_y)
@@ -238,6 +240,7 @@ class Classifier:
                 function creates in the specified path will be deleted if it exists
                 and created anew to avoid duplicate files. 
         """
+
         if self.model is None and self.imputer is None and self.feats_to_use is None:
             raise ValueError('The models have not been created! Run the create() method first.')
 
@@ -396,8 +399,8 @@ class Classifier:
         Note:
             To highlight individual samples, use the data_y optional input
             and set that sample's data_y value to a unique name, and set that 
-            same label in the special_class variable so that it can be visualized 
-            clearly.
+            same label in the special_class variable so that it can be highlighted 
+            clearly in the plot.
 
         Args:
             data_y (ndarray, optional): A custom labels array, that coincides with
@@ -462,11 +465,19 @@ class Classifier:
                                 raise ValueError('data_y argument must either be a list or an array!')
                         feats = np.unique(data_y)
                 else:
-                    data_y = np.array(self.csv_file.label)
-                    feats = np.unique(data_y)
+                    if len(self.csv_file) == len(self.data_y):
+                        data_y = np.array(self.csv_file.label)
+                        feats = np.unique(data_y)
+                    else:
+                        data_y = self.data_y
+                        feats = np.unique(self.data_y)
             else:
-                data_y = self.data_y_ 
-                feats = np.unique(self.data_y_)
+                if len(self.data_y_) == len(self.data_y):
+                    data_y = self.data_y_ 
+                    feats = np.unique(self.data_y_)
+                else:
+                    data_y = self.data_y
+                    feats = np.unique(self.data_y)
         else:
             if isinstance(data_y, list):
                 data_y = np.array(data_y)
@@ -525,6 +536,7 @@ class Classifier:
             title (str): Title of the figure.
             savefig (bool): If True the figure will not disply but will be saved instead.
                 Defaults to False. 
+
         Returns:
             AxesImage.
         """
@@ -579,28 +591,25 @@ class Classifier:
         standard deviation variations are also plotted.
         
         Args:
-            classifier: The machine learning classifier to optimize.
-            data_x (ndarray): 2D array of size (n x m), where n is the
-                number of samples, and m the number of features.
-            data_y (ndarray, str): 1D array containing the corresponing labels.
             k_fold (int, optional): The number of cross-validations to perform.
                 The output confusion matrix will display the mean accuracy across
                 all k_fold iterations. Defaults to 10.
+            pca (bool): If True the data will be fit to a Principal Component
+                Analysis and all of the corresponding principal components will 
+                be used to evaluate the classifier and construct the matrix. 
+                Defaults to False.
             title (str, optional): The title of the output plot.
-            savefig (bool): If True the figure will not disply but will be saved instead.
-                Defaults to False. 
-        
+            savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
+            
         Returns:
             AxesImage
         """
+
         if self.model is None:
             raise ValueError('No model has been created! Run model.create() first.')
 
         if self.feats_to_use is not None:
-            if len(self.data_x.shape) == 1:
-                data = self.data_x[self.feats_to_use].reshape(1,-1)
-            else:
-                data = self.data_x[:,self.feats_to_use]
+            data = self.data_x[self.feats_to_use].reshape(1,-1) if len(self.data_x.shape) == 1 else self.data_x[:,self.feats_to_use]
         else:
             data = copy.deepcopy(self.data_x)
 
@@ -615,15 +624,24 @@ class Classifier:
             pca_data = pca_transformation.transform(data)
             data = np.asarray(pca_data).astype('float64')
         
-        model0 = self.model
+        model0 = copy.deepcopy(self.model)
+
         if len(np.unique(self.data_y)) != 2:
-            X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=0.2, random_state=0)
+            test_size = 1. / k_fold
+            X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=test_size, random_state=0)
             model0.fit(X_train, y_train)
             y_probas = model0.predict_proba(X_test)
-            plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='cividis', plot_macro=False, plot_micro=False)
-            plt.show()
-            return
+            plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='nipy_spectral', plot_macro=False, plot_micro=False)
+            
+            if savefig:
+                _set_style_()
+                plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
+                plt.clf(); plt.style.use('default')
+            else:
+                plt.show()
 
+            return 
+            
         cv = StratifiedKFold(n_splits=k_fold)
         
         tprs, aucs = [], []
@@ -675,12 +693,10 @@ class Classifier:
                 the default engine hyperparameters. If input a vertical
                 line will be plot to indicate this baseline accuracy.
                 Defaults to None.
-            xlim: Limits for the x-axis. Ex) xlim = (0, 1000)
-            ylim: Limits for the y-axis. Ex) ylim = (0.9, 0.94)
-            xlog (boolean): If True the x-axis will be log-scaled.
-                Defaults to True.
-            ylog (boolean): If True the y-axis will be log-scaled.
-                Defaults to False.
+            xlim (tuple): Limits for the x-axis, e.g. xlim = (0, 1000)
+            ylim (tuple): Limits for the y-axis. e.g. ylim = (0.9, 0.94)
+            xlog (bool): If True the x-axis will be log-scaled. Defaults to True.
+            ylog (bool): If True the y-axis will be log-scaled. Defaults to False.
             savefig (bool): If True the figure will not disply but will be saved instead.
                 Defaults to False. 
 
@@ -773,7 +789,9 @@ class Classifier:
         Args: 
             feat_names (ndarry, optional): A list or array containing the names
                 of the features in the data_x matrix, in order. Defaults to None,
-                in which case the respective indices will appear instead.
+                in which case the respective indices will appear instead. Can be set to
+                'default' which will the features in MicroLIA.features module, so only to be used
+                if all the features were extracted using MicroLIA.extract_features.
             top (float, optional): Designates how many features to plot. If set to 3, it 
                 will plot the top 3 performing features. Can be 'all' in which casee all features
                 that were accepted are plotted. Defaults to 'all'.
@@ -791,6 +809,28 @@ class Classifier:
         Returns:
             AxesImage
         """
+
+        if feat_names == 'default':
+            feat_names = ['Anderson-Darling', 'FluxPctRatioMid20', 'FluxPctRatioMid35', 'FluxPctRatioMid50', 'FluxPctRatioMid65', 'FluxPctRatioMid80', 
+                'Median-Based Skew', 'Linear Trend', 'Max Slope', 'Pair Slope Trend', 'Percent Amp.', 'Percent DiffFluxPct', 'Above 1', 'Above 3', 
+                'Above 5', 'Abs. Energy', 'Abs. Sum Changes', 'Amplitude', 'Autocorrelation', 'Below 1', 'Below 3', 'Below 5', 'Benford Correlation', 
+                'C3 Non-Linearity', 'Dup. Val. Check', 'Max Val. Dup. Check', 'Min. Val. Dup. Check', 'Max. Last Loc. Check', 'Min. Last Loc. Check', 
+                'Complexity', 'Consec. Cluster Count', 'Num. Points Above', 'Num. Points Below', 'Cumulative Sum', 'First Loc. Max', 'First Loc. Min', 
+                'Half Mag. Amp. Ratio', 'Mass Quant. Index', 'Integration', 'Kurtosis', 'Large Std. Dev.', 'Longest Strike Above', 'Longest Strike Below', 
+                'Mean Magnitude', 'Mean Abs. Change', 'Mean Change', 'Mean of Abs. Maxima', 'Mean Second Deriv.', 'Median Abs. Dev.', 'Median Buffer Range', 
+                'Median Distance', 'Num. CWT Peaks', 'Num. Crossings', 'Num. Peaks', 'Peaks Detection', 'Permutation Entropy', 'Quantile', 'Recurring Pts. Ratio', 
+                'Root Mean Squared', 'Sample Entropy', 'Shannon Entropy', 'Shapiro-Wilk', 'Skewness', 'Std. Dev. over Mean', 'Stetson J', 'Stetson K', 'Stetson L', 
+                'Sum of Vals.', 'Symmetry Looking', 'Time Reversal Asym.', 'Variance', 'Var. Exceeds Std. Dev.', 'Variation Coeff.', 'vonNeumannRatio', 
+                'Deriv-Anderson-Darling', 'Deriv-FluxPctRatioMid20', 'Deriv-FluxPctRatioMid35', 'Deriv-FluxPctRatioMid50', 'Deriv-FluxPctRatioMid65', 'Deriv-FluxPctRatioMid80', 
+                'Deriv-Median-Based Skew', 'Deriv-Linear Trend', 'Deriv-Max Slope', 'Deriv-Pair Slope Trend', 'Deriv-Percent Amp.', 'Deriv-Percent DiffFluxPct', 'Deriv-Above 1', 'Deriv-Above 3', 
+                'Deriv-Above 5', 'Deriv-Abs. Energy', 'Deriv-Abs. Sum Changes', 'Deriv-Amplitude', 'Deriv-Autocorrelation', 'Deriv-Below 1', 'Deriv-Below 3', 'Deriv-Below 5', 'Deriv-Benford Correlation', 
+                'Deriv-C3 Non-Linearity', 'Deriv-Dup. Val. Check', 'Deriv-Max Val. Dup. Check', 'Deriv-Min. Val. Dup. Check', 'Deriv-Max. Last Loc. Check', 'Deriv-Min. Last Loc. Check', 
+                'Deriv-Complexity', 'Deriv-Consec. Cluster Count', 'Deriv-Num. Points Above', 'Deriv-Num. Points Below', 'Deriv-Cumulative Sum', 'Deriv-First Loc. Max', 'Deriv-First Loc. Min', 
+                'Deriv-Half Mag. Amp. Ratio', 'Deriv-Mass Quant. Index', 'Deriv-Integration', 'Deriv-Kurtosis', 'Deriv-Large Std. Dev.', 'Deriv-Longest Strike Above', 'Deriv-Longest Strike Below', 
+                'Deriv-Mean Magnitude', 'Deriv-Mean Abs. Change', 'Deriv-Mean Change', 'Deriv-Mean of Abs. Maxima', 'Deriv-Mean Second Deriv.', 'Deriv-Median Abs. Dev.', 'Deriv-Median Buffer Range', 
+                'Deriv-Median Distance', 'Deriv-Num. CWT Peaks', 'Deriv-Num. Crossings', 'Deriv-Num. Peaks', 'Deriv-Peaks Detection', 'Deriv-Permutation Entropy', 'Deriv-Quantile', 'Deriv-Recurring Pts. Ratio', 
+                'Deriv-Root Mean Squared', 'Deriv-Sample Entropy', 'Deriv-Shannon Entropy', 'Deriv-Shapiro-Wilk', 'Deriv-Skewness', 'Deriv-Std. Dev. over Mean', 'Deriv-Stetson J', 'Deriv-Stetson K', 'Deriv-Stetson L', 
+                'Deriv-Sum of Vals.', 'Deriv-Symmetry Looking', 'Deriv-Time Reversal Asym.', 'Deriv-Variance', 'Deriv-Var. Exceeds Std. Dev.', 'Deriv-Variation Coeff.', 'Deriv-vonNeumannRatio']
 
         fname = str(Path.home()) + '/__borutaimportances__' #Temporary file
 
@@ -999,7 +1039,8 @@ class Classifier:
             Saves two binary files, importance and duration importance.
         """
         
-        print('Calculating and saving importances, this could take up to an hour...')
+        if self.n_iter >= 500:
+            print('Calculating and saving importances, this could take up to an hour...')
 
         try:
             path = self.path if isinstance(self.path, str) else str(Path.home())
