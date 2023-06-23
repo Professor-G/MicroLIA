@@ -26,13 +26,13 @@ Adaptive cadence is extremely important as this allows MicroLIA to detect microl
       time = np.loadtxt(path+name)[:,0]
       timestamps.append(time)
 
-This timestamps list will be used to simulate the training data, as each time a lightcurve is simulated a timestamp from the list will be random selected. In this example, we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class`` to be 50, which corresponds to the size of each training class. The ``training_set`` module simulates the lightcurves:
+This timestamps list will be used to simulate the training data, as each time a lightcurve is simulated a timestamp from the list will be random selected. In this example, we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class`` to be 100, which corresponds to the size of each training class. The ``training_set`` module simulates the lightcurves:
 
 .. code-block:: python
 
    from MicroLIA import training_set
 
-   data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=50)
+   data_x, data_y = training_set.create(timestamps, min_mag=15, max_mag=20, n_class=100)
 
 There are a number of other parameters we can control when creating the training set, including the exposure time and zeropoint of the survey telescope and whether or not to apply the photometric errors to calculate the statistical metrics (``apply_weights``). Setting these parameters carefully will ensure that our training set matches what will be observed. **To be more accurate we will set these optional parameters and simulate 100 objects per class, in addition to including a first-order noise model using the rms and median mag of our OGLE II data.**
 
@@ -214,7 +214,36 @@ In addition to the feature selection history, the hyperparameter optimization re
 .. figure:: _static/Ensemble_Hyperparameter_Importance_1.png
     :align: center
 |
-It would be nice to include the parameter space of the real OGLE II microlensing lightcurves in comparison to the simulated lightcurves, so as to visualize how representative of real data our training set is. To include these in the t-SNE projection we can save the statistics of the real OGLE II lightcurves and append them to the ``data_x`` array. As for the label, we can label these 'OGLE ML' which will be appended to the ``data_y`` array. For this excercise see the Important Note section of this page.
+It would be nice to include the parameter space of the real OGLE II microlensing lightcurves in comparison to the simulated lightcurves, so as to visualize how representative of real data our training set is. To include these in the t-SNE projection we can save the statistics of the real OGLE II lightcurves and append them to the ``data_x`` array. As for the label, we can label these 'OGLE_ML' which will be appended to the ``data_y`` array. 
+
+.. code-block:: python
+   
+   import copy
+   from MicroLIA.extract_features import extract_all
+
+   path = 'OGLE_II/' 
+   filenames = [file for file in os.listdir(path) if '.dat' in file]
+
+   ogle_data_x, ogle_data_y = [], []
+
+   # Save the stats of each ML lightcurve manually, using the optimized feats_to_use
+   for name in filenames:
+     data = np.loadtxt(path+name)
+     time, mag, magerr = data[:,0], data[:,1], data[:,2]
+     stats = extract_all(time, mag, magerr, feats_to_use=model.feats_to_use, convert=True, zp=22, apply_weights=True)
+     ogle_data_x.append(stats); ogle_data_y.append('OGLE_ML')
+
+   ogle_data_x, ogle_data_y = np.array(ogle_data_x), np.array(ogle_data_y)
+
+   # Copy the original model
+   new_model = copy.deepcopy(model)
+
+   # Set this new_model's training data arrays
+   new_model.data_x = np.concatenate((model.data_x, ogle_data_x))
+   new_model.data_y = np.r_[y_labels, ogle_data_y]
+
+   # Plot the t-SNE projection
+   new_model.plot_tsne(savefig=True)
 
 Model Performance
 -----------
@@ -263,7 +292,7 @@ The accuracy is 0.87, that's very good, but to be more certain, let's classify s
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      prediction = model.predict(time, mag, magerr, convert=True, zp=22)
+      prediction = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    predictions = np.array(predictions)
@@ -273,39 +302,33 @@ The accuracy is 0.87, that's very good, but to be more certain, let's classify s
 .. figure:: _static/false_alerts_1.png
     :align: center
 |
-A false-positive rate of ~0.15 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, to show this we can re-create our training data and include this sample of variables as well. We will simulate lightcurves with this particular cadence and noise, and while we can set a ``filename`` argument to avoid overwriting files with the same as per our previous run, in this instance we will simply set ``save_file`` to False:
+A false-positive rate of ~0.15 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, to show this we can re-create our training data and include this sample of variables as well. We will simulate lightcurves with this particular cadence (but will keep the noise model according to the ML lightcurves only as per the high rms expected from variables), and while we can set a ``filename`` argument to avoid overwriting files with the same as per our previous run, in this instance we will simply set ``save_file`` to False:
 
 .. code-block:: python
+   
+   import os
+   import numpy as np
+   from MicroLIA import training_set, noise_models
 
-   timestamps = []
+   timestamps, rms_mag, median_mag = [], [], []
 
-   # Append the cadence and noise from the variables first
+   # Append the cadence from the variables first
    path = 'variables/'
-   filenames = [file for file in os.listdir(path) if '.dat' in file]
+   filenames_var = [file for file in os.listdir(path) if '.dat' in file]
 
-   for name in filenames:
-      time = np.loadtxt(path+name)[:,0]
-      timestamps.append(time)
-
-   rms_mag, median_mag = [], []
-
-   for name in filenames:
-      mag = np.loadtxt(path+name)[:,1]
-      rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
-      rms_mag.append(rms); median_mag.append(np.median(mag))
+   for name in filenames_var:
+      data = np.loadtxt(path+name)
+      timestamps.append(data[:,0])
 
    # Next, append the cadence and noise from the microlensing events
-   path = 'variables/'
-   filenames = [file for file in os.listdir(path) if '.dat' in file]
+   path = 'OGLE_II/'
+   filenames_ml = [file for file in os.listdir(path) if '.dat' in file]
 
-   for name in filenames:
-      time = np.loadtxt(path+name)[:,0]
-      timestamps.append(time)
-
-   for name in filenames:
-      mag = np.loadtxt(path+name)[:,1]
+   for name in filenames_ml:
+      data = np.loadtxt(path+name)
+      time, mag = data[:,0], data[:,1]
       rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
-      rms_mag.append(rms); median_mag.append(np.median(mag))
+      timestamps.append(time); rms_mag.append(rms); median_mag.append(np.median(mag))
 
    # Create the new noise model
    ogle_noise = noise_models.create_noise(median_mag, rms_mag)
@@ -313,7 +336,7 @@ A false-positive rate of ~0.15 is very high, upon visual inspection we can see t
    # Simulate new lightcurves
    data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=100, apply_weights=True, save_file=False)
 
-Finally, we will create the new model and re-predict the class of these variables and the 214 OGLE II ML events:
+Finally, we will create the new model and re-predict the class of these variables and the 214 OGLE II ML lightcurves:
 
 .. code-block:: python
    
@@ -324,11 +347,11 @@ Finally, we will create the new model and re-predict the class of these variable
    for name in filenames:
       data = np.loadtxt(path+name)
       time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      prediction = new_model.predict(time, mag, magerr, convert=True, zp=22)
+      prediction = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)
       predictions.append(prediction[np.argmax(prediction[:,1])][0])
 
    predictions = np.array(predictions)
-   false_alert = len(np.argwhere(predictions == 'ML')) / len(predictions)
+   false_alert = len(np.argwhere(predictions == 3)) / len(predictions)
    print('False alert rate: {}'.format(np.round(false_alert, 4)))
 
 The false-positive rate in this instance is ~0.03, very nice! But what if we now predict the class of the original 214 microlensing lightcurves? This new model was tuned using the candence from the variable lightcurves as well as the 214 ML events. After classifying these 214 lightcurves with this new model, 
