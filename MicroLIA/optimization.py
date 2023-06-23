@@ -1139,8 +1139,7 @@ class objective_xgb(object):
             opt_cv is less than 1. Defaults to "f1". For all options see eval_metric from: https://xgboost.readthedocs.io/en/latest/parameter.html#metrics
 
     Returns:
-        The cross-validation accuracy (if opt_cv is greater than 1, 1 would be single instance accuracy)
-        or, if opt_cv is between 0 and 1, the validation accuracy according to the corresponding test size.
+        The cross-validation accuracy (if opt_cv is greater than 1) or, if opt_cv is between 0 and 1, the validation accuracy according to the test data.
     """
 
     def __init__(self, data_x, data_y, limit_search=False, opt_cv=3, eval_metric="f1"):

@@ -45,40 +45,42 @@ class Classifier:
             'rf' for Random Forest, 'nn' for Neural Network, or 'xgb' for Extreme Gradient Boosting. 
             Defaults to 'rf'.
         optimize (bool): If True the Boruta algorithm will be run to identify the features
-            that contain useful information, after which the optimal Random Forest hyperparameters
-            will be calculated using Bayesian optimization. 
-        opt_cv (int): Cross-validations to perform when assesing the performance at each
-            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
+            that contain useful information (if boruta_trials > 0), after which the optimal engine 
+            hyperparameters will be determined using Bayesian optimization (if n_iter > 0).
+        opt_cv (int): Cross-validations to perform when assesing the performance during the
+            hyperparameter optimization. For example, if cv=3, then each optimization trial
             will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
             NOTE: The higher this number, the longer the optimization will take.
-        limit_search (bool): If True, the search space for the parameters will be expanded,
-            as there are some hyperparameters that can range from 0 to inf. Defaults to False.
-        impute (bool): If False no data imputation will be performed. Defaults to True,
-            which will result in two outputs, the classifier and the imputer to save
-            for future transformations. 
-        imp_method (str, optional): Imputation strategy to use. Defaults to 'knn'.
-            - 'mean': Fill missing values with the mean of the non-missing values in the same column.
-            - 'median': Fill missing values with the median of the non-missing values in the same column.
-            - 'mode': Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
-            - 'constant': Fill missing values with a constant value provided by the user.
-            - 'knn': Fill missing values using k-Nearest Neighbor imputation.
-        n_iter (int): The maximum number of iterations to perform during 
-            the hyperparameter search. Defaults to 25. 
-        boruta_trials (int): The number of trials to run when running Boruta for
-            feature selection. Set to 0 for no feature selection. Defaults to 50.
-        boruta_model (str): The ensemble to use when calculating the feature importance
-            to be utilized by the Boruta algorithm. Can either be 'rf' or 'xgb'. Note
-            that this does not have to be the same as the machine learning classifier, clf.
-        balance (bool, optional): If True, a weights array will be calculated and used
-            when fitting the classifier. This can improve classification when classes
-            are imbalanced. This is only applied if the classification is a binary task. 
-            Defaults to True.        
+        limit_search (bool): If False, the search space for the parameters will be expanded,
+            as there are some hyperparameters that can range from 0 to inf. Defaults to True to
+            limit the search and speed up the optimization routine.
+        impute (bool): If True data imputation will be performed to replace NaN values. Defaults to False.
+            If set to True, the imputer attribute will be saved for future transformations. 
+        imp_method (str, optional): Imputation strategy to use if impute is set to True.
+            Defaults to 'knn'. The imputation methods supported include:
+            ('knn'): Fill missing values using k-Nearest Neighbor imputation.
+            ('mean'): Fill missing values with the mean of the non-missing values in the same column.
+            ('median'): Fill missing values with the median of the non-missing values in the same column.
+            ('mode'): Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
+            ('constant'): Fill missing values with a constant value provided by the user.
+        n_iter (int): The maximum number of iterations to perform during the hyperparameter search. 
+            Defaults to 25. Can be set to 0 to avoid this optimization routine.
+        boruta_trials (int): The number of trials to run when running Boruta for feature selection. 
+            Can be set to 0 for no feature selection. Defaults to 50.
+        boruta_model (str): The ensemble algorithm to use when calculating the feature importance metrics
+            for the features, which is utilized by the Boruta algorithm to construct the distributions. 
+            Can either be 'rf' or 'xgb'. In practice setting this to 'xgb' will result in a more agressive 
+            feature selection. Defaults to 'rf'.
+        balance (bool, optional): If True, a weights array will be calculated and used when fitting the classifier. 
+            This can improve classification when classes are imbalanced and is ignored otherwise. This is only applied if 
+            the classification is a binary task. Defaults to True.        
         csv_file (DataFrame, optional): The csv file output after generating the training set. This can be
-            input in lieu of the data_x and data_y arguments. Note that the csv_file must have a "label" column!
+            input in lieu of the data_x and data_y arguments. Note that the csv_file must have a "label" column,
+            and is intended to be used after executing the MicroLIA.training_set routine.
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        limit_search=True, impute=True, imp_method='knn', n_iter=25, 
+        limit_search=True, impute=False, imp_method='knn', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
 
         self.data_x = data_x
