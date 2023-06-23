@@ -54,7 +54,7 @@ There are a number of other parameters we can control when creating the training
 .. figure:: _static/simulation.jpg
     :align: center
 |
-The simulated lightcurves will be saved by default in a 'lightcurves.fits' file, organized by class and ID. A file called 'all_features.txt' will be saved as well, containing the statistical metrics of each lightcurve, with the first column containing the class of each simulated object (``str``), and the second columns the corresponding unique ID (``int``). 
+The simulated lightcurves will be saved by default in a 'lightcurves.fits' file, organized by class and ID. This file once loaded can be used to plot the simulated lightcurves using the `plot <https://microlia.readthedocs.io/en/latest/_modules/MicroLIA/training_set.html#plot>`_ function. A file called 'all_features.txt' will be saved as well, containing the statistical metrics of each lightcurve, with the first column containing the class of each simulated object (``str``), and the second columns the corresponding unique ID (``int``). 
 
 **As of version 2.0, a pandas dataframe will automatically be saved for easier access to the individual metrics, titled 'MicroLIA_Training_Set.csv', which can be loaded post-processing as follows:**
 
@@ -186,16 +186,16 @@ We can visualize the feature space using a two-dimensional t-SNE projection, whi
 .. figure:: _static/tSNE_Projection_1.png
     :align: center
 |
-In a similar note, we can plot the feature selection history as output by the BorutaShap optimizer, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``csv_file``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the true names, especially helpful for publication purposes where we may wish to properly format the feature names and/or include special characters. Since in this example we have loaded the csv file that was saved after the training set was created, we will leave ``feat_names`` as None.
+In a similar note, we can plot the feature selection history as output by the BorutaShap optimizer, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``csv_file``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the custom names, especially helpful for publication purposes where we may wish to properly format the feature names and/or include special characters. Since in this example we have loaded the csv file that was saved after the training set was created, we can leave ``feat_names`` as None to default them to the column names, or, better yet, we can set ``feat_names``='default', which is only applicable if the features in the input `data_x` array were calculated using program's `features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/features/index.html>`_. module (thus not applicable if the features were computed manually or only a select quantity were computed).
 
 .. code-block:: python
 
-   model.plot_feature_opt(feat_names=None, top=10, include_other=True, include_shadow=True, include_rejected=False, flip_axes=True, save_data=True, savefig=True)
+   model.plot_feature_opt(feat_names='default', top=20, include_other=True, include_shadow=True, include_rejected=False, flip_axes=False, save_data=True, savefig=True)
 
 .. figure:: _static/Feature_Importance_1.png
     :align: center
 |
-In addition to the feature selection history, the hyperparameter optimization results, including the importance of each hyperparameter in terms of its contribution to classification accuracy and training time, can be visualized using the following methods:
+Note that the 'Deriv-' flag indicates that the metric was computed in the lightcurve's derivative space. In addition to the feature selection history, the hyperparameter optimization results, including the importance of each hyperparameter in terms of its contribution to classification accuracy and training time, can be visualized using the following methods:
 
 .. code-block:: python
 
@@ -252,7 +252,7 @@ As expected, the simulated microlensing lightcurves (ML) overlap with the real O
 
 Model Performance
 -----------
-With the optimized model saved, as well as the imputer and indices of useful features to use, we can begin classifying any lightcurve using the predict() class method. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
+With the optimized model saved, as well as the imputer and indices of useful features to use, we can begin classifying any lightcurve using the `predict <https://microlia.readthedocs.io/en/latest/_modules/MicroLIA/ensemble_model.html#Classifier.predict>`_ class method. Let's load the first OGLE II microlensing lightcurve and check what the prediction is:
 
 .. code-block:: python
 
@@ -307,153 +307,62 @@ The accuracy is 0.87, that's very good, but to be more certain, let's classify s
 .. figure:: _static/false_alerts_1.png
     :align: center
 |
-A false-positive rate of ~0.15 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, to show this we can re-create our training data and include this sample of variables as well. We will simulate lightcurves with this particular cadence (but will keep the noise model according to the ML lightcurves only as per the high rms expected from variables), and while we can set a ``filename`` argument to avoid overwriting files with the same as per our previous run, in this instance we will simply set ``save_file`` to False:
+A false-positive rate of ~0.13 is very high, upon visual inspection we can see there are two issues with this data: low cadence and high noise. Our engine is only as accurate as our training set, thus **it is important to remember that the accuracy of the classifier depends on the accuracy of the training set**. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data when available. If the parameters of our simulations and the true events reside within the same parameter space, then our simulations will be characteristic of what would be new, unseen data. Poor simulations will yield poor classification results!
+
+Example: OGLE IV
+==================
+
+This excercise makes use of OGLE IV data (see: `Udalski et al 2015 <http://acta.astrouw.edu.pl/Vol65/n1/pdf/pap_65_1_1.pdf>`_).
+
+The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, after which we will generate a simulated training set and compare the performance of both models.
+
+First we will generate a training set with these real lightcurves (four classes total):
 
 .. code-block:: python
    
-   import os
-   import numpy as np
-   from MicroLIA import training_set, noise_models
+   from MicroLIA import training_set
 
-   timestamps, rms_mag, median_mag = [], [], []
+   path = 'OGLE_IV/'
 
-   # Append the cadence from the variables first
-   path = 'variables/'
-   filenames_var = [file for file in os.listdir(path) if '.dat' in file]
+   # This will create a training set, the class names are the folder names
+   data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV', extract_all=True, apply_weights=True, save_file=True)
 
-   for name in filenames_var:
-      data = np.loadtxt(path+name)
-      timestamps.append(data[:,0])
 
-   # Next, append the cadence and noise from the microlensing events
-   path = 'OGLE_II/'
-   filenames_ml = [file for file in os.listdir(path) if '.dat' in file]
-
-   for name in filenames_ml:
-      data = np.loadtxt(path+name)
-      time, mag = data[:,0], data[:,1]
-      rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
-      timestamps.append(time); rms_mag.append(rms); median_mag.append(np.median(mag))
-
-   # Create the new noise model
-   ogle_noise = noise_models.create_noise(median_mag, rms_mag)
-
-   # Simulate new lightcurves
-   data_x, data_y = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=100, apply_weights=True, save_file=False)
-
-Finally, we will create the new model and re-predict the class of these variables and the 214 OGLE II ML lightcurves:
+Next we will create an optimal classifier using XGBoost:
 
 .. code-block:: python
    
-   new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', optimize=True, impute=True, n_iter=100, boruta_trials=100)
-   new_model.create()
+   from MicroLIA import ensemble_model
 
-   predictions=[]
-   for name in filenames:
-      data = np.loadtxt(path+name)
-      time, mag, magerr = data[:,0], data[:,1], data[:,2]
-      prediction = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)
-      predictions.append(prediction[np.argmax(prediction[:,1])][0])
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=100, boruta_trials=100)
+   model.create()
+   model.save(dirname='OGLE_IV_REAL')
 
-   predictions = np.array(predictions)
-   false_alert = len(np.argwhere(predictions == 3)) / len(predictions)
-   print('False alert rate: {}'.format(np.round(false_alert, 4)))
-
-The false-positive rate in this instance is ~0.03, very nice! But what if we now predict the class of the original 214 microlensing lightcurves? This new model was tuned using the candence from the variable lightcurves as well as the 214 ML events. After classifying these 214 lightcurves with this new model, 
-
-Thus the best course of action is to re-create the training set using the timestamps and noise from the 214 microlensing and the 91 variable lightcurves. With this larger OGLE II sample we will more accurately capture the survey conditions. 
-
-IMPORTANT: It is imperative to remember always that the accuracy of the classifier depends on the accuracy of the training set. Tuning the parameters carefully when creating the training data is important, as is the need for a large sample of real data if available.
-
-Important Note
------------
-To re-iterate the importance of finely tuning the creation of the training data, see the code below used to construct a "basic" and a "better" training set, and compare the parameter space of the simulated microlensing lightcurves with the real OGLE II events. This feature visualization is performed using MicroLIA.models.classifier.plot_tsne. If the parameters of our simulations and the true events inhabit the same parameter space, then this would indicate that our simulations are characteristic of what would be new, unseen data. 
+We can now visualize the performance. Since XGBoost requires numerical class labels, we will create a y_labels list:
 
 .. code-block:: python
-
-   import os
-   import numpy as np 
-   from MicroLIA import training_set, ensemble_model, noise_models
-   from MicroLIA.extract_features import extract_all
-
-   #Save the filename of the 214 lightcurves (.dat extension)
-   path = '/Users/daniel/Desktop/Backups/OGLE_II/'
-   filenames = [file for file in os.listdir(path) if '.dat' in file]
-
-   #Load each file and append timestamps
-   timestamps = []
-   for name in filenames:
-     timestamps.append(np.loadtxt(path+name)[:,0])
-
-   #Calculate rms vs median mag for noise model
-   rms_mag = []
-   median_mag = []
-   for name in filenames:
-     mag = np.loadtxt(path+name)[:,1]
-     rms = 0.5*np.abs(np.percentile(mag,84) - np.percentile(mag,16))
-
-     rms_mag.append(rms)
-     median_mag.append(np.median(mag))
-
-   #Create noise model using MicroLIA.noise_models.create_noise()
-   ogle_noise = noise_models.create_noise(median_mag, rms_mag)
-
-   #Create basic training set using timestamps only, each class simulated 214 times
-   data_x, data_y = training_set.create(timestamps, n_class=len(filenames))
-
-   #Index for only microlensing for better tSNE projection 
-   index = np.where(data_y == 'ML')[0]
-
-   #Create better training set using noise model and zp, exp time, & min/max mag.
-   data_x_better, data_y_better = training_set.create(timestamps, min_mag=np.min(median_mag), max_mag=np.max(median_mag), noise=ogle_noise, zp=22, exptime=30, n_class=len(filenames), save_file=False)
    
-   #Add word "BETTER" to the labels 
-   data_y_better = [label+'_BETTER' for label in data_y_better]
+   y_labels = []
+   for label in model.data_y:
+      if label == 0:
+         y_labels.append('CV')
+      elif label == 1:
+         y_labels.append('LPV')
+      elif label == 2:
+         y_labels.append('ML')
+      elif label == 3:
+         y_labels.append('RRLYR')
 
-   #Combine data of basic and better training sets
-   data_x = np.concatenate((data_x[index], data_x_better[index]))
-   data_y = np.r_[data_y[index], data_y_better[index]]
+   model.plot_conf_matrix(y_labels, savefig=True)
+   model.plot_roc_curve(savefig=True)
 
-   #Construct data_x for OGLE II microlensing events
-   #Can extract features manually using MicroLIA.extract_features.extract_all()
-   ogle_data_x=[]
-   ogle_data_y=[]
+   model.plot_tsne(y_labels, savefig=True)
+   model.plot_feature_opt(feat_names='default', top=20, include_other=True, include_shadow=True, include_rejected=False, flip_axes=False, save_data=True, savefig=True)
 
-   for name in filenames:
-     data = np.loadtxt(path+name)
-     time, mag, magerr = data[:,0], data[:,1], data[:,2]
-     stats = extract_all(time, mag, magerr, zp=22)
+   model.plot_hyper_opt(xlim=(1,100), ylim=(0.85,0.95), xlog=True, savefig=True)
+   model.save_hyper_importance()
+   model.plot_hyper_param_importance(plot_time=True, savefig=True)
 
-     ogle_data_x.append(stats)
-     ogle_data_y.append('OGLE ML')
-
-   ogle_data_x = np.array(ogle_data_x)
-   ogle_data_y = np.array(ogle_data_y)
-
-   #Combine data again
-   x = np.concatenate((data_x, ogle_data_x))
-   y = np.r_[data_y, ogle_data_y]
-
-   #Create model object
-   model = models.classifier(x, y)
-
-   #Call plot_tsne attribute
-   model.plot_tsne()
-
-
-.. figure:: _static/tsne_214.png
-    :align: center
-|
-
-In the above example n_class was set to 214 for both simulations, so as to match the number of true samples that we have. Given the randommness of the simulations, it is not surprising to see regions of no feature overlap. If we create new training sets with a higher n_class argument, we will more generally capture the microlensing parameter space and we would expect the OGLE microlensing to be completely encapsulated by the larger sample.
-
-If we run above code again with n_class=1000, the feature space looks like this:
-
-.. figure:: _static/tsne_1000.png
-    :align: center
-|
-
-Unlike simulations, real data can be messy and difficult to properly preprocess. If you notice a lot of misclassifications, it would be because the simulations don't reflect the real data; therefore it is good to double check by visualizing the high-dimensional feature space of our simulated and target lightcurves.
 
 Example: COSMOS
 ========
@@ -545,7 +454,7 @@ Running these methods automatically updates the ``positive_class`` and ``negativ
    
 -  ``zoom_range`` (tuple): Tuple of floats (min_zoom, max_zoom) specifying the range of zoom in/out values. If set to (0.9, 1.1), for example, the zoom will be randomly chosen between 90% to 110% the original image size, note that the image size thus increases if the randomly selected zoom is greater than 1, therefore it is recommended to also input an appropriate image_size. Defaults to None, which disables this procedure.
    
--  ``skew_angle`` (float): The maximum absolute value of the skew angle, in degrees. This is the maximum because the actual angle to skew by will be chosen from a uniform distribution between the negative and positive skew_angle values. Defaults to 0, which disables this feature.
+-  ``skew_angle`` (float): The maximum absolute value of the skew angle, in degrees. This is the maximum because the actual angle to skew by will be chosen from a uniform distribution between the negative and positive skew_angle values. Defaults to 0, which disables this feature. Using this feature is not recommended!
 
 Rotating, skewing, and flipping images can make the training model more robust to variations in the orientation and perspective of the input images. Likewise, shifting left/right and up/down will help make the model translation invariant and thus robust to the position of the object of interest within the image. These are the recommended methods to try at first, as other techniques such as blending and applying random mask cutouts may alter the classes too dramatically.
 
@@ -605,12 +514,12 @@ If an image appears dark, run the methods again but manually set the ``vmin`` an
 
 In this attempt we apply only the blending routine, note that blend_multiplier is set to 1 for the negative class, so as to implement blending for the other class while keeping the original class size the same. When the classes are ready for training, simply call the ``create`` method. 
 
-No current options are available for augmenting the validation data, but this can be accomplished manually via the data_augmentation.augmentation function.
+No current options are available for augmenting the validation data, but this can be accomplished manually via the `data_augmentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/data_augmentation/index.html#MicroLIA.data_augmentation.augmentation>`_ module.
 
 Optimization
 -----------
 
-If you know what augmentation procedures are appropriate for your dataset, but don't know what specfic thresholds to apply, you can configure the ``Classifier`` class to identify the optimal augmentation routine to apply. To enable optimization, set ``optimize`` to ``True``. MicroLIA supports two optimization options, one is ``opt_aug``, which when set to ``True``, will optimize the augmentation options that have been enabled. The class attributes that control the augmentation optimization include:
+If you know what augmentation procedures are appropriate for your dataset, but don't know what specfic thresholds to use, you can configure the ``Classifier`` class to identify the optimal augmentations parameter to apply to your dataset. To enable optimization, set ``optimize`` to ``True``. MicroLIA supports two optimization options, one is ``opt_aug``, which when set to ``True``, will optimize the augmentation options that have been enabled. The class attributes that control the augmentation optimization include:
    
 -  ``batch_min`` (int): The minimum number of augmentations to perform per image on the positive class, only applicable if opt_aug=True. Defaults to 2.
 
@@ -636,13 +545,10 @@ If you know what augmentation procedures are appropriate for your dataset, but d
 
 -  ``blend_other`` (float): Must be greater than or equal to 1. Can be set to zero to avoid applying augmentation to the majority class. It is recommended to enable this if applying blending and/or cutouts so as to avoid training a classifier that associates these features with the positive class only.
    
--  ``zoom_range`` (tuple):
+-  ``zoom_range`` (tuple): This sets the allowed zoom in/out range. This is not optimized, and must be set carefully according to the data being used. During the optimization, random zooms will occur according to this designated range. Can be set to zero to disable.
 
--  ``skew_angle`` (float):
+The second optimization routine is enabled by setting ``opt_model`` to True. This will optimize the 
 
-
-
-With ``overwrite_training`` enabled, once training is complete the ``positive_class`` attribute be assigned to be the oversampled images as synthesized by non-SMOTE data augmentation, which could be visualized with:
 
 .. code-block:: python
 
