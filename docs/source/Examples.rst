@@ -79,7 +79,7 @@ Ensemble Classification Engine
 -----------
 We will create our ensemble machine learning model using the statistical features of the lightcurves, which are saved in the 'all_features.txt' file when the training set was genereated. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-In this example we will load this file to re-generate the data_x and data_y arrays, although note above that the training set routine returns ``data_x`` and ``data_y`` as outputs, and more conveniently, the ``csv_file`` can be input instead (and if need-be the statistics can always be re-computed using the `extract_features function<https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_) module.
+In this example we will load this file to re-generate the data_x and data_y arrays, although note above that the training set routine returns ``data_x`` and ``data_y`` as outputs, and more conveniently, the ``csv_file`` can be input instead (and if need-be the statistics can always be re-computed using the `extract_features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_) function.
 
 .. code-block:: python
    
@@ -107,7 +107,10 @@ Note that these three options are disabled by default, therefore to create and o
    model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=100, boruta_trials=100)
    model.create()
 
-To avoid overfitting during the optimization procedure, 10-fold cross-validation is performed by default to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. This setting can be tuned using the ``opt_cv`` argument, which can be set to 1 to do only one split and avoid the cross-validation altogether.
+.. figure:: _static/optimized_ensemble_model_1.png
+    :align: center
+|
+To avoid overfitting during the optimization procedure, 10-fold cross-validation is enabled by default to assess performance at the end of each trial, therefore the hyperparameter optimization can take a long time depending on the size of the training set and the algorithm being optimized. This setting can be tuned using the ``opt_cv`` argument, which can be set to 1 to do only one split and avoid cross-validation altogether.
 
 Note that the ``ensemble_model`` module currently supports three machine learning algorithms: Random Forest, Extreme Gradient Boosting, and Neural Network. While ``clf`` = 'rf' for Random Forest is the default input, we can also set this to 'xgb' or 'nn'. Since the neural network implementation requires more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set ``n_iter`` to at least 100. Note that there is also a ``boruta_trials`` argument which sets the number of iterations to perform when calculating feature importance. If ``boruta_trials`` = 0, then all the features will be used. The ``model.plot_feature_opt()`` class method can be used to visualize the feature selection results.
 
@@ -116,7 +119,7 @@ For details on how to set the classifier and the accompanying optimization param
 
 Saving & Loading Models
 -----------
-Once a model is created we can save the model alongside any additional attributes using the save class method, which saves the model, imputer, feats_to_use, optimization_results, best_params, and feature_history, if applicable. Unless a ``path`` argument is specified when saving, the files are saved to a folder in the local home directory. This folder will be titled 'MicroLIA_ensemble_model'.
+Once a model is created we can save the model alongside any additional attributes using the save class method, which saves the model, imputer, feats_to_use, optimization_results, best_params, and feature_history, if applicable. Unless a ``path`` argument is specified when saving, the files are saved to a folder in the local home directory. This folder will be titled 'MicroLIA_ensemble_model', which by design is must be the folder name where the model files are saved.
 
 .. code-block:: python
 
@@ -126,7 +129,10 @@ To load the model in the future:
 
 .. code-block:: python
    
-   model = ensemble_model.classifier()
+   import pandas as pd 
+
+   csv = pd.read_csv('MicroLIA_Training_Set.csv')
+   model = ensemble_model.Classifier(clf='xgb', csv_file=csv)
    model.load(path='test_model')
 
 Note that by default the load method will look for the data folder in local home directory. By default this folder is called 'MicroLIA_ensemble_model'. Once loaded, the class object will contain the attributes that were initially saved as well as the trained model, which can be used to predict unseen samples and/or display any of the visualization methods described below.
@@ -137,9 +143,9 @@ To visualize the classification accuracies we can create a confusion matrix. By 
 
 .. code-block:: python
 
-   model.plot_conf_matrix()
+   model.plot_conf_matrix(k_fold=10)
 
-When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels for visualization purposes we can input an accompanying ``data_y`` labels list as followws (**Note that if the ``csv_file`` argument was used to load the data, the data_y argument when plotting the confusion matrix is automatically set to the dataframe column names, and thus the below steps are only necessary if you wish to overwrite the default column names (for publication)**):
+When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels for visualization purposes we can input an accompanying ``data_y`` labels list as followws (**Note that if the ``csv_file`` argument was used to load the data, the data_y argument when plotting the confusion matrix is automatically set to the dataframe column names, and thus the below steps are only necessary if you wish to overwrite the default column names or if the data arrays were loaded manually.**):
 
 .. code-block:: python
 
@@ -159,35 +165,42 @@ When using the XGBoost classifier, the class labels are automatically converted 
 
    model.plot_conf_matrix(data_y=y_labels, savefig=True)
 
-We can also plot a Receiver Operating Characteristic Curve:
+.. figure:: _static/Ensemble_Confusion_Matrix_1.png
+    :align: center
+|
+We can also plot a Receiver Operating Characteristic Curve, which currently does not support custom data_y labels:
 
 .. code-block:: python
 
    model.plot_roc_curve(k_fold=10, savefig=True)
 
+.. figure:: _static/Ensemble_ROC_Curve_1.png
+    :align: center
+|
 We can visualize the feature space using a two-dimensional t-SNE projection, which also takes in an optional ``data_y`` labels array to override the numerical class labels. To properly visualize the feature space when using the eucledian distance metric, we will set norm=True so as to min-max normalize all the features for proper scaling:
 
 .. code-block:: python
 
    model.plot_tsne(data_y=y_labels, norm=True, savefig=True)
 
-In a similar note, we can plot the feature selection history as deduced by the BorutaShap implementation, which by default will associate the feature names with the order at which they are present in the ``data_x`` array. To override this, we can input a custom feat_names list containing the true names. In this example we will load the csv file that was saved after the training set creation, from which the column names will be extracted:
+.. figure:: _static/tSNE_Projection_1.png
+    :align: center
+|
+In a similar note, we can plot the feature selection history as output by the BorutaShap optimizer, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``csv_file``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the true names, especially helpful for publication purposes where we may wish to properly format the feature names and/or include special characters. Since in this example we have loaded the csv file that was saved after the training set was created, we will leave ``feat_names`` as None.
 
 .. code-block:: python
 
-   import pandas as pd
+   model.plot_feature_opt(feat_names=None, top=10, include_other=True, include_shadow=True, include_rejected=False, flip_axes=True, save_data=True, savefig=True)
 
-   stats = pd.read_csv('MicroLIA_Training_Set.csv')
-   feat_names = stats.columns[:-1] #The last column is the label
-
-   model.plot_feature_opt(feat_names=feat_names, top=10, include_other=True, include_shadow=True, include_rejected=False, flip_axes=True, save_data=True, savefig=True)
-
+.. figure:: _static/Feature_Importance_1.png
+    :align: center
+|
 In addition to the feature selection history, the hyperparameter optimization results, including the importance of each hyperparameter in terms of its contribution to classification accuracy and training time, can be visualized using the following methods:
 
 .. code-block:: python
 
    #Plot the hyperparameter optimization history
-   model.plot_hyper_opt(xlim=(1,100), ylim=(0.8,1), xlog=True, savefig=True)
+   model.plot_hyper_opt(xlim=(1,100), ylim=(0.85,0.95), xlog=True, savefig=True)
 
    #Need to save the importances first, must run once the first time!
    model.save_hyper_importance()
@@ -195,6 +208,12 @@ In addition to the feature selection history, the hyperparameter optimization re
    #Plot the hyperparameter importances
    model.plot_hyper_param_importance(plot_time=True, savefig=True)
 
+.. figure:: _static/Ensemble_Hyperparameter_Optimization_1.png
+    :align: center
+|
+.. figure:: _static/Ensemble_Hyperparameter_Importance_1.png
+    :align: center
+|
 It would be nice to include the parameter space of the real OGLE II microlensing lightcurves in comparison to the simulated lightcurves, so as to visualize how representative of real data our training set is. To include these in the t-SNE projection we can save the statistics of the real OGLE II lightcurves and append them to the ``data_x`` array. As for the label, we can label these 'OGLE ML' which will be appended to the ``data_y`` array. For this excercise see the Important Note section of this page.
 
 Model Performance

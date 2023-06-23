@@ -55,13 +55,13 @@ With the lightcurves simulated or loaded, and the feature matrix saved as data_x
       
       from MicroLIA import ensemble_models
 
-      model = models.Classifier(data_x, data_y)
+      model = models.Classifier(data_x, data_y, optimize=True, boruta_trials=25, n_iter=25)
       model.create()
       
 .. figure:: _static/optimize.png
     :align: center
 |
-By default all the optimization procedures are enabled, therefore the model creation may take several hours depending on the size of the training set and the model being optimized. 
+As the optimization routine has been enabled, the model creation process may take several hours depending on the size of the training set and the model being optimized. 
 
 When the final model is output, we can predict new, unseen data, but note that if the input is in magnitude, an instrument zeropoint must be provided for proper flux conversion. If input is in flux, set convert=False:
 
