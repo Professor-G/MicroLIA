@@ -155,21 +155,16 @@ class Classifier:
             when opt_aug=True, set to to greater than or equal to 1.1 (a minimum of 10% increase), which would thus try different values for this
             during the optimization between 1 and 1.1.
         blend_other (float): Greater than or equal to 1. Can be zero to not apply augmentation to the majority class.
-        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
-            just the best one. Defaults to False.
-        save_studies (bool): Whether to save the study object created by Optuna. If set to True, this study object will be
-            saved and overwritten after each trial. Can be used to resume studies. Defaults to False. 
         path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
             in the home directory.
-
     """
 
     def __init__(self, positive_class=None, negative_class=None, val_positive=None, val_negative=None, img_num_channels=1, clf='alexnet', 
         normalize=False, min_pixel=0, max_pixel=100, optimize=False, n_iter=25, batch_size_min=16, batch_size_max=64, epochs=25, patience=5, metric='loss', metric2=None, metric3=None,
         average=True, test_positive=None, test_negative=None, test_acc_threshold=None, post_metric=True, opt_model=True, train_epochs=25, opt_cv=None,
         opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, opt_max_min_pix=None, opt_max_max_pix=None, 
-        shift=10, rotation=False, horizontal=False, vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, blending_func='mean', num_images_to_blend=2, blend_other=1, zoom_range=(0.9,1.1), skew_angle=0,
-        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, save_models=False, save_studies=False, path=None, use_gpu=False):
+        shift=10, rotation=False, horizontal=False, vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, blending_func='mean', num_images_to_blend=2, blend_other=1, zoom_range=None, skew_angle=0,
+        limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, path=None, use_gpu=False):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -241,10 +236,6 @@ class Classifier:
         self.path = path
         #Whether to turn off GPU
         self.use_gpu = use_gpu
-        #Controls whether the models are saved after each optimization trial
-        self.save_models = save_models
-        #Controls whether the study object as the trials progress
-        self.save_studies = save_studies
 
         if self.use_gpu is False:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1' 
@@ -338,7 +329,7 @@ class Classifier:
                 train_epochs=self.train_epochs, opt_cv=self.opt_cv, opt_aug=self.opt_aug, batch_min=self.batch_min, batch_max=self.batch_max, batch_other=self.batch_other, balance=self.balance, image_size_min=self.image_size_min, image_size_max=self.image_size_max, 
                 shift=self.shift, rotation=self.rotation, horizontal=self.horizontal, vertical=self.vertical, opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, mask_size=self.mask_size, num_masks=self.num_masks, smote_sampling=self.smote_sampling, blend_max=self.blend_max, blend_other=self.blend_other, 
                 num_images_to_blend=self.num_images_to_blend, blending_func=self.blending_func, zoom_range=self.zoom_range, skew_angle=self.skew_angle, limit_search=self.limit_search, monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, 
-                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, save_models=self.save_models, save_studies=self.save_studies, path=self.path, return_study=True)
+                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, path=self.path, return_study=True)
             print("Fitting and returning final model...")
         else:
             if self.epochs != 0:

@@ -12,6 +12,7 @@ import peakutils
 import scipy.integrate as sintegrate
 import scipy.signal as ssignal
 import scipy.stats as sstats
+
 import warnings; warnings.filterwarnings("ignore")
 
 def shannon_entropy(time, mag, magerr, apply_weights=True):
@@ -108,9 +109,12 @@ def con(time, mag, magerr, apply_weights=True):
     rtype: float       
     """
 
+    if len(mag) < 3:
+        return 0
+
     # Find the median of the magnitudes
     mean = np.median(mag)
-    
+
     # Initialize variables
     con = 0
     deviating = False
@@ -144,21 +148,18 @@ def con(time, mag, magerr, apply_weights=True):
             elif deviating:
                 deviating = False
     else:
-        if len(a) < 3:
-            return 0
-        else:
-            for i in range(len(mag)-2):
-                first = mag[i]
-                second = mag[i+1]
-                third = mag[i+2]
-                if (first <= mean+3*magerr[i] and
-                    second <= mean+3*magerr[i+1] and
-                    third <= mean+3*magerr[i+2]):
-                    if (not deviating):
-                        con += 1
-                        deviating = True
-                    elif deviating:
-                        deviating = False
+        for i in range(len(mag)-2):
+            first = mag[i]
+            second = mag[i+1]
+            third = mag[i+2]
+            if (first <= mean+3*magerr[i] and
+                second <= mean+3*magerr[i+1] and
+                third <= mean+3*magerr[i+2]):
+                if (not deviating):
+                    con += 1
+                    deviating = True
+                elif deviating:
+                    deviating = False
 
     return con/len(mag)
 
@@ -319,7 +320,7 @@ def stetsonK(time, mag, magerr, apply_weights=True):
 
     return np.nan_to_num(stetsonK)
 
-def stetsonL(time, mag, magerr):
+def stetsonL(time, mag, magerr, apply_weights=True):
     """
     The variability index L was first suggested by Peter B. Stetson and serves as a
     means of distinguishing between different types of variation. When individual random
@@ -869,11 +870,11 @@ def MaxSlope(time, mag, magerr, apply_weights=True):
         #Calculate the slope using the errors as weights
         weights = 1 / magerr[:-1]**2 + 1 / magerr[1:]**2
         slope = np.abs((mag[1:] - mag[:-1]) / (time[1:] - time[:-1]))
-        weighted_slope = np.sum(weights * slope) / np.sum(weights)
+        weighted_slope = np.sum(weights[np.isfinite(slope)] * slope[np.isfinite(slope)]) / np.sum(weights[np.isfinite(slope)])
         return weighted_slope
     else:
         slope = np.abs(mag[1:] - mag[:-1]) / (time[1:] - time[:-1])
-        return np.max(slope)
+        return np.max(slope[np.isfinite(slope)])
 
 def LinearTrend(time, mag, magerr, apply_weights=True):
     """
@@ -952,7 +953,7 @@ def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
     Ratio of flux percentiles (60th - 40th) over (95th - 5th)
     
     In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
+    We then calculate the weighted percentiles of the magnitude data using the cumulative sum of the weights. 
     We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
     flux percentile ratios using the weighted percentiles.
 
@@ -968,31 +969,19 @@ def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
     rtype: float
     """
 
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+    
     if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        #Calculate the weighted percentiles
-        weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_40 = np.interp(40, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_60 = np.interp(60, cum_weights / cum_weights[-1], sorted_mag)
-        #Calculate the flux percentile ratios
-        F_40_60 = percentile_60 - percentile_40
-        F_5_95 = percentile_95 - percentile_5
-        F_mid20 = F_40_60 / F_5_95
+        weights = 1.0 / (magerr ** 2)
+        cumulative_weights = np.cumsum(weights)
+        percentiles = np.interp([0.05, 0.40, 0.60, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
     else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_60_index = int(math.ceil(0.60 * lc_length))
-        F_40_index = int(math.ceil(0.40 * lc_length))
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_40_60 = sorted_data[F_60_index] - sorted_data[F_40_index]
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-        F_mid20 = F_40_60 / F_5_95
+        percentiles = np.percentile(sorted_data, [5, 40, 60, 95])
+    
+    F_40_60 = percentiles[2] - percentiles[1]
+    F_5_95 = percentiles[3] - percentiles[0]
+    F_mid20 = F_40_60 / F_5_95
 
     return F_mid20
 
@@ -1018,31 +1007,19 @@ def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
     rtype: float
     """
 
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
     if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        #Calculate the weighted percentiles
-        weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_325 = np.interp(32.5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_675 = np.interp(67.5, cum_weights / cum_weights[-1], sorted_mag)
-        #Calculate the flux percentile ratios
-        F_325_675 = percentile_675 - percentile_325
-        F_5_95 = percentile_95 - percentile_5
-        F_mid35 = F_325_675 / F_5_95
+        weights = 1.0 / (magerr ** 2)
+        cumulative_weights = np.cumsum(weights)
+        percentiles = np.interp([0.05, 0.325, 0.675, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
     else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_325_index = int(math.ceil(0.325 * lc_length))
-        F_675_index = int(math.ceil(0.675 * lc_length))
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_325_675 = sorted_data[F_675_index] - sorted_data[F_325_index]
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-        F_mid35 = F_325_675 / F_5_95
+        percentiles = np.percentile(sorted_data, [5, 32.5, 67.5, 95])
+
+    F_325_675 = percentiles[2] - percentiles[1]
+    F_5_95 = percentiles[3] - percentiles[0]
+    F_mid35 = F_325_675 / F_5_95
 
     return F_mid35
 
@@ -1053,9 +1030,8 @@ def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
     Ratio of flux percentiles (75th - 25th) over (95th - 5th)
     
     In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
-    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
-    flux percentile ratios using the weighted percentiles.
+    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
+    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
 
     Parameters
     ----------   
@@ -1069,31 +1045,19 @@ def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
     rtype: float
     """
 
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
     if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        # Calculate the weighted percentiles
-        weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_25 = np.interp(25, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_75 = np.interp(75, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        # Calculate the flux percentile ratios
-        F_25_75 = percentile_75 - percentile_25
-        F_5_95 = percentile_95 - percentile_5
-        F_mid50 = F_25_75 / F_5_95
+        weights = 1.0 / (magerr ** 2)
+        cumulative_weights = np.cumsum(weights)
+        percentiles = np.interp([0.05, 0.25, 0.75, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
     else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_25_index = int(math.ceil(0.25 * lc_length))
-        F_75_index = int(math.ceil(0.75 * lc_length))
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_25_75 = sorted_data[F_75_index] - sorted_data[F_25_index]
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-        F_mid50 = F_25_75 / F_5_95
+        percentiles = np.percentile(sorted_data, [5, 25, 75, 95])
+
+    F_25_75 = percentiles[2] - percentiles[1]
+    F_5_95 = percentiles[3] - percentiles[0]
+    F_mid50 = F_25_75 / F_5_95
 
     return F_mid50
 
@@ -1104,9 +1068,8 @@ def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
     Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
 
     In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using the percentileofscore function from scipy.stats. 
-    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
-    flux percentile ratios using the weighted percentiles.
+    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
+    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
 
     Parameters
     ----------   
@@ -1119,32 +1082,20 @@ def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
     -------     
     rtype: float
     """
-    
+
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
     if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        # Calculate the weighted percentiles
-        weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_175 = np.interp(17.5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_825 = np.interp(82.5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        # Calculate the flux percentile ratios
-        F_175_825 = percentile_825 - percentile_175
-        F_5_95 = percentile_95 - percentile_5
-        F_mid65 = F_175_825 / F_5_95
+        weights = 1.0 / (magerr ** 2)
+        cumulative_weights = np.cumsum(weights)
+        percentiles = np.interp([0.05, 0.175, 0.825, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
     else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_175_index = int(math.ceil(0.175 * lc_length))
-        F_825_index = int(math.ceil(0.825 * lc_length))
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_175_825 = sorted_data[F_825_index] - sorted_data[F_175_index]
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-        F_mid65 = F_175_825 / F_5_95
+        percentiles = np.percentile(sorted_data, [5, 17.5, 82.5, 95])
+
+    F_175_825 = percentiles[2] - percentiles[1]
+    F_5_95 = percentiles[3] - percentiles[0]
+    F_mid65 = F_175_825 / F_5_95
 
     return F_mid65
 
@@ -1165,32 +1116,20 @@ def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
     -------     
     rtype: float
     """
-    
+ 
+    sorted_data = np.sort(mag)
+    lc_length = len(sorted_data)
+
     if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        # Calculate the weighted percentiles
-        weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_10 = np.interp(10, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_90 = np.interp(90, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        # Calculate the flux percentile ratios
-        F_10_90 = percentile_90 - percentile_10
-        F_5_95 = percentile_95 - percentile_5
-        F_mid80 = F_10_90 / F_5_95
+        weights = 1.0 / (magerr ** 2)
+        cumulative_weights = np.cumsum(weights)
+        percentiles = np.interp([0.05, 0.10, 0.90, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
     else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_10_index = int(math.ceil(0.10 * lc_length))
-        F_90_index = int(math.ceil(0.90 * lc_length))
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_10_90 = sorted_data[F_90_index] - sorted_data[F_10_index]
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-        F_mid80 = F_10_90 / F_5_95
+        percentiles = np.percentile(sorted_data, [5, 10, 90, 95])
+
+    F_10_90 = percentiles[2] - percentiles[1]
+    F_5_95 = percentiles[3] - percentiles[0]
+    F_mid80 = F_10_90 / F_5_95
 
     return F_mid80
 
@@ -1475,30 +1414,37 @@ def Gskew(time, mag, magerr, apply_weights=True):
         sorted_indices = np.argsort(mag)
         sorted_mag = mag[sorted_indices]
         sorted_magerr = magerr[sorted_indices]
-        #Calculate the cumulative weights
+
+        # Calculate the cumulative weights
         weights = 1.0 / np.square(sorted_magerr)
         cum_weights = np.cumsum(weights)
-        #Calculate the indices of the median and quantiles
-        median_index = np.searchsorted(cum_weights, 0.5*cum_weights[-1])
-        q3_index = np.searchsorted(cum_weights, 0.03*cum_weights[-1])
-        q97_index = np.searchsorted(cum_weights, 0.97*cum_weights[-1])
-        #Calculate the median and quantiles
+
+        # Calculate the indices of the median and quantiles
+        median_index = np.searchsorted(cum_weights, 0.5 * cum_weights[-1])
+        q3_index = np.searchsorted(cum_weights, 0.03 * cum_weights[-1])
+        q97_index = np.searchsorted(cum_weights, 0.97 * cum_weights[-1])
+
+        # Calculate the median and quantiles
         median_mag = sorted_mag[median_index]
         F_3_value = sorted_mag[q3_index]
         F_97_value = sorted_mag[q97_index]
-        #Calculate the weighted median of magnitudes <= F_3_value
-        cum_weights_3 = cum_weights[q3_index-1]
+
+        # Calculate the weighted median of magnitudes <= F_3_value
+        cum_weights_3 = cum_weights[:q3_index]
         weights_3 = weights[:q3_index]
         cum_weights_3 -= cum_weights_3[0]
         cum_weights_3 /= cum_weights_3[-1]
-        mq3 = np.interp(0.5, cum_weights_3, sorted_mag[:q3_index])
-        #Calculate the weighted median of magnitudes >= F_97_value
-        cum_weights_97 = cum_weights[q97_index-1]
+        mq3 = np.interp(0.5, cum_weights_3[::-1], sorted_mag[:q3_index][::-1])
+
+        # Calculate the weighted median of magnitudes >= F_97_value
+        cum_weights_97 = cum_weights[q97_index-1:]
         weights_97 = weights[q97_index-1:]
         cum_weights_97 -= cum_weights_97[0]
         cum_weights_97 /= cum_weights_97[-1]
         mq97 = np.interp(0.5, cum_weights_97, sorted_mag[q97_index-1:])
-        gs = mq3 + mq97 - 2*median_mag
+
+        gs = mq3 + mq97 - 2 * median_mag
+
     else:
         median_mag = np.median(mag)
         F_3_value = np.percentile(mag, 3)
@@ -2214,6 +2160,8 @@ def mean_second_derivative(time, mag, magerr, apply_weights=True):
         diffs = np.diff(mag)
         times = np.diff(time)
         errors = np.abs(diffs / times ** 2) * np.sqrt((magerr[:-1] / diffs) ** 2 + (magerr[1:] / diffs) ** 2)
+        mask = np.isfinite(errors)
+        diffs, times, errors = diffs[mask], times[mask], errors[mask]
         weights = 1 / errors ** 2
         weighted_diffs = diffs[1:-1] * weights[1:-1]
         return np.sum(weighted_diffs) / np.sum(weights[1:-1])
@@ -2468,9 +2416,11 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
         if apply_weights:
             weights = 1.0 / (magerr ** 2)
             weighted_mean = np.sum(mag * weights) / np.sum(weights ** 2)
-            return np.mean((two_lag * two_lag * one_lag - one_lag * mag * mag) / (magerr * magerr) / weights)[0 : (n - 2 * lag)]
+            result = ((two_lag * two_lag * one_lag - one_lag * mag * mag) / (magerr * magerr)) / weights
+            return np.mean(result[:n - 2 * lag])
         else:
-            return np.mean((two_lag * two_lag * one_lag - one_lag * mag * mag)[0 : (n - 2 * lag)])
+            result = (two_lag * two_lag * one_lag - one_lag * mag * mag)
+            return np.mean(result[:n - 2 * lag])
 
 def variance(time, mag, magerr, apply_weights=True):
     """
@@ -2754,7 +2704,7 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3, apply_weights=Tru
 
     if apply_weights:
         weights = 1 / np.asarray(magerr)[indexer]
-        weighted_counts = counts / weights
+        weighted_counts = counts / np.expand_dims(weights.reshape(-1), axis=1)
         probs = np.sum(weighted_counts, axis=1) / np.sum(weighted_counts)
     else:
         probs = counts / len(permutations)

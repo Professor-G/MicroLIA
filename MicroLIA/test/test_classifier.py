@@ -10,7 +10,9 @@ import pandas as pd
 import sys
 sys.path.append('../../')
 from MicroLIA import ensemble_model
-from sklearn.model_selection import train_test_split, cross_validate, cross_val_score
+from MicroLIA.optimization import impute_missing_values
+
+from sklearn.model_selection import cross_validate
 
 csv = pd.read_csv('MicroLIA_Training_Set.csv')
 
@@ -19,9 +21,6 @@ model.load('test_model')
 
 test_lc = np.loadtxt('test_ogle_lc.dat')
 time, mag, magerr = test_lc[:,0], test_lc[:,1], test_lc[:,2]
-
-cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv) 
-accuracy = np.mean(cv['test_score'])
 
 class Test(unittest.TestCase):
     """
@@ -72,6 +71,39 @@ class Test(unittest.TestCase):
         expected_value = 0.9
 
         self.assertAlmostEqual(accuracy, expected_value, delta=0.01, msg='Classifier failed, the mean 10-fold cross-validation accuracy is not within the limits.')
+
+    def test_knn_imputer(self):
+        model.data_x[[10,10]] = np.nan 
+        model.data_x = impute_missing_values(model.data_x, imputer=None, strategy='knn', k=3)
+        expected_value = 0.1
+        self.assertAlmostEqual(model.data_x[[10,10]], expected_value, delta=0.01, msg='knn imputation failed!')
+
+    def test_median_imputer(self):
+        model.data_x[[10,10]] = np.nan 
+        model.data_x = impute_missing_values(model.data_x, imputer=None, strategy='median')
+        expected_value = 0.1
+        self.assertAlmostEqual(model.data_x[[10,10]], expected_value, delta=0.01, msg='median imputation failed!')
+
+    def test_mean_imputer(self):
+        model.data_x[[10,10]] = np.nan 
+        model.data_x = impute_missing_values(model.data_x, imputer=None, strategy='mean')
+        expected_value = 0.1
+        self.assertAlmostEqual(model.data_x[[10,10]], expected_value, delta=0.01, msg='mean imputation failed!')
+
+    def test_mode_imputer(self):
+        model.data_x[[10,10]] = np.nan 
+        model.data_x = impute_missing_values(model.data_x, imputer=None, strategy='mode')
+        expected_value = 0.1
+        self.assertAlmostEqual(model.data_x[[10,10]], expected_value, delta=0.01, msg='mode imputation failed!')
+
+    def test_constant_imputer(self):
+        model.data_x[[10,10]] = np.nan 
+        model.data_x = impute_missing_values(model.data_x, imputer=None, strategy='constant', constant_value=0)
+        expected_value = 0.1
+        self.assertAlmostEqual(model.data_x[[10,10]], expected_value, delta=0.01, msg='mode imputation failed!')
+
+
+
 
 unittest.main()
     

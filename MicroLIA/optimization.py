@@ -17,7 +17,6 @@ from pandas import DataFrame
 from warnings import filterwarnings
 filterwarnings("ignore", category=FutureWarning)
 from collections import Counter 
-from pathlib import Path
 import joblib   
 
 import sklearn.neighbors._base
@@ -174,20 +173,15 @@ class objective_cnn(object):
             information refer to the ensemble_model module.
         blend_max (float): If used this will apply blending augmentation 
         num_images_to_blend (int):
-        zoom_range (tuple):
-        batch_other (int): Can be set to zero.
+        zoom_range (tuple): Will randomly apply zooming in/out between the input range, for example, if set to (0.9, 1.1) it will
+            select a random zoom value between plus and minus 10% to each augmented image. Defaults to None.
+        batch_other (int): The number of augmentations to perform to the negative class. Defaults to 0.
         blending_func (str):
         skew_angle (float):
         rotation (bool):
         horizontal (bool):
         vertical (bool): 
-        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
-            just the best one. Defaults to False.
-        save_studies (bool): Whehter to save the study object created by Optuna. If set to True, this study object will be
-            saved and overwritten after each trial. Defaults to False.
-        path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
-            in the home directory.
-
+        
     Returns:
         The performance metric.
     """
@@ -198,8 +192,7 @@ class objective_cnn(object):
         opt_model=True, train_epochs=25, opt_cv=None, opt_aug=False, batch_min=2, batch_max=25, batch_other=1, 
         balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, rotation=False, horizontal=False,
         vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
-        skew_angle=0, zoom_range=(0.9,1.1), limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0,
-        save_models=False, save_studies=False, path=None):
+        skew_angle=0, zoom_range=None, limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0):
 
         self.positive_class = positive_class
         self.negative_class = negative_class
@@ -254,12 +247,6 @@ class objective_cnn(object):
         self.rotation = rotation
         self.horizontal = horizontal
         self.vertical = vertical
-
-        self.save_models = save_models
-        self.save_studies = save_studies
-        self.path = path 
-        self.path = str(Path.home()) if self.path is None else self.path
-        self.path += '/' if self.path[-1] != '/' else ''
 
         if 'all' not in self.metric and 'loss' not in self.metric and 'f1_score' not in self.metric and 'binary_accuracy' not in self.metric:
             raise ValueError("Invalid metric input, options are: 'loss', 'binary_accuracy', 'f1_score', or 'all', and the validation equivalents (add val_ at the beginning).")
@@ -1101,16 +1088,9 @@ class objective_cnn(object):
                 final_score = 1 - final_score
             if test_metric is not None:
                 final_score = (final_score + test_metric) / 2.0
-
-        #REMINDER TO MOVE INCLUDE THESE BEFORE EVERY RETURN! IF TRIAL STOPS EARLY IT DOESN'T REACH THE END
-        if self.save_models:
-            save_model(model, path+'model_trial_'+str(trial.number))
-        if self.save_studies:
-            joblib.dump(trial.study, path+'study')
-
+        
         return final_score
         
-
 class objective_xgb(object):
     """
     Optimization objective function for the tree-based XGBoost classifier. 
@@ -1492,7 +1472,7 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
     test_positive=None, test_negative=None, test_acc_threshold=None, post_metric=True, opt_model=True, batch_size_min=16, batch_size_max=64, train_epochs=25, opt_cv=None,
     opt_aug=False, batch_min=2, batch_max=25, batch_other=1, balance=True, image_size_min=50, image_size_max=100, shift=10, opt_max_min_pix=None, opt_max_max_pix=None, 
     rotation=False, horizontal=False, vertical=False, mask_size=None, num_masks=None, smote_sampling=0, blend_max=0, num_images_to_blend=2, blending_func='mean', blend_other=1, 
-    zoom_range=(0.9,1.1), skew_angle=0, limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, return_study=True, save_models=False, save_studies=False, path=None): 
+    zoom_range=None, skew_angle=0, limit_search=True, monitor1=None, monitor2=None, monitor1_thresh=None, monitor2_thresh=None, verbose=0, return_study=True): 
     """
     Optimizes hyperparameters using a k-fold cross validation splitting strategy.
 
@@ -1616,13 +1596,7 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             a value of 1 is used for progress bar mode, and 2 for one line per epoch mode. Defaults to 1.
         smote_sampling (float): The smote_sampling parameter is used in the SMOTE algorithm to specify the desired 
             ratio of the minority class to the majority class. Defaults to 0 which disables the procedure.
-        save_models (bool): Whether to save to models after each Optuna trial. Note that this saves all models, not
-            just the best one. Defaults to False.
-        save_studies (bool): Whehter to save the study object created by Optuna. If set to True, this study object will be
-            saved and overwritted after each trial. Defaults to False.
-        path (str): Absolute path where the models and study object will be saved. Defaults to None, which saves the models and study
-            in the home directory.
-
+        
     The folllowing arguments can be used to set early-stopping callbacks. These can be used to terminate trials that exceed
     pre-determined thresholds, which may be indicative of an overfit model.
 
@@ -1792,8 +1766,7 @@ def hyper_opt(data_x=None, data_y=None, val_X=None, val_Y=None, img_num_channels
             train_epochs=train_epochs, opt_cv=opt_cv, opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, batch_other=batch_other, balance=balance, image_size_min=image_size_min, image_size_max=image_size_max, 
             shift=shift, opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, rotation=rotation, horizontal=horizontal, vertical=vertical, mask_size=mask_size, num_masks=num_masks, smote_sampling=smote_sampling, 
             blend_max=blend_max, num_images_to_blend=num_images_to_blend, blending_func=blending_func, blend_other=blend_other, zoom_range=zoom_range, skew_angle=skew_angle,
-            limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose,
-            save_models=save_models, save_studies=save_studies, path=path)      
+            limit_search=limit_search, monitor1=monitor1, monitor2=monitor2, monitor1_thresh=monitor1_thresh, monitor2_thresh=monitor2_thresh, verbose=verbose)      
         #study_stop_cb = StopWhenTrialKeepBeingPrunedCallback(prune_threshold)
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True, gc_after_trial=True)# callbacks=[study_stop_cb]), n_jobs=1)
         params = study.best_trial.params
@@ -1940,9 +1913,9 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
             - 'constant': Fill missing values with a constant value provided by the user.
             - 'knn': Fill missing values using k-Nearest Neighbor imputation.
         k (int, optional): Number of nearest neighbors to consider for k-Nearest Neighbor imputation.
-            Only applicable if strategy is set to 'knn'. Defaults to 3.
+            Only applicable if the imputation strategy is set to 'knn'. Defaults to 3.
         constant_value (float or int, optional): Constant value to use for constant imputation.
-            Only applicable if strategy is set to 'constant'. Defaults to 0 if used.
+            Only applicable if the imputation strategy is set to 'constant'. Defaults to 0.
 
     Returns:
         The first output is the data array with with the missing values filled in. 
