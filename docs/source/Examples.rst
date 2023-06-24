@@ -325,7 +325,7 @@ First we will generate a training set with these real lightcurves (four classes 
    path = 'OGLE_IV/'
 
    # This will create a training set, the class names are the folder names
-   data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV', extract_all=True, apply_weights=True, save_file=True)
+   data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV_REAL_LC', apply_weights=True, save_file=True)
 
 
 Next we will create an optimal classifier using XGBoost:
@@ -334,7 +334,7 @@ Next we will create an optimal classifier using XGBoost:
    
    from MicroLIA import ensemble_model
 
-   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=100, boruta_trials=100)
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=100, boruta_trials=1000)
    model.create()
    model.save(dirname='OGLE_IV_REAL')
 
