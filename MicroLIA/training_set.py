@@ -373,7 +373,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     return data_x, data_y
 
-def load_all(path, convert=True, zp=24, filename=None, extract_all=True, apply_weights=True, save_file=True):
+def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_file=True):
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
