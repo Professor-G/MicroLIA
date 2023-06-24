@@ -15,7 +15,7 @@ MicroLIA is an open-source program for detecting microlensing events in wide-fie
 
 # Version 2
 
-As of version 2.27, MicroLIA provides the following new features and improvements:
+As of version 2.2.7, MicroLIA provides the following new features and improvements:
 
 * New time-series features (74 total). To enhance the analysis, we now take the derivative of the lightcurve and re-compute the features in this derivative space, for a grand total of 148 metrics.
 * Lightcurve features can now be calculated by taking into account the flux/mag errors, thus allowing for proper weighting of data points.
