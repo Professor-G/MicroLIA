@@ -26,7 +26,7 @@ As of version 2.27, MicroLIA provides the following new features and improvement
 * The ensemble engine hyperparameters can now be optimized using Bayesian analysis. 
 * We added data imputation techniques to better handle undefined values in the training data.
 * We include a CNN model for image classification purposes, including a data augmentation routine and an optimization procedure for identifying the proper augmentations to perform given the training set images.
-* Built-in class methods are now available to visualize the engine parameters and performance, including the ability to save and load models post-processing.
+* Built-in class methods are now available to visualize the engine parameters and performance, as well as to save and load models post-processing.
 
 
 # [Documentation](https://microlia.readthedocs.io/en/latest/?)
@@ -55,7 +55,7 @@ If both test scripts work you are good to go!
 
 # Citation
 
-If you use MicroLIA in publication, we would appreciate citations to the paper, [Godines et al. 2019.](https://arxiv.org/abs/2004.14347)
+If you use MicroLIA in publication, we would appreciate citations to the paper, [Godines et al. 2019.](https://ui.adsabs.harvard.edu/abs/2019A%26C....2800298G/abstract)
 
  
 # How to Contribute?
