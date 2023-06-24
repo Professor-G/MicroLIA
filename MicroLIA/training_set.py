@@ -263,18 +263,18 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
                     one hundred attempts, if this happens you can try setting the event parameter ml_n1 to a value between 2 and 6.')
                 
                 time, baseline = random.choice(timestamps), np.random.uniform(min_mag, max_mag)
-                mag, baseline, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline, t0_dist, u0_dist, tE_dist)
+                mag, u_0, t_0, t_e, blend_ratio = simulate.microlensing(time, baseline, t0_dist, u0_dist, tE_dist)
 
+                try:
+                    if noise is not None:
+                        mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
+                    if noise is None:
+                        mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
+                except ValueError:
+                    continue
+            
                 quality = quality_check.test_microlensing(time, mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=ml_n1)
                 if quality:     
-                    try:
-                        if noise is not None:
-                            mag, magerr = noise_models.add_noise(mag, noise, zp=zp, exptime=exptime)
-                        if noise is None:
-                            mag, magerr = noise_models.add_gaussian_noise(mag, zp=zp, exptime=exptime)
-                    except ValueError:
-                        continue
-                
                     source_class_list.append(['ML']*len(time)); id_list.append([3*n_class+k]*len(time)) 
                     times_list.append(time); mag_list.append(mag); magerr_list.append(magerr)
                    

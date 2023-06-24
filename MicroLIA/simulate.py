@@ -33,13 +33,13 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
             consider when simulating the microlensing events (in days), as this t0 parameter will be selected
             using a random uniform distribution according to these bounds. Defaults to None, which will 
             compute an appropriate t0 according to the range of the input timestamps.
-        u0_dist: array, optional
+        u0_dist: array, tuple, optional
             An array or tuple containing two values, the minimum and maximum value (in that order) to 
             consider when simulating the microlensing events, as this u0 parameter will be selected
             using a random uniform distribution according to these bounds. Defaults to None, which will 
             set these bounds to (0, 1).
-        te_dist: array, optional
-            An array containing the mean and standard deviation (in that order) to consider for this tE parameter
+        te_dist: array, tuple, optional
+            An array or tuple containing the mean and standard deviation (in that order) to consider for this tE parameter
             during the microlensing simulations, as this value will be selected from a random normal distribution
             using the specified mean and standard deviation. Defaults to None which will apply a mean of 30 with
             a spread of 10 days.
@@ -59,22 +59,21 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
     """   
 
     if u0_dist:
-       lower_bound = u0_dist[0]
-       upper_bound = u0_dist[1]
-       u_0 = np.random.uniform(lower_bound, upper_bound) 
+       lower_bound, upper_bound = u0_dist[0], u0_dist[1]
     else:
-       u_0 = np.random.uniform(0, 1.0)
+        lower_bound, upper_bound = 0.0, 1.0
+
+    u_0 = np.random.uniform(lower_bound, upper_bound) 
 
     if tE_dist:
-       lower_bound = tE_dist[0]
-       upper_bound = tE_dist[1]
-       t_e = np.random.normal(lower_bound, upper_bound) 
+       tE_mean, tE_std = tE_dist[0], tE_dist[1]
     else:
-       t_e = np.random.normal(30, 10.0)
+       tE_mean, tE_std = 30.0, 10.0
+
+    t_e = np.random.normal(tE_mean, tE_std) 
 
     if t0_dist:
-        lower_bound = t0_dist[0]
-        upper_bound = t0_dist[1]
+        lower_bound, upper_bound = t0_dist[0], t0_dist[1]
     else:
         # Set bounds to ensure enough measurements are available near t_0 
         lower_bound = np.percentile(timestamps, 1)-0.5*t_e
@@ -82,12 +81,13 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
 
     t_0 = np.random.uniform(lower_bound, upper_bound)  
 
-    blend_ratio = np.random.uniform(0,1)
+    blend_ratio = np.random.uniform(0, 1)
 
     u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
     magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
 
-    flux = 10**((baseline) / -2.5)
+    mag = constant(timestamps, baseline)
+    flux = 10**((mag) / -2.5)
 
     flux_base = np.median(flux)
 
@@ -97,7 +97,7 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
     flux_obs = f_s*magnification + f_b
     microlensing_mag = -2.5*np.log10(flux_obs)
 
-    return np.array(microlensing_mag), [baseline]*len(flux_obs), u_0, t_0, t_e, blend_ratio
+    return np.array(microlensing_mag), u_0, t_0, t_e, blend_ratio
     
 def cv(timestamps, baseline):
     """Simulates Cataclysmic Variable event.
