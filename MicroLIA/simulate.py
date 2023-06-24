@@ -22,40 +22,40 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
     See: The OGLE-III planet detection efficiency from six years of microlensing observations (2003 to 2008).
     (https://arxiv.org/abs/1602.02519)
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Timestamps of the lightcurve.
-    baseline : float
-        Baseline magnitude of the lightcurve.
-    t0_dist: array, optional
-        An array containing the minumum and maximum t0 value to be 
-        considered during the microlensing simulations. The indivial
-        t0 per simulation will be selected from a uniform distribution
-        between these two values.
-    u0_dist: array, optional
-        An array containing the minumum and maximum u0 value to be 
-        considered during the microlensing simulations. The indivial
-        u0 per simulation will be selected from a uniform distribution
-        between these two values.
-    te_dist: array, optional
-        An array containing the minumum and maximum tE value to be 
-        considered during the microlensing simulations. The indivial
-        tE per simulation will be selected from a uniform distribution
-        between these two values.
+        timestamps : array
+            Timestamps of the lightcurve.
+        baseline : float
+            Baseline magnitude of the lightcurve.
+        t0_dist: array, tuple, optional
+            An array or tuple containing two values, the minimum and maximum value (in that order) to 
+            consider when simulating the microlensing events (in days), as this t0 parameter will be selected
+            using a random uniform distribution according to these bounds. Defaults to None, which will 
+            compute an appropriate t0 according to the range of the input timestamps.
+        u0_dist: array, optional
+            An array or tuple containing two values, the minimum and maximum value (in that order) to 
+            consider when simulating the microlensing events, as this u0 parameter will be selected
+            using a random uniform distribution according to these bounds. Defaults to None, which will 
+            set these bounds to (0, 1).
+        te_dist: array, optional
+            An array containing the mean and standard deviation (in that order) to consider for this tE parameter
+            during the microlensing simulations, as this value will be selected from a random normal distribution
+            using the specified mean and standard deviation. Defaults to None which will apply a mean of 30 with
+            a spread of 10 days.
 
-    Returns
+    Returns:
     -------
-    mag : array
-        Simulated magnitude given the timestamps.
-    u_0 : float
-        The source minimum impact parameter.
-    t_0 : float
-        The time of maximum magnification.
-    t_E : float
-        The timescale of the event in days.
-    blend_ratio : float
-        The blending coefficient chosen between 0 and 10.     
+        mag : array
+            Simulated magnitude given the timestamps.
+        u_0 : float
+            The source minimum impact parameter.
+        t_0 : float
+            The time of maximum magnification.
+        t_E : float
+            The timescale of the event in days.
+        blend_ratio : float
+            The blending coefficient chosen between 0 and 10.     
     """   
 
     if u0_dist:
@@ -107,25 +107,25 @@ def cv(timestamps, baseline):
     centered about 100 days with a standard deviation of 200 days. The outburtst amplitude ranges from
     0.5 to 5.0 mag, selected from a uniform random function. 
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline magnitude at which to simulate the lightcurve.
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        baseline : float
+            Baseline magnitude at which to simulate the lightcurve.
 
-    Returns
+    Returns:
     -------
-    mag : array
-        Simulated magnitudes given the timestamps and baseline. 
-    outburst_start_times : array
-        The start time of each outburst.
-    outburst_end_times : array
-        The end time of each outburst.
-    end_rise_times : array
-        The end time of each rise (start time of max amplitude).
-    end_high_times : array
-        The end time of each peak (end time of max amplitude).
+        mag : array
+            Simulated magnitudes given the timestamps and baseline. 
+        outburst_start_times : array
+            The start time of each outburst.
+        outburst_end_times : array
+            The end time of each outburst.
+        end_rise_times : array
+            The end time of each rise (start time of max amplitude).
+        end_high_times : array
+            The end time of each peak (end time of max amplitude).
     """
 
     period = abs(np.random.normal(100, 200))
@@ -185,16 +185,16 @@ def cv(timestamps, baseline):
 def constant(timestamps, baseline):
     """Simulates a constant source displaying no variability.  
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline magnitude of the lightcurve.
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        baseline : float
+            Baseline magnitude of the lightcurve.
 
-    Returns
+    Returns:
     -------
-    mag : array
+    array
         Simulated magnitudes given the timestamps.
     """
 
@@ -208,27 +208,27 @@ def variable(timestamps, baseline, bailey=None):
     This function is outdated! Replaced with rrlyr_variable which employs the use
     of templates, thus more representative of true RRLyrae stars.
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline magnitude at which to simulate the lightcurve.
-    bailey : int, optional 
-        The type of variable to simulate. A bailey
-        value of 1 simulaes RR Lyrae type ab, a value
-        of 2 simulates RR Lyrae type c, and a value of 
-        3 simulates a Cepheid variable. If not provided
-        it defaults to a random choice between the three. 
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        baseline : float
+            Baseline magnitude at which to simulate the lightcurve.
+        bailey : int, optional 
+            The type of variable to simulate. A bailey
+            value of 1 simulaes RR Lyrae type ab, a value
+            of 2 simulates RR Lyrae type c, and a value of 
+            3 simulates a Cepheid variable. If not provided
+            it defaults to a random choice between the three. 
 
-    Returns
+    Returns:
     -------
-    mag : array
-        Simulated magnitudes given the timestamps.
-    amplitude : float
-        Amplitude of the signal in mag. 
-    bailey : float
-        Period of the signal in days.   
+        mag : array
+            Simulated magnitudes given the timestamps.
+        amplitude : float
+            Amplitude of the signal in mag. 
+        bailey : float
+            Period of the signal in days.   
     """
 
     time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
@@ -245,28 +245,28 @@ def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp,
     """
     Simulates a Mira long-period variable (LPV) lightcurve.
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array-like
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline magnitude at which to simulate the lightcurve.
-    primary_period : float
-        Primary period of the Mira.
-    amplitude_pp : float
-        Amplitude of the primary period.
-    secondary_period : float
-        Secondary period of the Mira.
-    amplitude_sp : float
-        Amplitude of the secondary period.
-    tertiary_period : float
-        Tertiary period of the Mira.
-    amplitude_tp : float
-        Amplitude of the tertiary period.
+        timestamps : array-like
+            Times at which to simulate the lightcurve.
+        baseline : float
+            Baseline magnitude at which to simulate the lightcurve.
+        primary_period : float
+            Primary period of the Mira.
+        amplitude_pp : float
+            Amplitude of the primary period.
+        secondary_period : float
+            Secondary period of the Mira.
+        amplitude_sp : float
+            Amplitude of the secondary period.
+        tertiary_period : float
+            Tertiary period of the Mira.
+        amplitude_tp : float
+            Amplitude of the tertiary period.
 
-    Returns
+    Returns:
     -------
-    mag : array
+    array
         Simulated magnitudes given the timestamps.
     """
 
@@ -297,22 +297,22 @@ def parametersRR0():
     These parameters are specific to the simulation model and are chosen based on the desired characteristics of the 
     simulated Mira lightcurve. They are typically determined based on observational data or theoretical considerations.
 
-    Returns
+    Returns:
     -------
-    a1 : float
-        Parameter a1.
-    ratio12 : float
-        Ratio between parameter 1 and parameter 2.
-    ratio13 : float
-        Ratio between parameter 1 and parameter 3.
-    ratio14 : float
-        Ratio between parameter 1 and parameter 4.
-    f1 : float
-        Parameter f1.
-    f2 : float
-        Parameter f2.
-    f3 : float
-        Parameter f3.
+        a1 : float
+            Parameter a1.
+        ratio12 : float
+            Ratio between parameter 1 and parameter 2.
+        ratio13 : float
+            Ratio between parameter 1 and parameter 3.
+        ratio14 : float
+            Ratio between parameter 1 and parameter 4.
+        f1 : float
+            Parameter f1.
+        f2 : float
+            Parameter f2.
+        f3 : float
+            Parameter f3.
     """
 
     a1=  0.31932222222222223
@@ -331,20 +331,20 @@ def parametersRR1():
 
     Returns
     -------
-    a1 : float
-        Parameter a1.
-    ratio12 : float
-        Ratio between parameter 1 and parameter 2.
-    ratio13 : float
-        Ratio between parameter 1 and parameter 3.
-    ratio14 : float
-        Ratio between parameter 1 and parameter 4.
-    f1 : float
-        Parameter f1.
-    f2 : float
-        Parameter f2.
-    f3 : float
-        Parameter f3.
+        a1 : float
+            Parameter a1.
+        ratio12 : float
+            Ratio between parameter 1 and parameter 2.
+        ratio13 : float
+            Ratio between parameter 1 and parameter 3.
+        ratio14 : float
+            Ratio between parameter 1 and parameter 4.
+        f1 : float
+            Parameter f1.
+        f2 : float
+            Parameter f2.
+        f3 : float
+            Parameter f3.
     """
 
     a1 =  0.24711999999999998
@@ -361,18 +361,18 @@ def uncertainties(time, curve, uncertain_factor):
     """
     Adds random uncertainties to a given curve.
 
-    Parameters
+    Parameters:
     ----------
-    time : array-like
-        Times at which the curve is defined.
-    curve : array-like
-        Curve values.
-    uncertain_factor : float
-        Uncertainty factor in percentage.
+        time : array-like
+            Times at which the curve is defined.
+        curve : array-like
+            Curve values.
+        uncertain_factor : float
+            Uncertainty factor in percentage.
 
-    Returns
+    Returns:
     -------
-    realcurve : array
+    array
         Curve with added uncertainties.
     """
 
@@ -389,7 +389,7 @@ def setup_parameters(timestamps, bailey=None):
     """
     Setup of random physical parameters
     
-    Parameters
+    Parameters:
     ----------
     timestamps : array
         Times at which to simulate the lightcurve.
@@ -400,10 +400,10 @@ def setup_parameters(timestamps, bailey=None):
         3 simulates a Cepheid variable. If not provided
         it defaults to a random choice between the three. 
     
-    Returns
+    Returns:
     -------
-    time, amp, phase, period : array
-        Time, amplitude, phase, period.
+    array, float
+        Outputs four values: time (array), amplitude (float), phase (float), and period (float).
     """
 
     time = np.array(timestamps) 
@@ -435,27 +435,27 @@ def random_mira_parameters(primary_period, amplitude_pp, secondary_period, ampli
     """
     Sets up random physical parameters for simulating Mira lightcurves.
 
-    Parameters
+    Parameters:
     ----------
-    primary_period : array-like
-        Array of primary periods.
-    amplitude_pp : array-like
-        Array of amplitudes for the primary periods.
-    secondary_period : array-like
-        Array of secondary periods.
-    amplitude_sp : array-like
-        Array of amplitudes for the secondary periods.
-    tertiary_period : array-like
-        Array of tertiary periods.
-    amplitude_tp : array-like
-        Array of amplitudes for the tertiary periods.
+        primary_period : array-like
+            Array of primary periods.
+        amplitude_pp : array-like
+            Array of amplitudes for the primary periods.
+        secondary_period : array-like
+            Array of secondary periods.
+        amplitude_sp : array-like
+            Array of amplitudes for the secondary periods.
+        tertiary_period : array-like
+            Array of tertiary periods.
+        amplitude_tp : array-like
+            Array of amplitudes for the tertiary periods.
 
-    Returns
+    Returns:
     -------
-    amplitudes : list
-        List of amplitudes for the simulated lightcurve.
-    periods : list
-        List of periods for the simulated lightcurve.
+        amplitudes : list
+            List of amplitudes for the simulated lightcurve.
+        periods : list
+            List of periods for the simulated lightcurve.
     """
 
     len_miras = len(primary_period)
@@ -482,28 +482,28 @@ def rrlyr_variable(timestamps, baseline, bailey=None):
     Period distribution for RR Lyrae from Sesar et al. 2010 (https://arxiv.org/abs/0910.4611).
     Period distribution for Cepheids from Becker et al. 1977 (http://adsabs.harvard.edu/abs/1977ApJ...218..633B)
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    baseline : float
-        Baseline at which to simulate the lightcurve.
-    bailey : int, optional 
-        The type of variable to simulate. A bailey
-        value of 1 simulaes RR Lyrae type ab, a value
-        of 2 simulates RR Lyrae type c, and a value of 
-        3 simulates a Cepheid variable period, but note the amplitude
-        is still derived from the RRLyrae template. If not provided
-        it defaults to a random choice between 1 and 2. 
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        baseline : float
+            Baseline at which to simulate the lightcurve.
+        bailey : int, optional 
+            The type of variable to simulate. A bailey
+            value of 1 simulaes RR Lyrae type ab, a value
+            of 2 simulates RR Lyrae type c, and a value of 
+            3 simulates a Cepheid variable period, but note the amplitude
+            is still derived from the RRLyrae template. If not provided
+            it defaults to a random choice between 1 and 2. 
 
-    Returns
+    Returns:
     -------
-    mag : array
-        Simulated magnitudes given the timestamps.
-    amplitude : float
-        Amplitude of the signal in mag. 
-    period : float
-        Period of the signal in days.
+        mag : array
+            Simulated magnitudes given the timestamps.
+        amplitude : float
+            Amplitude of the signal in mag. 
+        period : float
+            Period of the signal in days.
     """
 
     if bailey is None: 
@@ -550,11 +550,10 @@ def get_rrlyr_data_path():
     """
     Retrieves the path to the RRLyrae template data directory within the MicroLIA package.
 
-    Args:
-        None
-
     Returns:
-        data_path (str): Path to the data directory.
+    --------
+    str
+        Path to the data directory.
     """
 
     resource_package = __name__

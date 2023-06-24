@@ -21,31 +21,31 @@ def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, 
     additional magnification thresholds to ensure the microlensing signal doesn't 
     mimic a noisy constant.
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    microlensing_mag : array
-        Microlensing simulated magnitudes given the timestamps. 
-    magerr : array
-        Photometric error for each mag measurement.
-    baseline : float
-        Baseline magnitude of the event. 
-    u_0 : float
-        The source minimum impact parameter.
-    t_0 : float
-        The time of maximum magnification.
-    t_E : float
-        The timescale of the event in days.
-    blend_ratio : float
-        The blending coefficient.
-    n : int, optional
-        The mininum number of measurements that should be within the 
-        microlensing signal when simulating the lightcurves. 
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        microlensing_mag : array
+            Microlensing simulated magnitudes given the timestamps. 
+        magerr : array
+            Photometric error for each mag measurement.
+        baseline : float
+            Baseline magnitude of the event. 
+        u_0 : float
+            The source minimum impact parameter.
+        t_0 : float
+            The time of maximum magnification.
+        t_E : float
+            The timescale of the event in days.
+        blend_ratio : float
+            The blending coefficient.
+        n : int, optional
+            The mininum number of measurements that should be within the 
+            microlensing signal when simulating the lightcurves. 
 
-    Returns
+    Returns:
     -------
-    condition : boolean
+    bool
         Returns True if microlensing passes the quality test. 
     """
 
@@ -76,28 +76,28 @@ def test_cv(timestamps, outburst_start_times, outburst_end_times, end_rise_times
     This requires 7 measurements within ANY outburst, with at least one 
     occurring within the rise or fall.
 
-    Parameters
+    Parameters:
     ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    outburst_start_times : array
-        The start time of each outburst.
-    outburst_end_times : array
-        The end time of each outburst.
-    end_rise_times : array
-        The end time of each rise (start time of max amplitude).
-    end_high_times : array
-        The end time of each peak (end time of max amplitude).
-    n1 : int, optional
-        The mininum number of measurements that should be within 
-        at least one outburst, defaults to 7.
-    n2 : int, optional
-        The mininum number of measurements that should be within the 
-        rise or drop of at least one outburst, defaults to 1.
+        timestamps : array
+            Times at which to simulate the lightcurve.
+        outburst_start_times : array
+            The start time of each outburst.
+        outburst_end_times : array
+            The end time of each outburst.
+        end_rise_times : array
+            The end time of each rise (start time of max amplitude).
+        end_high_times : array
+            The end time of each peak (end time of max amplitude).
+        n1 : int, optional
+            The mininum number of measurements that should be within 
+            at least one outburst, defaults to 7.
+        n2 : int, optional
+            The mininum number of measurements that should be within the 
+            rise or drop of at least one outburst, defaults to 1.
         
-    Returns
+    Returns:
     -------
-    condition : boolean
+    bool
         Returns True if CV passes the quality test. 
     """
 
