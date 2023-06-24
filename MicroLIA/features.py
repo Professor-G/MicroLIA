@@ -24,16 +24,21 @@ def shannon_entropy(time, mag, magerr, apply_weights=True):
     both the normal and inversed gaussian CDF, with the total shannon entropy given by a combination of
     the two. See: (SIDRA: a blind algorithm for signal detection in photometric surveys, D. Mislis et al., 2015)
      
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
-    
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
+
     Returns
     -------  
-    rtype: float
+    float
+        The Shannon Entropy of the lightcurve.
     """
     
     mean = np.median(mag)
@@ -97,16 +102,21 @@ def con(time, mag, magerr, apply_weights=True):
     These bounds are then used to check if a measurement is within a cluster. 
     If a measurement is outside the bounds and we're in a cluster, the cluster is ended.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------  
-    rtype: float       
+    -------
+    float
+        The ratio of clusters satisfying the conditions to the total number of measurements.     
     """
 
     if len(mag) < 3:
@@ -173,16 +183,21 @@ def kurtosis(time, mag, magerr, apply_weights=True):
     standard deviation sigma using numpy.average() with the weights parameter set to 1/magerr**2. 
     Then it calculates the weighted kurtosis using the above formula and returns the result.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The calculated kurtosis of the lightcurve.
     """
 
     if apply_weights:
@@ -202,16 +217,21 @@ def skewness(time, mag, magerr, apply_weights=True):
     This function calculates the weighted mean and standard deviation using the photometric 
     errors as weights, and then uses these values to compute the weighted skewness.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------        
-    rtype: float
+    -------
+    float
+        The calculated skewness of the lightcurve.
     """
     
     if apply_weights:
@@ -237,16 +257,21 @@ def vonNeumannRatio(time, mag, magerr, apply_weights=True):
     We also modify the calculation of delta to take into account the measurement errors by dividing the 
     differences between successive magnitudes by the corresponding errors.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------  
-    rtype: float
+    -------
+    float
+        The calculated von Neumann Ratio of the lightcurve.
     """
     
     if apply_weights:
@@ -269,16 +294,21 @@ def stetsonJ(time, mag, magerr, apply_weights=True):
     and getting large as the difference between the successive data points increases.
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
     
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    ------- 
-    rtype: float
+    -------
+    float
+        The calculated stetsonJ variability index of the lightcurve.
     """
     
     n = np.float(len(mag))
@@ -300,16 +330,21 @@ def stetsonK(time, mag, magerr, apply_weights=True):
     measure of the kurtosis of the magnitude distribution.
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------    
-    rtype: float
+    -------
+    float
+        The calculated stetsonK variability index of the lightcurve.
     """  
     
     n = float(len(mag))
@@ -330,19 +365,24 @@ def stetsonL(time, mag, magerr, apply_weights=True):
     is infrequent or corrupt. 
     See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
         
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------    
-    rtype: float    
+    -------
+    float
+        The calculated stetsonL variability index of the lightcurve.   
     """  
     
-    stetL = (stetsonJ(time, mag, magerr)*stetsonK(time, mag, magerr)) / 0.798
+    stetL = (stetsonJ(time, mag, magerr, apply_weights=apply_weights)*stetsonK(time, mag, magerr, apply_weights=apply_weights)) / 0.798
 
     return stetL
 
@@ -356,16 +396,21 @@ def median_buffer_range(time, mag, magerr, apply_weights=True):
     for the range around the mean that we want to consider. Finally, we compute the ratio of points 
     within this range to the total number of points.
 
-    Parameters
+    Parameters:
     ----------
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------
-    rtype: float
+    float
+        The ratio of points that are between plus or minus 10% of the lightcurve's amplitude value over the mean.
     """
     
     if apply_weights:
@@ -392,16 +437,21 @@ def std_over_mean(time, mag, magerr, apply_weights=True):
     weighted variance, and weighted_std is the square root of weighted_var. 
     The final line returns the ratio of weighted_std and weighted_mean.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of standard deviation to the lightcurve's mean.
     """
 
     if apply_weights:
@@ -425,16 +475,21 @@ def amplitude(time, mag, magerr, apply_weights=True):
     for outliers. We compute both the standard amplitude and the weighted amplitude, where each magnitude measurement 
     is weighed by its corresponding error. The weighted amplitude is then returned by the function.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
     
     Returns
-    ------- 
-    rtype: float
+    -------
+    float
+        The calculated amplitude of the lightcurve.
     """
     
     if apply_weights:
@@ -457,16 +512,21 @@ def median_distance(time, mag, magerr, apply_weights=True):
     This function calculates the median Euclidean distance between each photometric
     measurement, a helpful metric for detecting overlapped lightcurves.
 
-    Parameters
+    Parameters:
     ----------
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------
-    rtype: float
+    float
+        The calculated median Euclidean distance between each lightcurve measurement.
     """
 
     if apply_weights:
@@ -489,16 +549,21 @@ def above1(time, mag, magerr, apply_weights=True):
     By weighting each data point according to its error, we are taking into account the fact 
     that more weight should be given to data points that have lower measurement uncertainties. 
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The number of points above 1 standard deviations from the lightcurve's median measurement.
     """
     
     if apply_weights:
@@ -519,16 +584,21 @@ def above3(time, mag, magerr, apply_weights=True):
     In this updated function, each data point is weighed according to its error. The weighted 
     ratio of points that are above 3 standard deviations from the median magnitude is returned.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The number of points above 3 standard deviations from the lightcurve's median measurement.
     """
     
     if apply_weights:
@@ -549,16 +619,21 @@ def above5(time, mag, magerr, apply_weights=True):
     In this updated function, each data point is weighed according to its error. The weighted 
     ratio of points that are above 5 standard deviations from the median magnitude is returned.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------    
-    rtype: float   
+    -------
+    float
+        The number of points above 5 standard deviations from the lightcurve's median measurement.  
     """
     
     if apply_weights:
@@ -579,16 +654,21 @@ def below1(time, mag, magerr, apply_weights=True):
     In this updated function, each data point is weighed according to its error. The weighted 
     ratio of points that are below 1 standard deviation from the median magnitude is returned.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The number of points below 1 standard deviations from the lightcurve's median measurement.
     """
     
     if apply_weights:
@@ -609,16 +689,21 @@ def below3(time, mag, magerr, apply_weights=True):
     In this updated function, each data point is weighed according to its error. The weighted 
     ratio of points that are below 3 standard deviations from the median magnitude is returned.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The number of points below 3 standard deviations from the lightcurve's median measurement.
     """
     
     if apply_weights:
@@ -639,16 +724,21 @@ def below5(time, mag, magerr, apply_weights=True):
     In this updated function, each data point is weighed according to its error. The weighted 
     ratio of points that are below 5 standard deviations from the median magnitude is returned.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The number of points below 5 standard deviations from the lightcurve's median measurement.
     """
     
     if apply_weights:
@@ -670,16 +760,21 @@ def medianAbsDev(time, mag, magerr, apply_weights=True):
     then calculates the absolute deviation from the median, divided by the corresponding error value. 
     The median of these absolute deviations is returned as the MAD value.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The median absolute deviation of the lightcurve.
     """
 
     if apply_weights:
@@ -702,16 +797,21 @@ def root_mean_squared(time, mag, magerr, apply_weights=True):
     and averaged to get the weighted mean of the squared deviations. Finally, the square root of 
     this quantity gives the root mean square deviation that takes into account the photometric errors.
 
-    Parameters
-    ----------   
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rms: The root mean square deviation. Must be a float.
+    -------
+    float
+        The root-mean-square of the lightcurve.
     """
 
     if apply_weights:
@@ -730,16 +830,21 @@ def meanMag(time,mag, magerr, apply_weights=True):
     """
     Calculates mean magnitude, weighted by the errors.
         
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The weighted mean measurement of the lightcurve.
     """
             
     return sum(mag/magerr**2)/sum(1./magerr**2)
@@ -755,16 +860,21 @@ def integrate(time, mag, magerr, apply_weights=True):
     The trapezoidal rule uses the values of the magnitudes and their timestamps 
     to compute the area under the curve, without considering the individual errors at each point.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: tuple
+    -------
+    float
+        The integral value of the lightcurve.
     """
     
     integrated_mag = np.trapz(mag, time)
@@ -782,16 +892,21 @@ def auto_corr(time, mag, magerr, apply_weights=True):
     the weighted autocovariance. Finally, the autocovariance function is normalized by 
     its value at zero lag to obtain the autocorrelation function.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The auto-correlation measurement of the lightcurve.
     """
 
     if apply_weights:
@@ -820,16 +935,21 @@ def peak_detection(time, mag, magerr, apply_weights=True):
     the number of peaks in the lightcurve, which is based on the 
     magnitude values alone.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    -------
+    float
+        The number of peaks detected in the lightcurve.
     """
     
     mag = abs(mag - np.median(mag))
@@ -854,16 +974,21 @@ def MaxSlope(time, mag, magerr, apply_weights=True):
     is calculated using the errors as weights, and the weighted slope is returned as 
     a single value, not the max slopes as is the case when apply_weights=False.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The maximum-slope detected within the lightcurve.
     """
 
     if apply_weights:
@@ -880,16 +1005,21 @@ def LinearTrend(time, mag, magerr, apply_weights=True):
     """
     Slope of a weighted linear fit to the light-curve.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The slope of a weighted linear fit to the lightcurve.
     """
 
     if apply_weights:
@@ -909,16 +1039,21 @@ def PairSlopeTrend(time, mag, magerr, apply_weights=True):
     This updated function incorporates error by calculating the weighted first differences 
     and then taking the weighted mean of the positive differences and negative differences separately.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The percentage of all pairs of consecutive lightcurve measurements that have positive a slope.
     """
 
     if apply_weights:
@@ -957,16 +1092,21 @@ def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
     We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
     flux percentile ratios using the weighted percentiles.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the (60th - 40th) flux percentile over the (95th - 5th) percentile.
     """
 
     sorted_data = np.sort(mag)
@@ -995,16 +1135,21 @@ def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
     We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
     the weights, and then calculate the flux percentile ratios using the weighted percentiles.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the (67.5th - 32.5th) flux percentile over the (95th - 5th) percentile.
     """
 
     sorted_data = np.sort(mag)
@@ -1033,16 +1178,21 @@ def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
     We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
     the weights, and then calculate the flux percentile ratios using the weighted percentiles.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the (75th - 25th) flux percentile over the (95th - 5th) percentile.
     """
 
     sorted_data = np.sort(mag)
@@ -1071,16 +1221,21 @@ def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
     We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
     the weights, and then calculate the flux percentile ratios using the weighted percentiles.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the (82.5th - 17.5th) flux percentile over the (95th - 5th) percentile.
     """
 
     sorted_data = np.sort(mag)
@@ -1105,16 +1260,21 @@ def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
     If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
     Ratio of flux percentiles (90th - 10th) over (95th - 5th)
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the (90th - 10th) flux percentile over the (95th - 5th) percentile.
     """
  
     sorted_data = np.sort(mag)
@@ -1143,16 +1303,21 @@ def PercentAmplitude(time, mag, magerr, apply_weights=True):
     each of these medians and returns the largest percentage difference between either the 
     max or min magnitude and the weighted median.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The largest percentage difference present in the lightcurve with respect to the median.
     """
 
     if apply_weights:
@@ -1174,18 +1339,33 @@ def PercentAmplitude(time, mag, magerr, apply_weights=True):
 
 def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
     """
-    Ratio of F5,95 over the median flux.
+    Calculates the ratio of the flux difference between the 5th and 95th percentiles of 
+    the data (F5,95) to the median flux.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    If apply_weights is set to True, the function first sorts the mag array and the corresponding magerr
+    based on the magnitude values. It then calculates the weighted percentiles by interpolating the values 
+    at the desired percentiles (2%, 5%, 95%, and 98%) using cumulative weights. The difference between 
+    the 95th and 5th percentiles (F5,95) is calculated based on the interpolated values.
+
+    If apply_weights is set to False, the function directly operates on the mag array. It sorts the array and 
+    calculates the indices corresponding to the 5th and 95th percentiles. The flux difference between these 
+    percentiles (F5,95) is then calculated.
+
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of the flux difference between the 5th and 95th percentiles to the median lightcurve measurement.
     """
 
     if apply_weights:
@@ -1217,24 +1397,28 @@ def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
 
 def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
     """
-    The ratio of the squared sum of residuals of magnitudes
-    that are either brighter than or fainter than the mean
-    magnitude. For EB-like variability, having sharp flux gradients around its eclipses, A is larger
-    than 1.
+    The ratio of the squared sum of residuals of magnitudes that are either brighter 
+    than or fainter than the mean magnitude. For EB-like variability, having sharp 
+    flux gradients around its eclipses, this value is larger than 1.
 
-    In this modified version, the weighted standard deviation of each set of magnitudes (i.e., those above 
-    and those below the median) is used.
+    In this modified version, the weighted standard deviation of each set of 
+    magnitudes (i.e., those above and those below the median) is used if apply_weights is set to True.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The ratio of squared residuals for measurements above and below the median.    
     """
 
     if apply_weights:
@@ -1272,16 +1456,21 @@ def cusum(time, mag, magerr, apply_weights=True):
     Then we use this value instead of np.std(mag) to normalize the cumulative sum. This takes into account the error in 
     the measurements of the magnitude.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The range of the cumulative sums of the lightcurve measurements.
     """
 
     if apply_weights:
@@ -1301,20 +1490,23 @@ def shapiro_wilk(time, mag, magerr, apply_weights=True):
     which means the data is likely to follow a normal distribution. Note that there is no error incorporation, 
     as the Shapiro-Wilk test implemented in scipy.stats does not provide an option to incorporate measurement error.
     
-    Note
-    ----------
-    The Shapiro-Wilk test implemented in scipy.stats does not provide an option to incorporate measurement errors.
+    Note that the Shapiro-Wilk test implemented in scipy.stats does not provide the option to incorporate measurement errors.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------
+    float
+        The Shapiro-Wilk statistic.
     """
 
     shapiro_w = sstats.shapiro(mag)[0]
@@ -1344,17 +1536,21 @@ def AndersonDarling(time, mag, magerr, apply_weights=True):
     which tests the null hypothesis that a data set comes from the normal distribution."
     (Doi:10.1111/j.1365-2966.2009.14967.x.)
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
     float
-        The Anderson-Darling test statistic for the normality test.
+        The Anderson-Darling test statistic.
     """
     
     if apply_weights:
@@ -1383,7 +1579,7 @@ def Gskew(time, mag, magerr, apply_weights=True):
     right (has a long tail on the right side), while a negative Gskew value indicates a distribution 
     that is skewed to the left (has a long tail on the left side).
 
-    It is a median-based measure of the skewness. See: Lopez et al. 2016: "A machine learned classifier for RR Lyrae in the VVV survey" 
+    It is essentially a median-based measure of the skewness. See: Lopez et al. 2016: "A machine learned classifier for RR Lyrae in the VVV survey" 
 
     Gskew = mq3 + mq97 − 2m
     mq3 is the median of magnitudes lesser or equal than the quantile 3.
@@ -1394,19 +1590,23 @@ def Gskew(time, mag, magerr, apply_weights=True):
     errors of the data points. It calculates a weighted median for the magnitudes that 
     fall below the 3rd percentile and above the 97th percentile, using the inverse 
     square of the photometric errors as weights. The resulting weighted medians and 
-    the median magnitude are then used to calculate the Gskew value, which is a measure 
-    of the skewness of the lightcurve.
+    the median magnitude are then used to calculate the Gskew value.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------  
+    float   
+        The median-based skewness of the lightcurve.
     """
 
     if apply_weights:
@@ -1456,21 +1656,26 @@ def Gskew(time, mag, magerr, apply_weights=True):
 def abs_energy(time, mag, magerr, apply_weights=True):
     """
     Returns the absolute energy of the time series, defined to be the sum over the squared
-    values of the time-series, weighted by the inverse square of the photometric errors.
-    
-    In this modified function, we calculate the inverse square of the photometric errors 
+    values of the time-series.
+
+    If apply_weights is set to True, we calculate the inverse square of the photometric errors 
     and use them as weights to calculate the weighted sum of squares of the magnitudes.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------   
+    float  
+        The sum over the squared values of the lightcurve measurements.
     """
 
     if apply_weights:
@@ -1489,16 +1694,21 @@ def abs_sum_changes(time, mag, magerr, apply_weights=True):
     of the difference between consecutive magnitudes by the square root of the sum of their squared errors. 
     Therefore larger errors will result in smaller weight for the corresponding changes in magnitude.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------    
+    float 
+        The sum over the absolute value of consecutive changes in the lightcurve measurements.
     """
 
     if apply_weights:
@@ -1521,16 +1731,21 @@ def benford_correlation(time, mag, magerr, apply_weights=True):
     weighted distribution and compute the weighted correlation between the Benford distribution 
     and the weighted data distribution.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The Benford Correlation statistic.
     """
 
     if apply_weights:
@@ -1579,17 +1794,23 @@ def c3(time, mag, magerr, lag=1, apply_weights=True):
     Discrimination power of measures for nonlinearity in a time series
     PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    lag: The lag to use. Must be an integer.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        lag: int
+            The lag to use. Defaults to 1.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------  
+    float   
+        The C3 non-linearity statistic.
     """
 
     n = len(mag)
@@ -1618,16 +1839,21 @@ def complexity(time, mag, magerr, apply_weights=True):
     We exclude the last element of magerr since np.diff reduces the size of the mag array 
     by one. Also, if the sum of the weights is zero, we return 0 to avoid division by zero errors.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The complexity measurement of the lightcurve.
     """
 
     if apply_weights:
@@ -1653,16 +1879,21 @@ def count_above(time, mag, magerr, apply_weights=True):
     above the weighted median is then calculated using the weights from magerr. If magerr is zero for all values, 
     the function returns zero.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The number of lightcurve measurements above the median value.
     """ 
 
     if apply_weights:
@@ -1686,21 +1917,26 @@ def count_above(time, mag, magerr, apply_weights=True):
 
 def count_below(time, mag, magerr, apply_weights=True):
     """
-    Number of values below the weighted median.
+    Number of values below the median.
 
     To incorporate errors, we use the weighted median instead of the regular median. 
     The weighted median takes into account the uncertainties associated with each data point.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The number of lightcurve measurements below the median value.
     """
 
     if apply_weights:
@@ -1715,8 +1951,8 @@ def count_below(time, mag, magerr, apply_weights=True):
 
 def first_loc_max(time, mag, magerr, apply_weights=True):
     """
-    Returns location of maximum mag relative to the 
-    length of mag array, weighted by inverse square of magerr.
+    Returns location of maximum mag relative to the length of mag array, 
+    weighted by inverse square of magerr if apply_weights is True.
     
     In this modified version, we first calculate the inverse square 
     of magerr and set it to 0 where magerr2 is 0 to avoid division by zero. 
@@ -1725,16 +1961,21 @@ def first_loc_max(time, mag, magerr, apply_weights=True):
     maximum value in the weighted mag array using np.argmax, and return the location of 
     the maximum relative to the length of mag.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The relative position of the maximum detected lightcurve measurement.
     """
 
     if len(mag) == 0:
@@ -1761,16 +2002,21 @@ def first_loc_min(time, mag, magerr, apply_weights=True):
     weights with 1 to avoid division by zero. Finally, it computes the location 
     of the minimum mag by taking the weighted minimum of mag using the computed weights.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    -------    
+    float 
+        The relative position of the minimum detected lightcurve measurement.
     """
 
     if len(mag) == 0:
@@ -1790,8 +2036,8 @@ def first_loc_min(time, mag, magerr, apply_weights=True):
 
 def check_for_duplicate(time, mag, magerr, apply_weights=True):
     """
-    Checks if any value in mag repeats, taking into account photometric errors.
-    Returns 1 if True, 0 if False.
+    Checks if any value in mag repeats, taking into account photometric errors if apply_weights
+    is enabled so as to identify measurements that are within the error bars.
     
     To incorporate error, we use np.isclose to check if two values of mag are close to each other, 
     taking into account their respective errors. The tolerance is set using the atol argument, which is 
@@ -1799,16 +2045,21 @@ def check_for_duplicate(time, mag, magerr, apply_weights=True):
     values but different errors may still be considered duplicates. If a duplicate is found, the function 
     returns 1, otherwise it returns 0.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: int
+    int
+        Whether or not a duplicate lightcurve measurement is found, 1 for True, 0 for False.
     """
 
     if apply_weights:
@@ -1826,8 +2077,8 @@ def check_for_duplicate(time, mag, magerr, apply_weights=True):
 
 def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
     """
-    Checks if the maximum value in mag repeats, taking into account photometric errors.
-    Returns 1 if a duplicate is found, 0 otherwise.
+    Checks if the maximum value in mag repeats, taking into account photometric errors if apply_weights
+    is enabled so as to identify measurements that are within the error bars.
 
     To incorporate error, we use np.isclose to check if the maximum value in mag is close to any other
     value in mag, taking into account their respective errors. The tolerance is set using the atol argument, 
@@ -1835,16 +2086,21 @@ def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
     to account for the fact that two measurements with similar values but different errors may still be 
     considered duplicates. If a duplicate is found, the function returns 1, otherwise it returns 0.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    -------    
+    int 
+        Whether or not the maximum lightcurve measurement is found more than once, 1 for True, 0 for False.
     """
 
     if apply_weights:
@@ -1865,19 +2121,24 @@ def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
 
 def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
     """
-    Checks if the minimum value in mag repeats, taking into account photometric errors.
-    Returns 1 if True, 0 if False.
+    Checks if the minimum value in mag repeats, taking into account photometric errors if apply_weights
+    is enabled so as to identify measurements that are within the error bars.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: int
+    int
+        Whether or not the minimum lightcurve measurement is found more than once, 1 for True, 0 for False.
     """
 
     if apply_weights:
@@ -1906,16 +2167,21 @@ def check_max_last_loc(time, mag, magerr, apply_weights=True):
     We select the last index in the resulting array (which corresponds to the last maximum value in mag) and 
     calculate its position relative to the length of mag. If there are no values within tolerance (3sigma), we return np.NaN.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: int
+    float
+        The relative position where the maximum lightcurve measurement was last found.
     """
 
     if apply_weights:
@@ -1945,16 +2211,21 @@ def check_min_last_loc(time, mag, magerr, apply_weights=True):
     to the last minimum value in mag) and calculates its position relative to the length of mag. 
     If there are no values within tolerance, it returns np.NaN.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The relative position where the minimum lightcurve measurement was last found.
     """
 
     if apply_weights:
@@ -1986,16 +2257,21 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
     the length of the mag array. If there are no values greater than the median plus 
     their errors, the function returns 0.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The length of the longest consecutive subsequence in the lightcurve measurements which are larger than the median.
     """
 
     if apply_weights:
@@ -2008,7 +2284,7 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
             return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
     else:
         val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-        return val/len(mag)
+        return val / len(mag)
 
 def longest_strike_below(time, mag, magerr, apply_weights=True):
     """
@@ -2022,16 +2298,21 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
     length of the longest group as a fraction of the length of the mag array. If 
     there are no values smaller than the median minus their errors, the function returns 0.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The length of the longest consecutive subsequence in the lightcurve measurements which are smaller than the median.
     """
 
     if apply_weights:
@@ -2044,23 +2325,28 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
             return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
     else:
         val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-        return val/len(mag)
+        return val / len(mag)
 
 def mean_change(time, mag, magerr, apply_weights=True):
     """
     Returns mean over the differences between subsequent observations,
-    weighted by the inverse square of their errors.
+    weighted by the inverse square of their errors if apply_weights is True.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------  
+    float   
+        The mean over the differences between all subsequent lightcurve measurements.
     """
 
     if apply_weights:
@@ -2081,16 +2367,21 @@ def mean_abs_change(time, mag, magerr, apply_weights=True):
     and then take the mean of the weighted differences. This would give a measure of the 
     average absolute change in units of the error.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    -------  
+    float   
+        The mean absolute change in the lightcurve measurements.
     """
 
     if apply_weights:
@@ -2100,24 +2391,30 @@ def mean_abs_change(time, mag, magerr, apply_weights=True):
     else:
         return np.mean(np.abs(np.diff(mag)))
 
-def mean_n_abs_max(time, mag, magerr, number_of_maxima=1, apply_weights=True):
+def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
     """
-    Calculates the weighted arithmetic mean of the n absolute maximum values of the time series, n = 1.
+    Calculates the weighted arithmetic mean of the n absolute maximum values of the time series, n=10 by design.
     
     We incorporate errors in the calculation by sorting the absolute values of the magnitude and corresponding 
     errors, and then taking the arithmetic mean of the top n maximum values weighted by their errors.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    number_of_maxima: the number of maxima to be considered
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        number_of_maxima : int
+            The number of maxima to consider. Defaults to 10.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
     -------     
-    rtype: float
+    float
+        The mean of the 10 absolute maximum values of the lightcurve. 
     """
     
     if number_of_maxima >= len(mag):
@@ -2141,16 +2438,21 @@ def mean_second_derivative(time, mag, magerr, apply_weights=True):
     of the second derivative are not included in the calculation, as they cannot be approximated 
     using a central difference.
     
-    Parameters
+    Parameters:
     ----------
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------
-    rtype: float
+    -------  
+    float   
+        The mean value of a central approximation of the second derivative.
     """
 
     if len(mag) < 3:
@@ -2180,16 +2482,21 @@ def number_of_crossings(time, mag, magerr, apply_weights=True):
     value of 1 for each crossing that is greater than the corresponding error, and 0 for each crossing that is smaller 
     than or equal to the error. We then sum this array to get the total number of crossings.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    ------- 
+    float    
+        The number of crossings about the lightcurve's median.
     """
 
     positive = mag > np.median(mag)
@@ -2228,17 +2535,23 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
     the difference is greater than the corresponding error to determine if we have a peak of support n. Finally, we combine 
     the results using logical AND to get the total number of peaks.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    n: The support of the peak. Must be an int.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        n : int
+            The support of the peak. Defaults to 7.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    ------- 
+    float    
+        The number of peaks of at least support 7 within the lightcurve.
     """
 
     if apply_weights:
@@ -2285,16 +2598,21 @@ def ratio_recurring_points(time, mag, magerr, apply_weights=True):
     that are close to it (using the np.isclose function) is greater than 1. If so, 
     the value is counted as a recurring point.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The number of unique measurements normalized according to the size of the lightcurve.
     """
 
     unique, counts = np.unique(mag, return_counts=True)
@@ -2321,16 +2639,21 @@ def sample_entropy(time, mag, magerr, apply_weights=True):
     in magnitudes and the difference in measurement errors between pairs of data points, but
     MicroLIA does not support this as the noise level may alter the value range significantly. 
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The sample entropy of the lightcurve.
     """
 
     m = 2  # common value for m, according to wikipedia...
@@ -2365,16 +2688,21 @@ def sum_values(time, mag, magerr, apply_weights=True):
     If apply_weights=True, the formula for weighted mean is used to calculate the sum of the magnitudes. 
     The weights are given by the inverse square of the magnitudes' errors.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The sum of all the measurements, normalized to the size of the lightcurve.
     """
 
     if apply_weights:
@@ -2384,26 +2712,31 @@ def sum_values(time, mag, magerr, apply_weights=True):
 
 def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
     """
-    Derives a feature introduced by Fulcher.
-    See: (Fulcher, B.D., Jones, N.S. (2014). Highly comparative 
-    feature-based time-series classification. Knowledge and Data Engineering, 
-    IEEE Transactions on 26, 3026–3037.)
+    Derives the time reversal asymmetric statistic introduced by Fulcher.
+
+    See: (Fulcher, B.D., Jones, N.S. (2014). Highly comparative feature-based time-series classification. Knowledge and Data Engineering, IEEE Transactions on 26, 3026–3037.)
     
     We incorporate errors by dividing each term by the square of its corresponding magerr, 
     which effectively gives more weight to terms with smaller errors. Note that this modification 
     assumes that the errors are Gaussian and uncorrelated, which may not always be true in practice.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    lag: The lag to use. Must be an integer.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        lag : int
+            The lag to apply. Defaults to 1.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The time reversal symmetry statistic.
     """
 
     n = len(mag)
@@ -2426,16 +2759,21 @@ def variance(time, mag, magerr, apply_weights=True):
     """
     Returns the variance, or the weighted variance of the light curve if apply_weights=True.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The variance of the lightcurve measurements.
     """
 
     if apply_weights:
@@ -2451,16 +2789,21 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
     If apply_weights=True a weighting factor to the magnitude values when computing the variance and standard deviation will be used. 
     This factor gives more weight to the more precise measurements and less weight to the less precise measurements.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    ------- 
+    int    
+        Whether or not the lightcurve's variance is greater than the standard deviation, 1 for True, 0 for False.
     """
 
     if apply_weights:
@@ -2481,20 +2824,25 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
 
 def variation_coefficient(time, mag, magerr, apply_weights=True):
     """
-    Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
+    Returns the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
     
     We incorporate errors by using the weighted standard deviation and weighted mean.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The lightcurve standard deviation over the mean.
     """
 
     if apply_weights:
@@ -2518,17 +2866,23 @@ def large_standard_deviation(time, mag, magerr, r=.3, apply_weights=True):
     Boolean variable denoting if the standard dev of x is higher than 'r' times the range = difference between max and
     min of x. To incorporate errors we use the weighted standard deviation instead of the regular standard deviation.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    r: The percentage of the range to compare with. Must be a float between 0 and 1.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        r : float
+            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.3.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    int    
+        Whether or not the lightcurve has a large standard deviation, 1 for True, 0 for False.
     """
 
     if apply_weights:   
@@ -2554,17 +2908,23 @@ def symmetry_looking(time, mag, magerr, r=0.5, apply_weights=True):
     
     If apply_weights=True, the weighted mean and the weighted median are used instead of the regular mean and median.
     
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    r: The percentage of the range to compare with. Must be a float between 0 and 1.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        r : float
+            The percentage of the range to compare with. Must be between 0 and 1. Deaults to 0.5.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: int
+    ------- 
+    int    
+        Whether or not the lightcurve appears symmetric, 1 for True, 0 for False.
     """
 
     if apply_weights:
@@ -2592,19 +2952,25 @@ def index_mass_quantile(time, mag, magerr, r=0.5, apply_weights=True):
     Calculates the relative index i of time series x where r% of the mass of x lies left of i.
     For example for r = 50% this feature will return the mass center of the time series.
     
-    Errors can be incorporated into this function by weighing the contributions of each data point with its inverse variance.
+    Errors are incorporated into this function by weighing the contributions of each data point with its inverse variance.
     
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    r: The percentage of the range to compare with. Must be a float between 0 and 1.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        r : float 
+            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.5.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The relative index of the lightcurve measurement that is to the right of the 50% of the cumulative sum.
     """
 
     if apply_weights:
@@ -2632,20 +2998,28 @@ def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True, snr_threshold=
     Signal-to-Noise-Ratio (SNR). If apply_weights=True, we first calculate the SNR of each peak by dividing the peak 
     amplitude by the average noise level (which we assume is given by the mean magnitude error). We then count only the peaks 
     whose SNR is above the snr_threshold parameter.
-
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    n : The maximum time width to consider. Must be an integer.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
-    snr_threshold : Integer that determines the minimum Signal-to-Noise Ratio (SNR) required for 
-        a peak to be counted in the final result when apply_weights is set to True. Defaults to 3.
     
+
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        n : int 
+            The maximum time width to consider. Defaults to 30.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
+        snr_threshold : int 
+            Determines the minimum Signal-to-Noise Ratio (SNR) required for a peak to be counted in 
+            the final result when apply_weights is set to True. Defaults to 3.
+
     Returns
-    -------   
-    rtype: int
+    ------- 
+    float    
+        The number of peaks in the lightcurve after smoothing with a wavelet transformation.
     """
 
     if apply_weights:
@@ -2679,18 +3053,26 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3, apply_weights=Tru
     and divide each count by the corresponding weight. Then we compute the weighted average probabilities and return
     the negative sum of the probabilities times their logarithms.
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array. 
-    tau: The embedded time delay that determines the time separation between the mag values. Must be an integer.
-    dimension: The embedding dimension. Must be an integer.
-    apply_weights: Whether to apply weights based on the magnitude errors. Defaults to True.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        tau : int
+            The embedded time delay that determines the time separation between the measurements.
+            Defaults to 1.
+        dimension : int
+            The embedding dimension to use. Defaults to 3.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------   
-    rtype: float
+    ------- 
+    float    
+        The permutation entropy of the lightcurve.
     """
 
     num_shifts = (len(mag) - dimension) // tau + 1
@@ -2717,17 +3099,23 @@ def quantile(time, mag, magerr, r=0.75, apply_weights=True):
 
     Errors are not incorporated in this function. 
 
-    Parameters
-    ----------   
-    mag: The time-varying intensity of the lightcurve. Must be an array.
-    magerr: Photometric error for the intensity. Must be an array.
-    time: The timestamps of the corresponding mag and magerr measurements. Must be an array.
-    r: The percentage of the range to compare with. Must be a float between 0 and 1.
-    apply_weights: Whether to apply weights based on the magnitude errors. Not used in this function.
+    Parameters:
+    ----------
+        time : array
+            The timestamps of the corresponding mag and magerr measurements. Must be an array.
+        mag : array
+            The time-varying intensity of the lightcurve. Must be an array.
+        magerr : array
+            Photometric error for the intensity. Must be an array.
+        r : float
+            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.75.
+        apply_weights : bool, optional
+            Whether to apply weights based on the magnitude errors. Defaults to True.
 
     Returns
-    -------     
-    rtype: float
+    ------- 
+    float    
+        The 75th quantile of the ordered lightcurve measurements.
     """
 
     return np.quantile(mag, r)
