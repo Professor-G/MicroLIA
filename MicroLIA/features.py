@@ -1655,7 +1655,7 @@ def Gskew(time, mag, magerr, apply_weights=True):
 
 def abs_energy(time, mag, magerr, apply_weights=True):
     """
-    Returns: the absolute energy of the time series, defined to be the sum over the squared
+    Calculates the absolute energy of the time series, defined to be the sum over the squared
     values of the time-series.
 
     If apply_weights is set to True, we calculate the inverse square of the photometric errors 
@@ -1688,7 +1688,7 @@ def abs_energy(time, mag, magerr, apply_weights=True):
 
 def abs_sum_changes(time, mag, magerr, apply_weights=True):
     """
-    Returns: sum over the abs value of consecutive changes in mag, weighted by the errors.
+    Calculates the sum over the abs value of consecutive changes in mag, weighted by the errors.
     
     In this updated version we incorporate photometric errors by dividing the absolute value 
     of the difference between consecutive magnitudes by the square root of the sum of their squared errors. 
@@ -1721,7 +1721,7 @@ def abs_sum_changes(time, mag, magerr, apply_weights=True):
 
 def benford_correlation(time, mag, magerr, apply_weights=True):
     """
-    Useful for anomaly detection applications. Returns: the 
+    Useful for anomaly detection applications. Calculates the 
     correlation from first digit distribution when compared to 
     the Newcomb-Benford’s Law distribution, weighted by the inverse variance of the magnitudes.
     
@@ -1951,7 +1951,7 @@ def count_below(time, mag, magerr, apply_weights=True):
 
 def first_loc_max(time, mag, magerr, apply_weights=True):
     """
-    Returns: location of maximum mag relative to the length of mag array, 
+    Calculates the location of maximum mag relative to the length of mag array, 
     weighted by inverse square of magerr if apply_weights is True.
     
     In this modified version, we first calculate the inverse square 
@@ -1994,7 +1994,7 @@ def first_loc_max(time, mag, magerr, apply_weights=True):
 
 def first_loc_min(time, mag, magerr, apply_weights=True):
     """
-    Returns: location of minimum mag relative to the 
+    Calculates the location of minimum mag relative to the 
     length of mag array.
     
     This updated implementation first computes the weights for each measurement 
@@ -2158,7 +2158,7 @@ def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
 
 def check_max_last_loc(time, mag, magerr, apply_weights=True):
     """
-    Returns: position of last maximum mag relative to
+    Calculates the position of last maximum mag relative to
     the length of mag array, taking into account photometric errors.
     
     In this implementation, we first find the maximum value in mag and calculate the tolerance 
@@ -2200,7 +2200,7 @@ def check_max_last_loc(time, mag, magerr, apply_weights=True):
 
 def check_min_last_loc(time, mag, magerr, apply_weights=True):
     """
-    Returns: position of last minimum mag relative to
+    Calculates the position of last minimum mag relative to
     the length of mag array, taking into account photometric errors.
     
     To incorporate errors, this implementation finds the minimum value in mag, 
@@ -2246,7 +2246,7 @@ def check_min_last_loc(time, mag, magerr, apply_weights=True):
 
 def longest_strike_above(time, mag, magerr, apply_weights=True):
     """
-    Returns: the length of the longest consecutive subsequence in 
+    Calculates the length of the longest consecutive subsequence in 
     mag that is bigger than the median. 
     
     This updated implementation first calculates the median of the mag 
@@ -2288,7 +2288,7 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
 
 def longest_strike_below(time, mag, magerr, apply_weights=True):
     """
-    Returns: the length of the longest consecutive subsequence in mag 
+    Calculates the length of the longest consecutive subsequence in mag 
     that is smaller than the median.
     
     To incorporate errors, first we calculate the median of mag and create 
@@ -2329,7 +2329,7 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
 
 def mean_change(time, mag, magerr, apply_weights=True):
     """
-    Returns: mean over the differences between subsequent observations,
+    Calculates mean over the differences between subsequent observations,
     weighted by the inverse square of their errors if apply_weights is True.
 
     Parameters:
@@ -2361,7 +2361,7 @@ def mean_change(time, mag, magerr, apply_weights=True):
 
 def mean_abs_change(time, mag, magerr, apply_weights=True):
     """
-    Returns: the mean absolute change in the magnitude per unit of error.
+    Calculates the mean absolute change in the magnitude per unit of error.
     
     To incorporate error we weight each absolute difference by the corresponding error, 
     and then take the mean of the weighted differences. This would give a measure of the 
@@ -2433,7 +2433,7 @@ def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
 
 def mean_second_derivative(time, mag, magerr, apply_weights=True):
     """
-    Returns: the weighted mean value of a central approximation of the second derivative,
+    Calculates the weighted mean value of a central approximation of the second derivative,
     where weights are the inverse square of the errors. Note that the first and last values 
     of the second derivative are not included in the calculation, as they cannot be approximated 
     using a central difference.
@@ -2590,7 +2590,7 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
 
 def ratio_recurring_points(time, mag, magerr, apply_weights=True):
     """
-    Returns: the ratio of unique values, that are present in the time 
+    Calculates the ratio of unique values, that are present in the time 
     series more than once, normalized to the number of data points. 
     
     If apply weights is set to True, the photometric errors will be 
@@ -2631,7 +2631,7 @@ def ratio_recurring_points(time, mag, magerr, apply_weights=True):
 
 def sample_entropy(time, mag, magerr, apply_weights=True):
     """
-    Returns: sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
+    Calculates sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
     
     One approach to incorporate error is to modify the distance metric used in the algorithm 
     to account for measurement error. "Modified Sample Entropy Method in the Presence of Noise" by Zhang et al. 
@@ -2757,7 +2757,7 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
 
 def variance(time, mag, magerr, apply_weights=True):
     """
-    Returns: the variance, or the weighted variance of the light curve if apply_weights=True.
+    Calculates the variance, or the weighted variance of the light curve if apply_weights=True.
 
     Parameters:
     ----------
@@ -2824,7 +2824,7 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
 
 def variation_coefficient(time, mag, magerr, apply_weights=True):
     """
-    Returns: the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
+    Calculates the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
     
     We incorporate errors by using the weighted standard deviation and weighted mean.
 
