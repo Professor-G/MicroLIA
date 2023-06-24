@@ -3,8 +3,8 @@
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/LGPL-3.0)
 [![arXiv](https://img.shields.io/badge/arXiv-2004.14347-b31b1b.svg)](https://arxiv.org/abs/2004.14347)
 
-# LIA: Lens Identification Algorithm
-LIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. 
+# MicroLIA: MicroLensing Identification Algorithm
+MicroLIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. 
 <img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
 # Installation
@@ -12,6 +12,22 @@ LIA is an open-source program for detecting microlensing events in wide-field su
 ```
     $ pip install MicroLIA
 ```
+
+# Version 2
+
+As of version 2.3, MicroLIA provides the following new features and improvements:
+
+* New time-series features (74 total). To enhance the analysis, we now take the derivative of the lightcurve and re-compute the features in this derivative space, for a grand total of 148 metrics.
+* Lightcurve features can now be calculated by taking into account the flux/mag errors, thus allowing for proper weighting of data points.
+* We include a feature selection procedure so as to identify the metrics that carry useful information given the training set.
+* The short-period variables are now simulated using real RR-Lyrae templates.
+* The training set can now be generated using your own directory of lightcurves, no limit on the amount of classes.
+* After a training set is generated a csv file is saved which can be directly input when creating the classifier; in additoin, the training set module contains a plot function to visualize the generated lightcurves.
+* The ensemble engine hyperparameters can now be optimized using Bayesian analysis. 
+* We added data imputation techniques to better handle undefined values in the training data.
+* We include a CNN model for image classification purposes, including a data augmentation routine and an optimization procedure for identifying the proper augmentations to perform given the training set images.
+* Built-in class methods are now available to visualize the engine parameters and performance.
+
 
 # [Documentation](https://microlia.readthedocs.io/en/latest/?)
 
@@ -39,9 +55,9 @@ If both test scripts work you are good to go!
 
 # Citation
 
-If you use LIA in publication, we would appreciate citations to the paper, [Godines et al. 2019.](https://arxiv.org/abs/2004.14347)
+If you use MicroLIA in publication, we would appreciate citations to the paper, [Godines et al. 2019.](https://arxiv.org/abs/2004.14347)
 
  
 # How to Contribute?
 
-Want to contribute? Bug detections? Comments? Suggestions? Please email us : danielgodinez123@gmail.com, etibachelet@gmail.com, rstreet@lcogt.net, claudiatrevino2002@gmail.com.
+Want to contribute? Bug detections? Comments? Suggestions? Please email us : danielgodinez123@gmail.com, etibachelet@gmail.com, rstreet@lcogt.net
