@@ -35,7 +35,7 @@ def shannon_entropy(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float
         The Shannon Entropy of the lightcurve.
@@ -113,7 +113,7 @@ def con(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of clusters satisfying the conditions to the total number of measurements.     
@@ -194,7 +194,7 @@ def kurtosis(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated kurtosis of the lightcurve.
@@ -228,7 +228,7 @@ def skewness(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated skewness of the lightcurve.
@@ -268,7 +268,7 @@ def vonNeumannRatio(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated von Neumann Ratio of the lightcurve.
@@ -305,7 +305,7 @@ def stetsonJ(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated stetsonJ variability index of the lightcurve.
@@ -341,7 +341,7 @@ def stetsonK(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated stetsonK variability index of the lightcurve.
@@ -376,7 +376,7 @@ def stetsonL(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated stetsonL variability index of the lightcurve.   
@@ -407,7 +407,7 @@ def median_buffer_range(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of points that are between plus or minus 10% of the lightcurve's amplitude value over the mean.
@@ -448,7 +448,7 @@ def std_over_mean(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of standard deviation to the lightcurve's mean.
@@ -486,7 +486,7 @@ def amplitude(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
     
-    Returns
+    Returns:
     -------
     float
         The calculated amplitude of the lightcurve.
@@ -523,7 +523,7 @@ def median_distance(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The calculated median Euclidean distance between each lightcurve measurement.
@@ -560,7 +560,7 @@ def above1(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points above 1 standard deviations from the lightcurve's median measurement.
@@ -595,7 +595,7 @@ def above3(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points above 3 standard deviations from the lightcurve's median measurement.
@@ -630,7 +630,7 @@ def above5(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points above 5 standard deviations from the lightcurve's median measurement.  
@@ -665,7 +665,7 @@ def below1(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points below 1 standard deviations from the lightcurve's median measurement.
@@ -700,7 +700,7 @@ def below3(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points below 3 standard deviations from the lightcurve's median measurement.
@@ -735,7 +735,7 @@ def below5(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of points below 5 standard deviations from the lightcurve's median measurement.
@@ -771,7 +771,7 @@ def medianAbsDev(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The median absolute deviation of the lightcurve.
@@ -808,7 +808,7 @@ def root_mean_squared(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The root-mean-square of the lightcurve.
@@ -841,7 +841,7 @@ def meanMag(time,mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The weighted mean measurement of the lightcurve.
@@ -871,7 +871,7 @@ def integrate(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The integral value of the lightcurve.
@@ -903,7 +903,7 @@ def auto_corr(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The auto-correlation measurement of the lightcurve.
@@ -946,7 +946,7 @@ def peak_detection(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The number of peaks detected in the lightcurve.
@@ -985,7 +985,7 @@ def MaxSlope(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The maximum-slope detected within the lightcurve.
@@ -1016,7 +1016,7 @@ def LinearTrend(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The slope of a weighted linear fit to the lightcurve.
@@ -1050,7 +1050,7 @@ def PairSlopeTrend(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The percentage of all pairs of consecutive lightcurve measurements that have positive a slope.
@@ -1103,7 +1103,7 @@ def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the (60th - 40th) flux percentile over the (95th - 5th) percentile.
@@ -1146,7 +1146,7 @@ def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the (67.5th - 32.5th) flux percentile over the (95th - 5th) percentile.
@@ -1189,7 +1189,7 @@ def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the (75th - 25th) flux percentile over the (95th - 5th) percentile.
@@ -1232,7 +1232,7 @@ def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the (82.5th - 17.5th) flux percentile over the (95th - 5th) percentile.
@@ -1271,7 +1271,7 @@ def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the (90th - 10th) flux percentile over the (95th - 5th) percentile.
@@ -1314,7 +1314,7 @@ def PercentAmplitude(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The largest percentage difference present in the lightcurve with respect to the median.
@@ -1362,7 +1362,7 @@ def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of the flux difference between the 5th and 95th percentiles to the median lightcurve measurement.
@@ -1415,7 +1415,7 @@ def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The ratio of squared residuals for measurements above and below the median.    
@@ -1467,7 +1467,7 @@ def cusum(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The range of the cumulative sums of the lightcurve measurements.
@@ -1503,7 +1503,7 @@ def shapiro_wilk(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------
     float
         The Shapiro-Wilk statistic.
@@ -1547,7 +1547,7 @@ def AndersonDarling(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The Anderson-Darling test statistic.
@@ -1603,7 +1603,7 @@ def Gskew(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float   
         The median-based skewness of the lightcurve.
@@ -1655,7 +1655,7 @@ def Gskew(time, mag, magerr, apply_weights=True):
 
 def abs_energy(time, mag, magerr, apply_weights=True):
     """
-    Returns the absolute energy of the time series, defined to be the sum over the squared
+    Returns: the absolute energy of the time series, defined to be the sum over the squared
     values of the time-series.
 
     If apply_weights is set to True, we calculate the inverse square of the photometric errors 
@@ -1672,7 +1672,7 @@ def abs_energy(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------   
     float  
         The sum over the squared values of the lightcurve measurements.
@@ -1688,7 +1688,7 @@ def abs_energy(time, mag, magerr, apply_weights=True):
 
 def abs_sum_changes(time, mag, magerr, apply_weights=True):
     """
-    Returns sum over the abs value of consecutive changes in mag, weighted by the errors.
+    Returns: sum over the abs value of consecutive changes in mag, weighted by the errors.
     
     In this updated version we incorporate photometric errors by dividing the absolute value 
     of the difference between consecutive magnitudes by the square root of the sum of their squared errors. 
@@ -1705,7 +1705,7 @@ def abs_sum_changes(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------    
     float 
         The sum over the absolute value of consecutive changes in the lightcurve measurements.
@@ -1721,7 +1721,7 @@ def abs_sum_changes(time, mag, magerr, apply_weights=True):
 
 def benford_correlation(time, mag, magerr, apply_weights=True):
     """
-    Useful for anomaly detection applications. Returns the 
+    Useful for anomaly detection applications. Returns: the 
     correlation from first digit distribution when compared to 
     the Newcomb-Benford’s Law distribution, weighted by the inverse variance of the magnitudes.
     
@@ -1742,7 +1742,7 @@ def benford_correlation(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The Benford Correlation statistic.
@@ -1807,7 +1807,7 @@ def c3(time, mag, magerr, lag=1, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float   
         The C3 non-linearity statistic.
@@ -1850,7 +1850,7 @@ def complexity(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The complexity measurement of the lightcurve.
@@ -1890,7 +1890,7 @@ def count_above(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The number of lightcurve measurements above the median value.
@@ -1933,7 +1933,7 @@ def count_below(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The number of lightcurve measurements below the median value.
@@ -1951,7 +1951,7 @@ def count_below(time, mag, magerr, apply_weights=True):
 
 def first_loc_max(time, mag, magerr, apply_weights=True):
     """
-    Returns location of maximum mag relative to the length of mag array, 
+    Returns: location of maximum mag relative to the length of mag array, 
     weighted by inverse square of magerr if apply_weights is True.
     
     In this modified version, we first calculate the inverse square 
@@ -1972,7 +1972,7 @@ def first_loc_max(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The relative position of the maximum detected lightcurve measurement.
@@ -1994,7 +1994,7 @@ def first_loc_max(time, mag, magerr, apply_weights=True):
 
 def first_loc_min(time, mag, magerr, apply_weights=True):
     """
-    Returns location of minimum mag relative to the 
+    Returns: location of minimum mag relative to the 
     length of mag array.
     
     This updated implementation first computes the weights for each measurement 
@@ -2013,7 +2013,7 @@ def first_loc_min(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------    
     float 
         The relative position of the minimum detected lightcurve measurement.
@@ -2056,7 +2056,7 @@ def check_for_duplicate(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     int
         Whether or not a duplicate lightcurve measurement is found, 1 for True, 0 for False.
@@ -2097,7 +2097,7 @@ def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------    
     int 
         Whether or not the maximum lightcurve measurement is found more than once, 1 for True, 0 for False.
@@ -2135,7 +2135,7 @@ def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     int
         Whether or not the minimum lightcurve measurement is found more than once, 1 for True, 0 for False.
@@ -2158,7 +2158,7 @@ def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
 
 def check_max_last_loc(time, mag, magerr, apply_weights=True):
     """
-    Returns position of last maximum mag relative to
+    Returns: position of last maximum mag relative to
     the length of mag array, taking into account photometric errors.
     
     In this implementation, we first find the maximum value in mag and calculate the tolerance 
@@ -2178,7 +2178,7 @@ def check_max_last_loc(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The relative position where the maximum lightcurve measurement was last found.
@@ -2200,7 +2200,7 @@ def check_max_last_loc(time, mag, magerr, apply_weights=True):
 
 def check_min_last_loc(time, mag, magerr, apply_weights=True):
     """
-    Returns position of last minimum mag relative to
+    Returns: position of last minimum mag relative to
     the length of mag array, taking into account photometric errors.
     
     To incorporate errors, this implementation finds the minimum value in mag, 
@@ -2222,7 +2222,7 @@ def check_min_last_loc(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The relative position where the minimum lightcurve measurement was last found.
@@ -2246,7 +2246,7 @@ def check_min_last_loc(time, mag, magerr, apply_weights=True):
 
 def longest_strike_above(time, mag, magerr, apply_weights=True):
     """
-    Returns the length of the longest consecutive subsequence in 
+    Returns: the length of the longest consecutive subsequence in 
     mag that is bigger than the median. 
     
     This updated implementation first calculates the median of the mag 
@@ -2268,7 +2268,7 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The length of the longest consecutive subsequence in the lightcurve measurements which are larger than the median.
@@ -2288,7 +2288,7 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
 
 def longest_strike_below(time, mag, magerr, apply_weights=True):
     """
-    Returns the length of the longest consecutive subsequence in mag 
+    Returns: the length of the longest consecutive subsequence in mag 
     that is smaller than the median.
     
     To incorporate errors, first we calculate the median of mag and create 
@@ -2309,7 +2309,7 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The length of the longest consecutive subsequence in the lightcurve measurements which are smaller than the median.
@@ -2329,7 +2329,7 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
 
 def mean_change(time, mag, magerr, apply_weights=True):
     """
-    Returns mean over the differences between subsequent observations,
+    Returns: mean over the differences between subsequent observations,
     weighted by the inverse square of their errors if apply_weights is True.
 
     Parameters:
@@ -2343,7 +2343,7 @@ def mean_change(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float   
         The mean over the differences between all subsequent lightcurve measurements.
@@ -2361,7 +2361,7 @@ def mean_change(time, mag, magerr, apply_weights=True):
 
 def mean_abs_change(time, mag, magerr, apply_weights=True):
     """
-    Returns the mean absolute change in the magnitude per unit of error.
+    Returns: the mean absolute change in the magnitude per unit of error.
     
     To incorporate error we weight each absolute difference by the corresponding error, 
     and then take the mean of the weighted differences. This would give a measure of the 
@@ -2378,7 +2378,7 @@ def mean_abs_change(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float   
         The mean absolute change in the lightcurve measurements.
@@ -2411,7 +2411,7 @@ def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------     
     float
         The mean of the 10 absolute maximum values of the lightcurve. 
@@ -2433,7 +2433,7 @@ def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
 
 def mean_second_derivative(time, mag, magerr, apply_weights=True):
     """
-    Returns the weighted mean value of a central approximation of the second derivative,
+    Returns: the weighted mean value of a central approximation of the second derivative,
     where weights are the inverse square of the errors. Note that the first and last values 
     of the second derivative are not included in the calculation, as they cannot be approximated 
     using a central difference.
@@ -2449,7 +2449,7 @@ def mean_second_derivative(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     -------  
     float   
         The mean value of a central approximation of the second derivative.
@@ -2493,7 +2493,7 @@ def number_of_crossings(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The number of crossings about the lightcurve's median.
@@ -2548,7 +2548,7 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The number of peaks of at least support 7 within the lightcurve.
@@ -2590,7 +2590,7 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
 
 def ratio_recurring_points(time, mag, magerr, apply_weights=True):
     """
-    Returns the ratio of unique values, that are present in the time 
+    Returns: the ratio of unique values, that are present in the time 
     series more than once, normalized to the number of data points. 
     
     If apply weights is set to True, the photometric errors will be 
@@ -2609,7 +2609,7 @@ def ratio_recurring_points(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The number of unique measurements normalized according to the size of the lightcurve.
@@ -2631,7 +2631,7 @@ def ratio_recurring_points(time, mag, magerr, apply_weights=True):
 
 def sample_entropy(time, mag, magerr, apply_weights=True):
     """
-    Returns sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
+    Returns: sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
     
     One approach to incorporate error is to modify the distance metric used in the algorithm 
     to account for measurement error. "Modified Sample Entropy Method in the Presence of Noise" by Zhang et al. 
@@ -2650,7 +2650,7 @@ def sample_entropy(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The sample entropy of the lightcurve.
@@ -2699,7 +2699,7 @@ def sum_values(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The sum of all the measurements, normalized to the size of the lightcurve.
@@ -2733,7 +2733,7 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The time reversal symmetry statistic.
@@ -2757,7 +2757,7 @@ def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
 
 def variance(time, mag, magerr, apply_weights=True):
     """
-    Returns the variance, or the weighted variance of the light curve if apply_weights=True.
+    Returns: the variance, or the weighted variance of the light curve if apply_weights=True.
 
     Parameters:
     ----------
@@ -2770,7 +2770,7 @@ def variance(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The variance of the lightcurve measurements.
@@ -2800,7 +2800,7 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     int    
         Whether or not the lightcurve's variance is greater than the standard deviation, 1 for True, 0 for False.
@@ -2824,7 +2824,7 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
 
 def variation_coefficient(time, mag, magerr, apply_weights=True):
     """
-    Returns the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
+    Returns: the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
     
     We incorporate errors by using the weighted standard deviation and weighted mean.
 
@@ -2839,7 +2839,7 @@ def variation_coefficient(time, mag, magerr, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The lightcurve standard deviation over the mean.
@@ -2879,7 +2879,7 @@ def large_standard_deviation(time, mag, magerr, r=.3, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     int    
         Whether or not the lightcurve has a large standard deviation, 1 for True, 0 for False.
@@ -2921,7 +2921,7 @@ def symmetry_looking(time, mag, magerr, r=0.5, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     int    
         Whether or not the lightcurve appears symmetric, 1 for True, 0 for False.
@@ -2967,7 +2967,7 @@ def index_mass_quantile(time, mag, magerr, r=0.5, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The relative index of the lightcurve measurement that is to the right of the 50% of the cumulative sum.
@@ -3016,7 +3016,7 @@ def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True, snr_threshold=
             Determines the minimum Signal-to-Noise Ratio (SNR) required for a peak to be counted in 
             the final result when apply_weights is set to True. Defaults to 3.
 
-    Returns
+    Returns:
     ------- 
     float    
         The number of peaks in the lightcurve after smoothing with a wavelet transformation.
@@ -3069,7 +3069,7 @@ def permutation_entropy(time, mag, magerr, tau=1, dimension=3, apply_weights=Tru
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The permutation entropy of the lightcurve.
@@ -3112,7 +3112,7 @@ def quantile(time, mag, magerr, r=0.75, apply_weights=True):
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
 
-    Returns
+    Returns:
     ------- 
     float    
         The 75th quantile of the ordered lightcurve measurements.
