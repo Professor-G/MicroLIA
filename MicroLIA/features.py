@@ -23,7 +23,9 @@ def shannon_entropy(time, mag, magerr, apply_weights=True):
     Function (CDF). Following the same procedure as (D. Mislis et al. 2015), this function employs
     both the normal and inversed gaussian CDF, with the total shannon entropy given by a combination of
     the two. See: (SIDRA: a blind algorithm for signal detection in photometric surveys, D. Mislis et al., 2015)
-     
+    
+    Does not incorporate errors.
+
     Parameters:
     ----------
         time : array
@@ -42,7 +44,7 @@ def shannon_entropy(time, mag, magerr, apply_weights=True):
     """
     
     mean = np.median(mag)
-    RMS = root_mean_squared(time, mag, magerr)
+    RMS = root_mean_squared(time, mag, magerr, apply_weights=False)
     
     p_list1 = []
     p_list2 = []
@@ -311,7 +313,7 @@ def stetsonJ(time, mag, magerr, apply_weights=True):
         The calculated stetsonJ variability index of the lightcurve.
     """
     
-    n = np.float(len(mag))
+    n = float(len(mag))
     mean = np.median(mag)
     delta_list=[]
     
@@ -413,13 +415,13 @@ def median_buffer_range(time, mag, magerr, apply_weights=True):
         The ratio of points that are between plus or minus 10% of the lightcurve's amplitude value over the mean.
     """
     
+    amp = amplitude(time, mag, magerr, apply_weights=apply_weights)
+
     if apply_weights:
-        amp = amplitude(time, mag, magerr)
         w_mean = np.average(mag, weights=1/magerr**2)
         a = w_mean - amp*0.1
         b = w_mean + amp*0.1
     else:
-        amp = amplitude(time, mag, magerr)
         #mean = meanMag(mag, magerr)
         mean = np.median(mag)
         a = mean - amp*0.1
@@ -554,7 +556,7 @@ def above1(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -563,17 +565,17 @@ def above1(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points above 1 standard deviations from the lightcurve's median measurement.
+        The number of points above 1 standard deviation from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_above1 = np.sum((mag - median_mag > std) * (mag - median_mag - std) / magerr**2)
-        total_weight = np.sum((mag - median_mag > std) / magerr**2)
-        return weighted_above1 / total_weight
+        weighted_above1 = np.mean((mag - median_mag) > std)
+        weighted_above1 /= np.mean((mag - median_mag + std) / magerr**2)
+        return weighted_above1
     else:
-        above1 = len(np.where(mag-np.median(mag)>magerr)[0])/len(mag)
+        above1 = np.mean((mag - median_mag) > std)
         return above1
 
 def above3(time, mag, magerr, apply_weights=True):
@@ -589,7 +591,7 @@ def above3(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -598,17 +600,17 @@ def above3(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points above 3 standard deviations from the lightcurve's median measurement.
+        The number of points above 3 standard deviations from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_above3 = np.sum((mag - median_mag > 3 * magerr) * (mag - median_mag - 3 * std) / magerr**2)
-        total_weight = np.sum(1 / magerr**2) 
-        return weighted_above3 / total_weight
+        weighted_above3 = np.mean((mag - median_mag) > 3 * std)
+        weighted_above3 /= np.mean((mag - median_mag + 3 * std) / magerr**2)
+        return weighted_above3
     else:
-        above3 = len(np.where(mag-np.median(mag)>3*magerr)[0])/len(mag)
+        above3 = np.mean((mag - median_mag) > 3 * std)
         return above3
 
 def above5(time, mag, magerr, apply_weights=True):
@@ -624,7 +626,7 @@ def above5(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -633,17 +635,17 @@ def above5(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points above 5 standard deviations from the lightcurve's median measurement.  
+        The number of points above 5 standard deviations from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_above5 = np.sum((mag - median_mag > 5 * magerr) * (mag - median_mag - 5 * std) / magerr**2)
-        total_weight = np.sum(1 / magerr**2)   
-        return weighted_above5 / total_weight
+        weighted_above5 = np.mean((mag - median_mag) > 5 * std)
+        weighted_above5 /= np.mean((mag - median_mag + 5 * std) / magerr**2)
+        return weighted_above5
     else:
-        above5 = len(np.where(mag-np.median(mag)>5*magerr)[0])/len(mag)
+        above5 = np.mean((mag - median_mag) > 5 * std)
         return above5
 
 def below1(time, mag, magerr, apply_weights=True):
@@ -659,7 +661,7 @@ def below1(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -668,18 +670,18 @@ def below1(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points below 1 standard deviations from the lightcurve's median measurement.
+        The number of points below 1 standard deviation from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_below1 = np.sum((-mag + median_mag > magerr) * (-mag + median_mag - std) / magerr**2)
-        total_weight = np.sum(1 / magerr**2)
-        return weighted_below1 / total_weight
+        weighted_below1 = np.mean((-mag + median_mag) > std)
+        weighted_below1 /= np.mean((-mag + median_mag + std) / magerr**2)
+        return weighted_below1
     else:
-        below1 = len(np.where(-mag+np.median(mag)>magerr)[0])/len(mag)
-        return below1 
+        below1 = np.mean((-mag + median_mag) > std)
+        return below1
 
 def below3(time, mag, magerr, apply_weights=True):
     """
@@ -694,7 +696,7 @@ def below3(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -703,17 +705,17 @@ def below3(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points below 3 standard deviations from the lightcurve's median measurement.
+        The number of points below 3 standard deviations from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_below3 = np.sum((-mag + median_mag > 3*magerr) * (-mag + median_mag - 3*std) / magerr**2)
-        total_weight = np.sum(1 / magerr**2)
-        return weighted_below3 / total_weight
+        weighted_below3 = np.mean((-mag + median_mag) > 3 * std)
+        weighted_below3 /= np.mean((-mag + median_mag + 3 * std) / magerr**2)
+        return weighted_below3
     else:
-        below3 = len(np.where(-mag+np.median(mag)>3*magerr)[0])/len(mag)
+        below3 = np.mean((-mag + median_mag) > 3 * std)
         return below3
 
 def below5(time, mag, magerr, apply_weights=True):
@@ -729,7 +731,7 @@ def below5(time, mag, magerr, apply_weights=True):
         time : array
             The timestamps of the corresponding mag and magerr measurements. Must be an array.
         mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
+            The time-varying intensity of the light curve. Must be an array.
         magerr : array
             Photometric error for the intensity. Must be an array.
         apply_weights : bool, optional
@@ -738,17 +740,17 @@ def below5(time, mag, magerr, apply_weights=True):
     Returns:
     -------
     float
-        The number of points below 5 standard deviations from the lightcurve's median measurement.
+        The number of points below 5 standard deviations from the light curve's median measurement.
     """
+    median_mag = np.median(mag)
+    std = np.std(mag)
     
     if apply_weights:
-        median_mag = np.median(mag)
-        std = np.std(mag)
-        weighted_below5 = np.sum((-mag + median_mag > 5*magerr) * (-mag + median_mag - 5*std) / magerr**2)
-        total_weight = np.sum(1 / magerr**2)
-        return weighted_below5 / total_weight
+        weighted_below5 = np.mean((-mag + median_mag) > 5 * std)
+        weighted_below5 /= np.mean((-mag + median_mag + 5 * std) / magerr**2)
+        return weighted_below5
     else:
-        below5 = len(np.where(-mag+np.median(mag)>5*magerr)[0])/len(mag)
+        below5 = np.mean((-mag + median_mag) > 5 * std)
         return below5
 
 def medianAbsDev(time, mag, magerr, apply_weights=True):
@@ -910,20 +912,28 @@ def auto_corr(time, mag, magerr, apply_weights=True):
     """
 
     if apply_weights:
-        #Calculate the mean and standard deviation of the magnitudes
+        # Calculate the mean and standard deviation of the magnitudes
         mag_mean = np.mean(mag)
         mag_std = np.std(mag)
-        #Calculate the autocovariance function using the weighted data points
-        autocov = np.correlate((mag - mag_mean) / mag_std, (mag - mag_mean) / mag_std, mode='full')
+        
+        # Calculate the normalized magnitudes
+        normalized_mag = (mag - mag_mean) / mag_std
+        
+        # Calculate the autocovariance function
+        autocov = np.correlate(normalized_mag, normalized_mag, mode='full')
         autocov = autocov[autocov.size // 2:]
-        #Calculate the weights for each data point based on their measurement uncertainties
+        
+        # Calculate the weights for each data point based on their measurement uncertainties
         weights = 1. / magerr**2
-        #Calculate the weighted autocovariance function
-        weighted_autocov = np.sum(weights[:-1] * weights[1:] * autocov[1:]) / np.sum(weights)**2
-        #Normalize by the autocovariance at zero lag to obtain the autocorrelation function
-        auto_corr = weighted_autocov / autocov[0]
+        
+        # Compute the weighted autocovariance function
+        weighted_autocov = np.sum(weights * autocov)
+        
+        # Normalize by the autocovariance at zero lag to obtain the autocorrelation function
+        auto_corr = weighted_autocov / (np.sum(weights) * autocov[0])
     else:
-        auto_corr = np.corrcoef(mag[:-1],mag[1:])[1,0]
+        # If weights are not applied, use the regular correlation function
+        auto_corr = np.corrcoef(mag[:-1], mag[1:])[1, 0]
 
     return auto_corr
 
@@ -994,11 +1004,15 @@ def MaxSlope(time, mag, magerr, apply_weights=True):
     if apply_weights:
         #Calculate the slope using the errors as weights
         weights = 1 / magerr[:-1]**2 + 1 / magerr[1:]**2
-        slope = np.abs((mag[1:] - mag[:-1]) / (time[1:] - time[:-1]))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            slope = np.abs((mag[1:] - mag[:-1]) / (time[1:] - time[:-1]))
         weighted_slope = np.sum(weights[np.isfinite(slope)] * slope[np.isfinite(slope)]) / np.sum(weights[np.isfinite(slope)])
         return weighted_slope
     else:
-        slope = np.abs(mag[1:] - mag[:-1]) / (time[1:] - time[:-1])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            slope = np.abs(mag[1:] - mag[:-1]) / (time[1:] - time[:-1])
         return np.max(slope[np.isfinite(slope)])
 
 def LinearTrend(time, mag, magerr, apply_weights=True):
@@ -1059,25 +1073,21 @@ def PairSlopeTrend(time, mag, magerr, apply_weights=True):
     if apply_weights:
         data_last = mag[-30:]
         err_last = magerr[-30:]
-        #Calculate the weighted first differences
-        weights = 1 / err_last[:-1]**2 + 1 / err_last[1:]**2
+        # Calculate the weighted first differences
+        weights = 1.0 / (err_last[:-1]**2 + err_last[1:]**2)
         diff = data_last[1:] - data_last[:-1]
         diff_weighted = diff * weights
-        pos_diff_weighted = diff_weighted[diff_weighted > 0]
-        neg_diff_weighted = diff_weighted[diff_weighted < 0]
-        #Calculate the weighted mean of positive and negative differences
-        if len(pos_diff_weighted) > 0:
-            pos_mean = np.sum(pos_diff_weighted) / np.sum(weights[diff_weighted > 0])
-        else:
-            pos_mean = 0
-        if len(neg_diff_weighted) > 0:
-            neg_mean = np.sum(neg_diff_weighted) / np.sum(weights[diff_weighted < 0])
-        else:
-            neg_mean = 0
-        PST = (np.sum(pos_diff_weighted) - np.sum(neg_diff_weighted)) / np.sum(weights)
+        pos_diff_weighted = diff_weighted[diff > 0]
+        neg_diff_weighted = diff_weighted[diff < 0]
+        # Calculate the weighted mean of positive and negative differences
+        pos_mean = np.mean(pos_diff_weighted) if len(pos_diff_weighted) > 0 else 0
+        neg_mean = np.mean(neg_diff_weighted) if len(neg_diff_weighted) > 0 else 0
+        # Calculate the percentage of pairs with a positive slope
+        PST = len(pos_diff_weighted) / (len(pos_diff_weighted) + len(neg_diff_weighted))
     else:
         data_last = mag[-30:]
-        PST = (len(np.where(np.diff(data_last) > 0)[0]) - len(np.where(np.diff(data_last) <= 0)[0])) / 30.0
+        #PST = (len(np.where(np.diff(data_last) > 0)[0]) - len(np.where(np.diff(data_last) <= 0)[0])) / 30.0
+        PST = len(np.where(np.diff(data_last) > 0)[0]) / 30.0
 
     return PST
 
@@ -1372,25 +1382,20 @@ def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
         sorted_indices = np.argsort(mag)
         sorted_mag = mag[sorted_indices]
         sorted_magerr = magerr[sorted_indices]
-        median = np.median(sorted_mag)
-        # Calculate the weighted percentiles
         weights = 1 / sorted_magerr ** 2
-        cum_weights = np.cumsum(weights)
-        percentile_2 = np.interp(2, cum_weights / cum_weights[-1], sorted_mag) #can be used to find the percentile of the value 2 in the distribution defined by sorted_mag and cum_weights.
-        percentile_98 = np.interp(98, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_5 = np.interp(5, cum_weights / cum_weights[-1], sorted_mag)
-        percentile_95 = np.interp(95, cum_weights / cum_weights[-1], sorted_mag)
-        # Calculate the flux percentile ratios
+        total_weights = np.sum(weights)
+        cum_weights = np.cumsum(weights) / total_weights
+        percentile_95 = np.interp(0.95, cum_weights, sorted_mag)
+        percentile_5 = np.interp(0.05, cum_weights, sorted_mag)
         F_5_95 = percentile_95 - percentile_5
     else:
-        median = np.median(mag)
         sorted_data = np.sort(mag)
         lc_length = len(sorted_data)
         F_5_index = int(math.ceil(0.05 * lc_length))
         F_95_index = int(math.ceil(0.95 * lc_length))
         F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
 
-    return F_5_95 / median
+    return F_5_95 / np.median(mag)
 
 #Below stats from Kim (2015), used in Upsilon
 #https://arxiv.org/pdf/1512.01611.pdf
@@ -1660,6 +1665,14 @@ def abs_energy(time, mag, magerr, apply_weights=True):
 
     If apply_weights is set to True, we calculate the inverse square of the photometric errors 
     and use them as weights to calculate the weighted sum of squares of the magnitudes.
+    In the case where weights are applied, the magnitudes are multiplied by their corresponding 
+    weights (inverse square of photometric errors) before squaring and summing them. This results in 
+    a larger contribution from data points with smaller errors, as they receive higher weights. As a result, 
+    the absolute energy value increases. On the other hand, when weights are not applied (apply_weights=False), 
+    all magnitudes are squared and summed without considering their errors. This leads to a smaller 
+    absolute energy value as the contributions from individual data points are not scaled by their respective errors.
+
+
 
     Parameters:
     ----------
@@ -2424,8 +2437,8 @@ def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
         sort_idx = np.argpartition(np.abs(mag), -number_of_maxima)[-number_of_maxima:]
         mag_sorted = mag[sort_idx]
         magerr_sorted = magerr[sort_idx]
-        weights = 1 / magerr_sorted ** 2
-        weighted_mean = np.sum(mag_sorted * weights) / np.sum(weights)
+        weights = 1 / np.square(magerr_sorted)
+        weighted_mean = np.sum(np.abs(mag_sorted) * weights) / np.sum(weights)
         return weighted_mean
     else:
         n_absolute_maximum_values = np.sort(np.abs(mag))[-number_of_maxima:]
@@ -2461,7 +2474,9 @@ def mean_second_derivative(time, mag, magerr, apply_weights=True):
     if apply_weights:
         diffs = np.diff(mag)
         times = np.diff(time)
-        errors = np.abs(diffs / times ** 2) * np.sqrt((magerr[:-1] / diffs) ** 2 + (magerr[1:] / diffs) ** 2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            errors = np.abs(diffs / times ** 2) * np.sqrt((magerr[:-1] / diffs) ** 2 + (magerr[1:] / diffs) ** 2)
         mask = np.isfinite(errors)
         diffs, times, errors = diffs[mask], times[mask], errors[mask]
         weights = 1 / errors ** 2
@@ -2505,9 +2520,9 @@ def number_of_crossings(time, mag, magerr, apply_weights=True):
         crossings = np.abs(np.diff(positive))
         # check if the difference is greater than the corresponding error
         crossings = crossings * (np.abs(np.diff(mag)) > magerr[:-1])
-        return np.sum(crossings)
+        return np.sum(crossings) / len(mag)
     else:
-        return (np.where(np.diff(positive))[0].size)/len(mag)
+        return (np.where(np.diff(positive))[0].size) / len(mag)
 
 def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
     """
@@ -2551,7 +2566,7 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
     Returns:
     ------- 
     float    
-        The number of peaks of at least support 7 within the lightcurve.
+        The number of peaks of at least support 7 within the lightcurve, normalized according to the size of the lightcurve.
     """
 
     if apply_weights:
@@ -2575,7 +2590,7 @@ def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
                 res = result_first & result_second
             else:
                 res &= result_first & result_second
-        return np.sum(res)
+        return float(np.sum(res)/len(mag))
     else:
         x_reduced = mag[n:-n]
         res = None
@@ -2989,16 +3004,13 @@ def index_mass_quantile(time, mag, magerr, r=0.5, apply_weights=True):
         mass_centralized = np.cumsum(abs_x) / s
         return (np.argmax(mass_centralized >= r) + 1) / len(mag)
 
-def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True, snr_threshold=3):
+def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True):
     """
     Number of different peaks in the magnitude array.
 
     To estimate the numbers of peaks, x is smoothed by a ricker wavelet for widths ranging from 1 to n. This feature
     calculator returns the number of peaks that occur at enough width scales and with sufficiently high
-    Signal-to-Noise-Ratio (SNR). If apply_weights=True, we first calculate the SNR of each peak by dividing the peak 
-    amplitude by the average noise level (which we assume is given by the mean magnitude error). We then count only the peaks 
-    whose SNR is above the snr_threshold parameter.
-    
+    Signal-to-Noise-Ratio (SNR). Weights are not meant to be applied in this case.
 
     Parameters:
     ----------
@@ -3012,9 +3024,6 @@ def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True, snr_threshold=
             The maximum time width to consider. Defaults to 30.
         apply_weights : bool, optional
             Whether to apply weights based on the magnitude errors. Defaults to True.
-        snr_threshold : int 
-            Determines the minimum Signal-to-Noise Ratio (SNR) required for a peak to be counted in 
-            the final result when apply_weights is set to True. Defaults to 3.
 
     Returns:
     ------- 
@@ -3022,23 +3031,8 @@ def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True, snr_threshold=
         The number of peaks in the lightcurve after smoothing with a wavelet transformation.
     """
 
-    if apply_weights:
-        #Calculate the SNR of each peak
-        widths = np.array(list(range(1, n + 1)))
-        peaks = ssignal.find_peaks_cwt(vector=mag, widths=widths, wavelet=ssignal.ricker)
-        snrs = []
-        for peak in peaks:
-            noise = np.mean(magerr)
-            signal = mag[peak]
-            snr = signal / noise
-            snrs.append(snr)
-        #Count the number of peaks above the SNR threshold
-        snrs = np.array(snrs)
-        peak_count = np.sum(snrs > snr_threshold)
-        return peak_count / len(mag)
-    else:
-        val = len(ssignal.find_peaks_cwt(vector=mag, widths=np.array(list(range(1, n + 1))), wavelet=ssignal.ricker))
-        return val/len(mag)
+    val = len(ssignal.find_peaks_cwt(vector=mag, widths=np.array(list(range(1, n + 1))), wavelet=ssignal.ricker))
+    return val / len(mag)
 
 def permutation_entropy(time, mag, magerr, tau=1, dimension=3, apply_weights=True):
     """

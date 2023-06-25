@@ -338,7 +338,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
         cols = fits.ColDefs([col0, col1, col2, col3, col4])
         hdu = fits.BinTableHDU.from_columns(cols)
 
-        fname = Path('lightcurves_'+filename+'_.fits') if filename is not None else Path('lightcurves.fits')
+        fname = Path('lightcurves_'+filename+'.fits') if filename is not None else Path('lightcurves.fits')
 
         if fname.exists(): #To avoid error if file already exists
             fname.unlink()
@@ -461,7 +461,7 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         cols = fits.ColDefs([col0, col1, col2, col3, col4])
         hdu = fits.BinTableHDU.from_columns(cols)
 
-        fname = Path('lightcurves_'+filename+'_.fits') if filename is not None else Path('lightcurves.fits')
+        fname = Path('lightcurves_'+filename+'.fits') if filename is not None else Path('lightcurves.fits')
 
         if fname.exists(): #To avoid error if the file already exists
             fname.unlink()
