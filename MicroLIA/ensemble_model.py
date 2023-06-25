@@ -176,11 +176,12 @@ class Classifier:
         self.data_x[np.isinf(self.data_x)] = np.nan
 
         if self.impute is False and self.optimize is False:
+            data = copy.deepcopy(self.data_x)
             data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
             if np.any(np.isfinite(self.data_x)==False):
                 raise ValueError('data_x array contains nan values but impute is set to False! Set impute=True and run again.')
             print("Returning base {} model...".format(self.clf))
-            model.fit(self.data_x, self.data_y)
+            model.fit(data, self.data_y)
             self.model = model
             self.data_x = data if overwrite_training else self.data_x
 
@@ -190,7 +191,6 @@ class Classifier:
             data, self.imputer = impute_missing_values(self.data_x, strategy=self.imp_method)
             data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
             if self.optimize is False:
-                data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
                 print("Returning base {} model...".format(self.clf))
                 model.fit(data, self.data_y)
                 self.model = model 
@@ -220,7 +220,7 @@ class Classifier:
             self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
 
         self.model.fit(data_x, self.data_y)
-        self.data_x = data if overwrite_training else self.data_x
+        self.data_x = data_x if overwrite_training else self.data_x
 
         return
         
