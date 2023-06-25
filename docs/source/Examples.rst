@@ -2,11 +2,14 @@
 
 Example: OGLE II
 ==================
-The lightcurves for 214 OGLE II microlensing events can be :download:`downloaded here <OGLE_II.zip>`.
+
+This example makes use of OGLE II data, (see: `Udalski et al 2015 <https://ui.adsabs.harvard.edu/abs/1997AcA....47..319U/abstract>`_).
+
+The lightcurves for 214 OGLE II microlensing events can be :download:`downloaded here <OGLE_II.zip>`. 
 
 Each file contains three space-delimited columns: time, mag, magerr
 
-We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we can successfully recover using a training set of simulated lightcurves.
+We will train MicroLIA for OGLE II microlensing detection, and record how many of these 214 events we can successfully recover using a training set of simulated lightcurves. 
 
 Training Set
 -----------
@@ -137,38 +140,24 @@ To load the model in the future:
 
 Note that by default the load method will look for the data folder in local home directory. By default this folder is called 'MicroLIA_ensemble_model'. Once loaded, the class object will contain the attributes that were initially saved as well as the trained model, which can be used to predict unseen samples and/or display any of the visualization methods described below.
 
-Data Visualization
+Model Visualizations
 -----------
 To visualize the classification accuracies we can create a confusion matrix. By by default, the matrix displays the mean accuracy after 10-fold cross-validation, which can controlled with the ``k_fold`` parameter. For details regarding the confusion matrix generation, refer to the `docstring <https://microlia.readthedocs.io/en/latest/_modules/MicroLIA/ensemble_model.html#Classifier.plot_conf_matrix>`_.
 
 .. code-block:: python
 
-   model.plot_conf_matrix(k_fold=10)
+   model.plot_conf_matrix(k_fold=10, savefig=True)
 
-When using the XGBoost classifier, the class labels are automatically converted to numerical representations, to override these numerical labels for visualization purposes we can input an accompanying ``data_y`` labels list as followws (**Note that if the ``csv_file`` argument was used to load the data, the data_y argument when plotting the confusion matrix is automatically set to the dataframe column names, and thus the below steps are only necessary if you wish to overwrite the default column names or if the data arrays were loaded manually.**):
+When using the XGBoost classifier, the class labels are automatically converted to numerical representations, the string labels are saved when the class is instantiated and will show up accordingly:
 
 .. code-block:: python
 
-   y_labels = []
-
-   for label in model.data_y:
-      if label == 0:
-         y_labels.append('CONSTANT')
-      elif label == 1:
-         y_labels.append('CV')
-      elif label == 2:
-         y_labels.append('LPV')
-      elif label == 3:
-         y_labels.append('ML')
-      elif label == 4:
-         y_labels.append('VARIABLE')
-
-   model.plot_conf_matrix(data_y=y_labels, savefig=True)
+   model.plot_conf_matrix(savefig=True)
 
 .. figure:: _static/Ensemble_Confusion_Matrix_1.png
     :align: center
 |
-We can also plot a Receiver Operating Characteristic Curve, which currently does not support custom data_y labels:
+We can also plot a Receiver Operating Characteristic Curve, which will always show the training labels required for the classifier and does remain numerical when using XGBoost:
 
 .. code-block:: python
 
@@ -181,12 +170,14 @@ We can visualize the feature space using a two-dimensional t-SNE projection, whi
 
 .. code-block:: python
 
-   model.plot_tsne(data_y=y_labels, norm=True, savefig=True)
+   model.plot_tsne(norm=True, savefig=True)
 
 .. figure:: _static/tSNE_Projection_1.png
     :align: center
 |
-In a similar note, we can plot the feature selection history as output by the BorutaShap optimizer, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``csv_file``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the custom names, especially helpful for publication purposes where we may wish to properly format the feature names and/or include special characters. Since in this example we have loaded the csv file that was saved after the training set was created, we can leave ``feat_names`` as None to default them to the column names, or, better yet, we can set ``feat_names``='default', which is only applicable if the features in the input `data_x` array were calculated using program's `features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/features/index.html>`_. module (thus not applicable if the features were computed manually or only a select quantity were computed).
+We can also plot the feature selection history as output by the feature selection optimizer, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``csv_file``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the custom names, especially helpful for publication purposes in which we may wish to properly format the feature names and/or include special characters. 
+
+Additionally, we can set ``feat_names``='default', which is only applicable if the features in the input `data_x` array were calculated using program's `features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/features/index.html>`_. module (thus not applicable if using a custom data_x array).
 
 .. code-block:: python
 
@@ -243,7 +234,7 @@ It would be nice to include the parameter space of the real OGLE II microlensing
    new_model.data_y = np.r_[new_model.data_y, ogle_data_y]
 
    # Plot the t-SNE projection
-   new_model.plot_tsne(data_y=new_model.data_y,savefig=True)
+   new_model.plot_tsne(savefig=True)
 
 .. figure:: _static/tSNE_Projection_2.png
     :align: center
@@ -314,9 +305,7 @@ Example: OGLE IV
 
 This excercise makes use of OGLE IV data (see: `Udalski et al 2015 <http://acta.astrouw.edu.pl/Vol65/n1/pdf/pap_65_1_1.pdf>`_).
 
-The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, after which we will generate a simulated training set and compare the performance of both models.
-
-First we will generate a training set with these real lightcurves (four classes total):
+The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, optimized using 10-fold cross-validation with the ``limit_search`` flag set to False..
 
 .. code-block:: python
    
@@ -327,42 +316,28 @@ First we will generate a training set with these real lightcurves (four classes 
    # This will create a training set, the class names are the folder names
    data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV_REAL_LC', apply_weights=True, save_file=True)
 
-
 Next we will create an optimal classifier using XGBoost:
 
 .. code-block:: python
    
    from MicroLIA import ensemble_model
 
-   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, n_iter=100, boruta_trials=1000)
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000)
    model.create()
-   model.save(dirname='OGLE_IV_REAL')
+   model.save('OGLE_IV_REAL')
 
-We can now visualize the performance. Since XGBoost requires numerical class labels, we will create a y_labels list:
+We can now visualize the performance:
 
 .. code-block:: python
    
-   y_labels = []
-   for label in model.data_y:
-      if label == 0:
-         y_labels.append('CV')
-      elif label == 1:
-         y_labels.append('LPV')
-      elif label == 2:
-         y_labels.append('ML')
-      elif label == 3:
-         y_labels.append('RRLYR')
+   model.plot_conf_matrix()
+   model.plot_roc_curve()
+   model.plot_tsne()
 
-   model.plot_conf_matrix(y_labels, savefig=True)
-   model.plot_roc_curve(savefig=True)
-
-   model.plot_tsne(y_labels, savefig=True)
-   model.plot_feature_opt(feat_names='default', top=20, include_other=True, include_shadow=True, include_rejected=False, flip_axes=False, save_data=True, savefig=True)
-
+   model.plot_feature_opt(feat_names='default', top=20, flip_axes=False)
    model.plot_hyper_opt(xlim=(1,100), ylim=(0.85,0.95), xlog=True, savefig=True)
    model.save_hyper_importance()
    model.plot_hyper_param_importance(plot_time=True, savefig=True)
-
 
 Example: COSMOS
 ========
@@ -434,7 +409,7 @@ Running these methods automatically updates the ``positive_class`` and ``negativ
 
 -  ``horizontal`` (bool): If False no horizontal flips are allowed. Defaults to False.
 
--  ``vertical** (bool): If False no random vertical reflections are allowed. Defaults to False.
+-  ``vertical`` (bool): If False no random vertical reflections are allowed. Defaults to False.
 
 -  ``rotation`` (int): If False no random 0-360 rotation is allowed. Defaults to False.
 
@@ -444,7 +419,7 @@ Running these methods automatically updates the ``positive_class`` and ``negativ
 
 -  ``mask_size`` (int): The size of the cutout mask. Defaults to None to disable random cutouts.
 
--  ``num_masks** (int): Number of masks to apply to each image. Defaults to None, must be an integer if mask_size is used as this designates how many masks of that size to randomly place in the image.
+-  ``num_masks`` (int): Number of masks to apply to each image. Defaults to None, must be an integer if mask_size is used as this designates how many masks of that size to randomly place in the image.
 
 -  ``blend_multiplier`` (float): Sets the amount of synthetic images to make via image blending. Must be a ratio greater than or equal to 1. If set to 1, the data will be replaced with randomly blended images, if set to 1.5, it will increase the training set by 50% with blended images, and so forth. Deafults to 0 which disables this feature.
    
@@ -494,7 +469,7 @@ The ``positive_class`` will now contain 500 images so as to match our ``negative
 
    model.augment_negative(mask_size=mask_size, num_masks=num_masks, image_size=image_size)
 
-Note that the ``image_size`` paramter was set to 67 when augmenting the ``positive_class``, so even if you wish to leave the other training class the same, you would still have to resize your data by running the ``augment_negative`` method with only the ``image_size`` argument. The ``_plot_positive`` and ``_plot_negative`` class attributes can be used for quick visualization.
+Note that the ``image_size`` paramter was set to 67 when augmenting the ``positive_class``, so even if you wish to leave the other training class the same, you would still have to resize your data by running the ``augment_negative`` method with only the ``image_size`` argument. The ``_plot_positive`` and ``_plot_negative`` class attributes can be used for quick visualization. 
 
 
 .. code-block:: python
@@ -519,7 +494,9 @@ No current options are available for augmenting the validation data, but this ca
 Optimization
 -----------
 
-If you know what augmentation procedures are appropriate for your dataset, but don't know what specfic thresholds to use, you can configure the ``Classifier`` class to identify the optimal augmentations parameter to apply to your dataset. To enable optimization, set ``optimize`` to ``True``. MicroLIA supports two optimization options, one is ``opt_aug``, which when set to ``True``, will optimize the augmentation options that have been enabled. The class attributes that control the augmentation optimization include:
+If you know what augmentation procedures are appropriate for your dataset, but don't know what specfic thresholds to use, you can configure the ``Classifier`` class to identify the optimal augmentations parameter to apply to your dataset. To enable optimization, set ``optimize`` to ``True``. This will always optimize the model learning parameters, including the learning rate, decay, optimizer, loss, activation functions, initializers and batch size). 
+
+MicroLIA supports two optimization options, one is ``opt_aug``, which when set to ``True``, will optimize the augmentation options that have been enabled. The class attributes that control the augmentation optimization include:
    
 -  ``batch_min`` (int): The minimum number of augmentations to perform per image on the positive class, only applicable if opt_aug=True. Defaults to 2.
 
@@ -547,14 +524,65 @@ If you know what augmentation procedures are appropriate for your dataset, but d
    
 -  ``zoom_range`` (tuple): This sets the allowed zoom in/out range. This is not optimized, and must be set carefully according to the data being used. During the optimization, random zooms will occur according to this designated range. Can be set to zero to disable.
 
-The second optimization routine is enabled by setting ``opt_model`` to True. This will optimize the 
-
+The second optimization routine is enabled by setting ``opt_model`` to True. This will optimize the pooling types to apply (min, max or average) as well as the main regularizer (either batch normalization or LRN) to apply to the selected CNN architcture. If ``limit_search`` is set to False, the model hyperparameters will also be optimized (individual filter information including size and stride). **It is not advised to disable the limit_search option if the augmentation procedure is also being optimized, as this will yield memory errors!**
+ 
+The following example configures the CNN model and sets the optimization parameters. For information regarding the parameters please refer to the `documentation <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/optimization/index.html#MicroLIA.optimization.objective_cnn>`_.
 
 .. code-block:: python
 
-   model._plot_positive(index=0, channel=0)
+   import numpy as np
+   from pyBIA import cnn_model
 
-This will plot the first object in the ``positive_class`` array, with the filter to displayed designated by the ``channel`` argument. If set to 'all', the figure will combine all filters to form a colorized image. 
+   lenses = np.load('lenses.npy') 
+   val_lenses = lenses[:4] #This will be used to validate the optimization
+   lenses = lenses[4:] #Positive class training data, will be augmented
+   opt_cv = 5  # Will cross-validate the positive class, since there are 20 images and 4 were selected for validation, this will create 5 models with a unique training data sample each time
+
+   other = np.load('other.npy')
+
+   # Model creation and optimization
+
+   clf='alexnet' # AlexNet CNN architecture will be used 
+   img_num_channels = 3 # Creating a 3-Channel model
+   normalize = True # Will min-max normalize the images so all pixels are between 0 and 1
+
+   optimize = True # Activating the optimization routine
+   n_iter = 100 # Will run the optimization routine for 250 trials 
+   batch_size_min, batch_size_max = 16, 64 # The training batch size will be optimized according to these bounds
+
+   opt_model = limit_search = True # Will also optimize the CNN model architecture but with limit search on, therefore only pooling type and the regularizer are optimized
+   train_epochs = 10 # Each optimization trial will train a model up to 10 epochs
+   epochs = 0 # The final model will not be generated, will instead be trained post-processing
+   patience = 3 # The model patience which will be applied during optimization
+
+   opt_aug = True # Will also optimize the data augmentation procedure (positive class only by design)
+   batch_min, batch_max = 10, 250 # The amount to augment EACH positive sample by, the optimal value will be selected according to this range
+   shift = 5 # Will randomly shift (horizontally & vertically) each augmented image between 0 and 10 pixels
+   rotation = horizontal = vertical = True # Will randomly apply rotations (0-360), and horizintal/vertical flips to each augmented image
+   zoom_range = (0.9,1.1) # Will randomly apply zooming in/out between plus and minus 10% to each augmented image
+   batch_other = 0 # The number of augmentations to perform to the negative class 
+   balance = True # Will balance the negative class according to how many positive samples were generated during augmentation
+
+   image_size_min, image_size_max = 50, 100 # Will try different image sizes within these bounds, the optimal value will be selected according to this range
+   opt_max_min_pix, opt_max_max_pix = 10, 1500 # Will try different normalization values (the max pixel for the min-max normalization), one for each filter, the optimal value(s) will be selected according to this range
+
+   metric = 'val_loss' # The optimzation routine will operate according to this metric's value at the end of each trial, which must also follow the patience criteria
+   average = True # Will average out the above metric across all training epochs, this will be the trial value at the end
+
+   metric2 = 'f1_score' # Optional metric that will stop trials if this doesn't improve according to the patience
+   metric3 = 'binary_accuracy' # Optional metric that will stop trials if this doesn't improve according to the patience
+
+   monitor1 = 'binary_accuracy' # Hard stop, trials will be terminated if this metric falls above the specified threshold
+   monitor1_thresh = 0.99+1e-6 # Specified threshold, in this case the optimization trial will termiante if the training accuracy falls above this limit
+
+   monitor2 = 'loss' # Hard stop, trials will be terminated if this metric falls below the specified threshold
+   monitor2_thresh = 0.01-1e-6 # Specified threshold, in this case the optimization trial will termiante if the training loss falls below this limit
+
+   model = cnn_model.Classifier(positive_class=blobs, negative_class=other, val_positive=val_blobs, img_num_channels=img_num_channels, clf=clf, normalize=normalize, optimize=optimize, n_iter=n_iter, batch_size_min=batch_size_min, batch_size_max=batch_size_max, epochs=epochs, patience=patience, metric=metric, metric2=metric2, metric3=metric3, average=average, opt_model=opt_model, train_epochs=train_epochs, opt_cv=opt_cv, opt_aug=opt_aug, batch_min=batch_min, batch_max=batch_max, batch_other=batch_other, balance=balance, image_size_min=image_size_min, image_size_max=image_size_max, shift=shift, opt_max_min_pix=opt_max_min_pix, opt_max_max_pix=opt_max_max_pix, rotation=rotation, horizontal=horizontal, vertical=vertical, zoom_range=zoom_range, limit_search=limit_search, monitor1=monitor1, monitor1_thresh=monitor1_thresh, monitor2=monitor2, monitor2_thresh=monitor2_thresh, use_gpu=True, verbose=1)
+
+   model.create()
+   model.save(dirname='Optimized_CNN_Model_CV5')
+
 
 
 

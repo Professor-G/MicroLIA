@@ -55,7 +55,7 @@ With the lightcurves simulated or loaded, and the feature matrix saved as data_x
       
       from MicroLIA import ensemble_models
 
-      model = models.Classifier(data_x, data_y, optimize=True, boruta_trials=25, n_iter=25)
+      model = models.Classifier(data_x, data_y, impute=True, optimize=True, boruta_trials=25, n_iter=25)
       model.create()
       
 .. figure:: _static/optimize.png
@@ -71,7 +71,7 @@ When the final model is output, we can predict new, unseen data, but note that i
 
 Example
 ==================
-To learn about MicroLIA's functionality please refer to the `example page <https://microlia.readthedocs.io/en/latest/source/Examples.html>`_, which covers in detail the options we have when simulating our training data and creating the classifiers. 
+To review MicroLIA's functionality in detail please refer to the `example page <https://microlia.readthedocs.io/en/latest/source/Examples.html>`_, which outlines the options available when simulating the training data and creating/optimizing the classifiers. 
 
 Science
 ==================
