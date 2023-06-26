@@ -53,9 +53,9 @@ With the lightcurves simulated or loaded, and the feature matrix saved as data_x
 
 .. code-blocK:: python
       
-      from MicroLIA import ensemble_models
+      from MicroLIA import ensemble_model
 
-      model = models.Classifier(data_x, data_y, impute=True, optimize=True, boruta_trials=25, n_iter=25)
+      model = models.Classifier(data_x, data_y, impute=True, optimize=True, opt_cv=3, boruta_trials=25, n_iter=25)
       model.create()
       
 .. figure:: _static/optimize.png
