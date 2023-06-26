@@ -329,7 +329,7 @@ class Classifier:
                 train_epochs=self.train_epochs, opt_cv=self.opt_cv, opt_aug=self.opt_aug, batch_min=self.batch_min, batch_max=self.batch_max, batch_other=self.batch_other, balance=self.balance, image_size_min=self.image_size_min, image_size_max=self.image_size_max, 
                 shift=self.shift, rotation=self.rotation, horizontal=self.horizontal, vertical=self.vertical, opt_max_min_pix=self.opt_max_min_pix, opt_max_max_pix=self.opt_max_max_pix, mask_size=self.mask_size, num_masks=self.num_masks, smote_sampling=self.smote_sampling, blend_max=self.blend_max, blend_other=self.blend_other, 
                 num_images_to_blend=self.num_images_to_blend, blending_func=self.blending_func, zoom_range=self.zoom_range, skew_angle=self.skew_angle, limit_search=self.limit_search, monitor1=self.monitor1, monitor2=self.monitor2, monitor1_thresh=self.monitor1_thresh, 
-                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, path=self.path, return_study=True)
+                monitor2_thresh=self.monitor2_thresh, verbose=self.verbose, return_study=True)
             print("Fitting and returning final model...")
         else:
             if self.epochs != 0:
@@ -1952,6 +1952,10 @@ def custom_model(positive_class, negative_class, img_num_channels=1, normalize=T
         early_stop_callback (list, optional): Callbacks for early stopping and pruning with Optuna, defaults
             to None. Should only be used with the optimization routine, refer to MicroLIA.optimization.objective_cnn().
         weight (int): Weight to apply if using the weighted loss function. Defaults to None. 
+        save_training_data (bool): Whether to save the training data, useful for visualizing the images as they were
+            input for training. Defaults to False.
+        paht (str): Path where the training data should be saved, only used if save_training_data is True.
+            Defaults to None, which saves the data in the local home directory.
 
     Returns:
         The trained CNN model and accompanying history.
@@ -2234,6 +2238,10 @@ def AlexNet(positive_class, negative_class, img_num_channels=1, normalize=True,
         early_stop_callback (list, optional): Callbacks for early stopping and pruning with Optuna, defaults
             to None. Should only be used with the optimization routine, refer to MicroLIA.optimization.objective_cnn().
         weight (int): Weight to apply if using the weighted loss function. Defaults to None. 
+        save_training_data (bool): Whether to save the training data, useful for visualizing the images as they were
+            input for training. Defaults to False.
+        paht (str): Path where the training data should be saved, only used if save_training_data is True.
+            Defaults to None, which saves the data in the local home directory.
 
     Returns:
         The trained CNN model and accompanying history.
@@ -2474,6 +2482,10 @@ def VGG16(positive_class, negative_class, img_num_channels=1, normalize=True,
         early_stop_callback (list, optional): Callbacks for early stopping and pruning with Optuna, defaults
             to None. Should only be used with the optimization routine, refer to MicroLIA.optimization.objective_cnn().
         weight (int): Weight to apply if using the weighted loss function. Defaults to None. 
+        save_training_data (bool): Whether to save the training data, useful for visualizing the images as they were
+            input for training. Defaults to False.
+        paht (str): Path where the training data should be saved, only used if save_training_data is True.
+            Defaults to None, which saves the data in the local home directory.
 
     Returns:
         The trained CNN model and accompanying history.
@@ -2725,7 +2737,7 @@ def Resnet18(positive_class, negative_class, img_num_channels=1, normalize=True,
         The trained CNN model and accompanying history.
     """
 
-    raise ValueError('ResNet-18 Model is not currently stable, please use another!')
+    raise ValueError('ResNet-18 Model is not currently stable, please select another model!')
 
     if batch_size < 16 and model_reg == 'batch_norm':
         print("Batch Normalization can be unstable with low batch sizes, if loss returns nan try a larger batch size and/or smaller learning rate.")

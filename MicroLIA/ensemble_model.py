@@ -130,13 +130,13 @@ class Classifier:
         else:
             self.data_y_ = None 
 
-    def create(self, overwrite_training=True):
+    def create(self, overwrite_training=False):
         """
         Creates the machine learning engine, current options are either a
         Random Forest, XGBoost, or a Neural Network classifier. 
 
         overwrite_training (bool): Whether to replace the original input data_x with the pre-processed
-            data_x. Defaults to True.
+            data_x. Defaults to False. 
         
         Returns:
             Trained and optimized classifier.
@@ -797,10 +797,11 @@ class Classifier:
                 that were accepted are plotted. Defaults to 'all'.
             include_other (bool): Whether to include the features that are not in the top designation,
                 if True these features will be averaged out and displayed. Defaults to True.
-            include_shadow (bool): Whether to include the max shadow feature that was used as a 
+            include_shadow (bool): Whether to include the mean shadow feature that was used as a 
                 baseline for 'random' behavior. Defaults to True.
-            include_rejected (bool): Whether to include the rejected features, if True these features 
-                will be averaged out and displayed.
+            include_rejected (bool): Whether to include the rejected features, if False these features 
+                will not be shown. If set to True or 'all', all the rejected features will show. If set to
+                a number, only the designated top rejected features will show. Defaults to False.
             flip_axes (bool): Whether transpose the figure. Defaults to True.
             save_data (bool): Whether to save the feature importances as a csv file, defaults to False.
             savefig (bool): If True the figure will not disply but will be saved instead.
@@ -809,6 +810,9 @@ class Classifier:
         Returns:
             AxesImage
         """
+
+        if feat_names is None and self.csv_file is not None:
+            feat_names = self.csv_file.columns[:-1]
 
         if feat_names == 'default':
             feat_names = ['Anderson-Darling', 'FluxPctRatioMid20', 'FluxPctRatioMid35', 'FluxPctRatioMid50', 'FluxPctRatioMid65', 'FluxPctRatioMid80', 
@@ -854,67 +858,60 @@ class Classifier:
         x, y, y_err = [], [], []
 
         for i in accepted_indices[:top]:
-            if feat_names is None:
-                if self.csv_file is None:
-                    x.append(int(i))
-                else:
-                    x.append(int(csv_data.iloc[i].Features))
-            else:
-                x.append(int(csv_data.iloc[i].Features))
+            x.append(int(csv_data.iloc[i].Features))
             y.append(float(csv_data.iloc[i]['Average Feature Importance']))
             y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
-            
-        include_other = False if len(accepted_indices) == top else True
+
+        include_other = False if len(accepted_indices) == top else include_other
 
         if include_other:
             mean, std = [], []
-            for j in accepted_indices[top:]:
-                mean.append(float(csv_data.iloc[j]['Average Feature Importance']))
-                std.append(float(csv_data.iloc[j]['Standard Deviation Importance']))
+            for i in accepted_indices[top:]:
+                mean.append(float(csv_data.iloc[i]['Average Feature Importance']))
+                std.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
             x.append(0), y.append(np.mean(mean)), y_err.append(np.mean(std))
 
         if include_shadow:
-            ix = np.where(csv_data.Features == 'Max_Shadow')[0]
+            ix = np.where(csv_data.Features == 'Mean_Shadow')[0]
             y.append(float(csv_data.iloc[ix]['Average Feature Importance']))
             y_err.append(float(csv_data.iloc[ix]['Standard Deviation Importance']))
-            x.append(int(ix))
+            x.append(0) #Just a placeholder
 
         if feat_names is not None:  
             feat_names = np.array(feat_names) if isinstance(feat_names, np.ndarray) is False else feat_names
             if include_shadow is False:
                 x_names = feat_names[x] if include_other is False else np.r_[feat_names[x[:-1]], ['Other Accepted']] #By default x is the index of the feature
             else:
-                x_names = np.r_[feat_names[x[:-1]], ['Max Shadow']] if include_other is False else np.r_[feat_names[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+                x_names = np.r_[feat_names[x[:-1]], ['Mean Shadow']] if include_other is False else np.r_[feat_names[x[:-2]], ['Other Accepted'], ['Mean Shadow']]
         else:
-            if self.csv_file is None:
-                if include_other is False:
-                    x_names = csv_data.iloc[x].Features if include_shadow is False else np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']]
-                else:
-                    x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Max Shadow']] if include_shadow is False else np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Max Shadow']]
+            if include_other is False:
+                x_names = csv_data.iloc[x].Features if include_shadow is False else np.r_[csv_data.iloc[x[:-1]].Features, ['Mean Shadow']]
             else:
-                if include_other is False:
-                    x_names = self.csv_file.columns[x[:-1]] if include_shadow is False else np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']]
-                else:
-                    x_names = np.r_[self.csv_file.columns[x[:-1]], ['Max Shadow']] if include_shadow is False else np.r_[self.csv_file.columns[x[:-2]], ['Other Accepted'], ['Max Shadow']]
+                x_names = np.r_[csv_data.iloc[x[:-1]].Features, ['Other Accepted']] if include_shadow is False else np.r_[csv_data.iloc[x[:-2]].Features, ['Other Accepted'], ['Mean Shadow']]
+        
 
-        if include_rejected:
+        if include_rejected is not False:
             x = []
             rejected_indices = np.where(csv_data.Decision == 'Rejected')[0]
-            for i in rejected_indices:
-                if feat_names is None:
-                    if self.csv_file is None:
-                        x.append(int(i))
-                    else:
-                        x.append(int(csv_data.iloc[i].Features))
-                else:
+            if include_rejected == 'all' or include_rejected == True:
+                for i in rejected_indices:
                     x.append(int(csv_data.iloc[i].Features))
-                y.append(float(csv_data.iloc[i]['Average Feature Importance']))
-                y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
-
-            if feat_names is None:
-                x_names = np.r_[x_names, csv_data.iloc[x].Features] if self.csv_file is None else np.r_[x_names, self.csv_file.columns[x]]
+                    y.append(float(csv_data.iloc[i]['Average Feature Importance']))
+                    y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
+            
             else:
-                x_names = np.r_[x_names, feat_names[x]]
+                if include_rejected > len(rejected_indices):
+                    include_rejected = len(rejected_indices)
+                    print('The include_rejected parameter exceeds the number of rejected features, setting to the maximum value of {}'.format(str(include_rejected)))
+
+                for i in rejected_indices[:include_rejected]:
+                    x.append(int(csv_data.iloc[i].Features))
+                    y.append(float(csv_data.iloc[i]['Average Feature Importance']))
+                    y_err.append(float(csv_data.iloc[i]['Standard Deviation Importance']))
+            
+            rejected_names = csv_data.iloc[x].Features if feat_names is None else feat_names[x]
+            x_names = np.r_[x_names, rejected_names] if feat_names is None else np.r_[x_names, rejected_names]
+
         
         y, y_err = np.array(y), np.array(y_err)
 
@@ -926,13 +923,15 @@ class Classifier:
             
             for t in ax.get_yticklabels():
                 txt = t.get_text()
-                if 'Max Shadow' in txt:
+                if 'Mean Shadow' in txt:
                     t.set_color('red')
                     if include_rejected is False:
-                        ax.plot(y[-1], np.arange(len(x_names))[-1], marker='*', color='red')
-                    else:
+                        idx = 1
+                    elif include_rejected == 'all' or include_rejected == True:
                         idx = 1 + len(rejected_indices)
-                        ax.plot(y[-idx], np.arange(len(x_names))[-idx], marker='*', color='red')
+                    else:
+                        idx = 1 + len(rejected_indices[:include_rejected])
+                    ax.plot(y[-idx], np.arange(len(x_names))[-idx], marker='*', color='red')
 
             ax.set_ylim((np.arange(len(x_names))[0]-0.5, np.arange(len(x_names))[-1]+0.5))
             ax.set_xlim((np.min(y)-1, np.max(y)+1))
@@ -943,9 +942,16 @@ class Classifier:
             ax.set_ylabel('Z Score', alpha=1, color='k'); ax.set_xticks(np.arange(len(x_names)), x_names, rotation=90)
             for t in ax.get_xticklabels():
                 txt = t.get_text()
-                if 'Max Shadow' in txt:
+                if 'Mean Shadow' in txt:
                     t.set_color('red')
-                    ax.plot(np.arange(len(x_names))[-1], y[-1], marker='*', color='red')
+                    if include_rejected is False:
+                        idx = 1
+                    elif include_rejected == 'all' or include_rejected == True:
+                        idx = 1 + len(rejected_indices)
+                    else:
+                        idx = 1 + len(rejected_indices[:include_rejected])
+                    ax.plot(np.arange(len(x_names))[-idx], y[-idx], marker='*', color='red')
+
             ax.set_xlim((np.arange(len(x_names))[0]-0.5, np.arange(len(x_names))[-1]+0.5))
             ax.set_ylim((np.min(y)-1, np.max(y)+1))
 

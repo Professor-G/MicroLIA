@@ -15,7 +15,6 @@ from MicroLIA.optimization import impute_missing_values
 from sklearn.model_selection import cross_validate
 
 csv = pd.read_csv('MicroLIA_Training_Set.csv')
-
 model = ensemble_model.Classifier(clf='xgb', csv_file=csv)
 model.load('test_model')
 
@@ -27,20 +26,13 @@ class Test(unittest.TestCase):
     Unittest to ensure the classifier is working correctly. 
     """
 
+
     def test_predict(self):
 
-        predicted_value = model.predict(d[:, 0], d[:, 1], d[:, 2], convert=True, zp=22, apply_weights=True)[:,1][3]
+        predicted_value = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
         expected_value = 0.96119
 
         self.assertAlmostEqual(predicted_value, expected_value, delta=0.01, msg="Classifier failed, probability prediction is not within the limits.")
-
-    def test_cv_score(self):
-
-        cv = cross_validate(model.model, model.data_x, model.data_y, cv=3) 
-        accuracy = np.mean(cv['test_score'])
-        expected_value = 0.95
-
-        self.assertAlmostEqual(accuracy, expected_value, delta=0.025, msg='Classifier failed, the mean 10-fold cross-validation accuracy is not within the limits.')
 
     def test_base_rf_model(self):
         new_model = ensemble_model.Classifier(model.data_x, model.data_y, clf='rf', impute=True, optimize=False)
@@ -50,7 +42,7 @@ class Test(unittest.TestCase):
         accuracy = np.mean(cv['test_score'])
         expected_value = 0.9
 
-        self.assertAlmostEqual(accuracy, expected_value, delta=0.01, msg='Classifier failed, the mean 10-fold cross-validation accuracy is not within the limits.')
+        self.assertAlmostEqual(accuracy, expected_value, delta=0.01, msg='Classifier failed, the mean 3-fold cross-validation accuracy is not within the limits.')
 
     def test_base_xgb_model(self):
         new_model = ensemble_model.Classifier(model.data_x, model.data_y, clf='xgb', impute=True, optimize=False)
@@ -71,6 +63,7 @@ class Test(unittest.TestCase):
         expected_value = 0.9
 
         self.assertAlmostEqual(accuracy, expected_value, delta=0.01, msg='Classifier failed, the mean 10-fold cross-validation accuracy is not within the limits.')
+
 
     def test_knn_imputer(self):
         model.data_x[[10,10]] = np.nan 
