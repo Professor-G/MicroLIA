@@ -1887,7 +1887,7 @@ def boruta_opt(data_x, data_y):
 
     return index
 
-def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_value=0):
+def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_value=0, nan_threshold=0.5):
     """
     Impute missing values in the input data array using various imputation strategies.
     By default the imputer will be created and returned, unless
@@ -1922,6 +1922,8 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
             Only applicable if the imputation strategy is set to 'knn'. Defaults to 3.
         constant_value (float or int, optional): Constant value to use for constant imputation.
             Only applicable if the imputation strategy is set to 'constant'. Defaults to 0.
+        nan_threshold (float): Columns with nan values greater than this ratio will be zeroed out before the imputation.
+            Defualts to 0.5.
 
     Returns:
         The first output is the data array with with the missing values filled in. 
