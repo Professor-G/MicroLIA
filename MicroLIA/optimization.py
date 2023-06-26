@@ -1893,6 +1893,12 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
     By default the imputer will be created and returned, unless
     the imputer argument is set, in which case only the transformed
     data is output. 
+
+    The function first identifies the columns with mostly missing values based on the nan_threshold parameter. 
+    It replaces the values in those columns with zeros before performing the imputation step using the selected 
+    imputation strategy. This way, the ignored columns will have zeros and won't be taken into account during imputation. 
+    The resulting imputed_data will have all columns preserved, with missing values filled according to the chosen imputation strategy.
+    This is required because the imputation techniques employed remove columns that have too many nans!
     
     Note:
         As the KNN imputation method bundles neighbors according to their eucledian distance,
@@ -1922,6 +1928,12 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
         The second output is the KNN Imputer that should be used to transform
         new data, prior to predictions. 
     """
+
+    column_missing_ratios = np.mean(np.isnan(data), axis=0)
+    columns_to_ignore = np.where(column_missing_ratios > nan_threshold)[0]
+    if len(columns_to_ignore) > 0:
+        print(f"WARNING: At least one data column has too many nan values according to the following threshold: {nan_threshold}. These columns have been zeroed out completely: {columns_to_ignore}")
+        data[:,columns_to_ignore] = 0
 
     if imputer is None:
         if strategy == 'mean':
