@@ -3,7 +3,7 @@
 Example: OGLE II
 ==================
 
-This example makes use of OGLE II data, (see: `Udalski et al 2015 <https://ui.adsabs.harvard.edu/abs/1997AcA....47..319U/abstract>`_).
+This example makes use of OGLE II data, (see: `Udalski et al 1997 <https://ui.adsabs.harvard.edu/abs/1997AcA....47..319U/abstract>`_).
 
 The lightcurves for 214 OGLE II microlensing events can be :download:`downloaded here <OGLE_II.zip>`. 
 
