@@ -8,7 +8,7 @@ from setuptools import setup, find_packages, Extension
 
 setup(
     name="MicroLIA",
-    version="2.5.0",
+    version="2.6.0",
     author="Daniel Godines",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing",
@@ -29,7 +29,7 @@ setup(
     include_package_data=True,
     test_suite="nose.collector",
     package_data={
-        'MicroLIA': ['data/Miras_vo.xml', 'data/Sesar2010/*', 'test/test_model_xgb/*', 'test/test_classifier.py', 
+        'MicroLIA': ['data/Miras_vo.xml', 'data/Sesar2010/*', 'test/test_model_xgb/MicroLIA_ensemble_model/*', 'test/test_classifier.py', 
             'test/test_features.py', 'test/MicroLIA_Training_Set_OGLE_IV.csv', 'test/test_ogle_lc.dat']
     },
 )
