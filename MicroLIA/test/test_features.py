@@ -6,13 +6,17 @@
 
 import unittest
 import numpy as np
+import pkg_resources
 
 import sys
 sys.path.append('../../')
 from MicroLIA.features import *
 from MicroLIA.extract_features import extract_all
 
-test_lc = np.loadtxt('test_ogle_lc.dat')
+resource_package = __name__
+file = pkg_resources.resource_filename(resource_package, 'test_ogle_lc.dat')
+
+test_lc = np.loadtxt(file)
 time, mag, magerr = test_lc[:,0], test_lc[:,1], test_lc[:,2]
 
 #Remove the nan and inf values, if present in the lightcurve

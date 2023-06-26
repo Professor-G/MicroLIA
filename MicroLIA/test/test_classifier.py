@@ -6,6 +6,7 @@
 import unittest
 import numpy as np
 import pandas as pd 
+import pkg_resources
 
 import sys
 sys.path.append('../../')
@@ -14,11 +15,20 @@ from MicroLIA.optimization import impute_missing_values
 
 from sklearn.model_selection import cross_validate
 
-csv = pd.read_csv('MicroLIA_Training_Set_OGLE_IV.csv')
-model = ensemble_model.Classifier(clf='xgb', csv_file=csv)
-model.load('test_model_xgb')
+resource_package = __name__
+file = pkg_resources.resource_filename(resource_package, 'MicroLIA_Training_Set_OGLE_IV.csv')
+csv = pd.read_csv(file)
 
-test_lc = np.loadtxt('test_ogle_lc.dat')
+resource_package = __name__
+folder = pkg_resources.resource_filename(resource_package, 'test_model_xgb')
+
+model = ensemble_model.Classifier(clf='xgb', csv_file=csv)
+model.load(folder)
+
+resource_package = __name__
+file = pkg_resources.resource_filename(resource_package, 'test_ogle_lc.dat')
+
+test_lc = np.loadtxt(file)
 time, mag, magerr = test_lc[:,0], test_lc[:,1], test_lc[:,2]
 
 class Test(unittest.TestCase):
@@ -67,7 +77,7 @@ class Test(unittest.TestCase):
 
         value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
         expected_value = 0.9999999
-        self.assertEqual(np.round(value), expected_value, msg="Classifier failed (nn), probability prediction is not correct.")
+        self.assertAlmostEqual(np.round(value), expected_value, delta=0.01, msg="Classifier failed (nn), probability prediction is not within the limits.")
 
     def test_knn_imputer(self):
         model.data_x[10,10] = np.nan 
