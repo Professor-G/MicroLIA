@@ -13,7 +13,7 @@ MicroLIA is an open-source program for detecting microlensing events in wide-fie
     $ pip install MicroLIA
 ```
 
-# Version 2.5
+# Version 2
 
 As of version 2.6.0, MicroLIA provides the following new features and improvements:
 
