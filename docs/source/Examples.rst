@@ -125,9 +125,6 @@ The ``ensemble_model`` module currently supports three machine learning algorith
 |
 We can also set the ``clf`` parameter to 'nn' for neural nework; since the neural network implementation requires more tuning to properly identify the optimal combination of layers and neurons, it is recommended to set ``n_iter`` to at least 100 everytime you optimize this engine:
 
-.. figure:: _static/nn_model_1.png
-    :align: center
-|
 Note that there is a ``boruta_trials`` argument which sets the number of iterations to perform when calculating feature importance, and is activated when ``optimize`` is set to True. If ``boruta_trials`` is set to 0, the feature selection procedure will be skipped and all features will be used. As shown in the picture above, even if ``boruta_trials`` is enabled, the feature selection will be skipped if the ``feats_to_use`` attribute has been set, as happened after the first XGBoost model was created. 
 
 For details on how to set the classifier and the accompanying optimization parameters, refer to the `ensemble_model <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/models/index.html#MicroLIA.models.create>`_ API documentation.
