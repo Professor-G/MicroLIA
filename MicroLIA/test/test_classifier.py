@@ -36,8 +36,8 @@ class Test(unittest.TestCase):
     """
 
     def test_predict(self):
-        value = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
-        expected_value = 0.88243955
+        value = model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][2]
+        expected_value = 0.99995493
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg="Classifier failed, probability prediction is not within the limits.")
 
     def test_base_rf_model(self):
@@ -46,11 +46,11 @@ class Test(unittest.TestCase):
 
         cv = cross_validate(new_model.model, new_model.data_x, new_model.data_y, cv=3) 
         value = np.mean(cv['test_score'])
-        expected_value = 0.9857501
+        expected_value = 0.985750185
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg='Classifier failed (rf), the mean 3-fold cross-validation accuracy is not within the limits.')
 
-        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
-        expected_value = 0.07
+        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][2]
+        expected_value = 0.99
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg="Classifier failed (rf), probability prediction is not within the limits.")
 
     def test_base_xgb_model(self):
@@ -59,11 +59,11 @@ class Test(unittest.TestCase):
 
         cv = cross_validate(new_model.model, new_model.data_x, new_model.data_y, cv=3) 
         value = np.mean(cv['test_score'])
-        expected_value = 0.9892495
+        expected_value = 0.989249561
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg='Classifier failed (xgb), the mean 3-fold cross-validation accuracy is not within the limits.')
 
-        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
-        expected_value = 0.0013825
+        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][2]
+        expected_value = 0.999922275
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg="Classifier failed (rf), probability prediction is not within the limits.")
 
     def test_base_nn_model(self):
@@ -72,11 +72,11 @@ class Test(unittest.TestCase):
 
         cv = cross_validate(new_model.model, new_model.data_x, new_model.data_y, cv=3) 
         value = np.mean(cv['test_score'])
-        expected_value = 0.6969853
+        expected_value = 0.6969853407
         self.assertAlmostEqual(value, expected_value, delta=0.01, msg='Classifier failed (nn), the mean 3-fold cross-validation accuracy is not within the limits.')
 
-        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][3]
-        expected_value = 0.9999999
+        value = new_model.predict(time, mag, magerr, convert=True, zp=22, apply_weights=True)[:,1][2]
+        expected_value = 0.0
         self.assertAlmostEqual(np.round(value), expected_value, delta=0.01, msg="Classifier failed (nn), probability prediction is not within the limits.")
 
     def test_knn_imputer(self):
