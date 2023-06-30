@@ -395,14 +395,48 @@ We can now visualize the performance:
 
 .. code-block:: python
    
-   model.plot_conf_matrix()
-   model.plot_roc_curve()
+   model.plot_conf_matrix() #Applies 10-fold CV by default
    model.plot_tsne()
 
+.. figure:: _static/conf_matrix_OGLEIV.png
+    :align: center
+|
+.. figure:: _static/tsne_OGLEIV.png
+    :align: center
+|
+
+We can also visalize the optimization results:
+
+.. code-block:: python
+
    model.plot_feature_opt(feat_names='default', top=20, flip_axes=False)
-   model.plot_hyper_opt(xlim=(1,100), ylim=(0.85,0.95), xlog=True, savefig=True)
+   model.plot_hyper_opt(xlim=(1,100), ylim=(0.9775,0.995), xlog=True)
    model.save_hyper_importance()
-   model.plot_hyper_param_importance(plot_time=True, savefig=True)
+   model.plot_hyper_param_importance(plot_time=True)
+
+.. figure:: _static/Feature_Importance_OGLEIV.png
+    :align: center
+|
+.. figure:: _static/hyper_opt_OGLEIV.png
+    :align: center
+|
+.. figure:: _static/hyper_importance_OGLEIV.png
+    :align: center
+|
+
+From the 148 statistical features computed, the feature selection routine identified 128 as useful, although as stated in the above note on feature selection, the default engine used to rank these metrics is the random forest which yields a more conservative selection. We will now change the ``boruta_model`` to XGBoost instead, and will re-optimize the model given the newly selected features:
+
+.. code-block:: python
+   
+   new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000, boruta_model='xgb')
+   new_model.create()
+
+This new model only requires _ features, but note the difference in performance:
+
+.. code-block:: python
+   
+   new_model.plot_conf_matrix() #Applies 10-fold CV by default
+   new_model.plot_tsne()
 
 Example: COSMOS
 ========
