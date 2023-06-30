@@ -17,12 +17,12 @@ from sklearn.model_selection import cross_validate
 
 resource_package = __name__
 file = pkg_resources.resource_filename(resource_package, 'MicroLIA_Training_Set_OGLE_IV.csv')
-csv = pd.read_csv(file)
+df = pd.read_csv(file)
 
 resource_package = __name__
 folder = pkg_resources.resource_filename(resource_package, 'test_model_xgb')
 
-model = ensemble_model.Classifier(clf='xgb', csv_file=csv)
+model = ensemble_model.Classifier(clf='xgb', training_data=df)
 model.load(folder)
 
 resource_package = __name__
