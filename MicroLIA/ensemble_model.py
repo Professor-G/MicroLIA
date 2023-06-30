@@ -75,14 +75,14 @@ class Classifier:
         balance (bool, optional): If True, a weights array will be calculated and used when fitting the classifier. 
             This can improve classification when classes are imbalanced and is ignored otherwise. This is only applied if 
             the classification is a binary task. Defaults to True.        
-        csv_file (DataFrame, optional): The csv file output after generating the training set. This can be
-            input in lieu of the data_x and data_y arguments. Note that the csv_file must have a "label" column,
+        training_data (DataFrame, optional): A dataframe that represents the output from generating the training set. This can be
+            input in lieu of the data_x and data_y arguments. Note that the dataframe must have a "label" column,
             and is intended to be used after executing the MicroLIA.training_set routine.
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
         limit_search=True, impute=False, imp_method='knn', n_iter=25, 
-        boruta_trials=50, boruta_model='rf', balance=True, csv_file=None):
+        boruta_trials=50, boruta_model='rf', balance=True, training_data=None):
 
         self.data_x = data_x
         self.data_y = data_y
@@ -96,7 +96,7 @@ class Classifier:
         self.boruta_trials = boruta_trials
         self.boruta_model = boruta_model 
         self.balance = balance 
-        self.csv_file = csv_file
+        self.training_data = training_data
 
         self.model = None
         self.imputer = None
@@ -106,10 +106,10 @@ class Classifier:
         self.optimization_results = None 
         self.best_params = None 
 
-        if self.csv_file is not None:
-            self.data_x = np.array(csv_file[csv_file.columns[:-1]])
-            self.data_y = csv_file.label
-            print('Successfully loaded the data_x and data_y arrays from the input csv_file!')
+        if self.training_data is not None:
+            self.data_x = np.array(training_data[training_data.columns[:-1]])
+            self.data_y = training_data.label
+            print('Successfully loaded the data_x and data_y arrays from the input training data!')
         else:
             if self.data_x is None or self.data_y is None:
                 print('NOTE: data_x and data_y parameters are required to output visualizations.')
@@ -453,7 +453,7 @@ class Classifier:
 
         if data_y is None:
             if self.data_y_ is None:
-                if self.csv_file is None:
+                if self.training_data is None:
                     if data_y is None:
                         data_y = self.data_y
                         feats = np.unique(self.data_y)
@@ -465,8 +465,8 @@ class Classifier:
                                 raise ValueError('data_y argument must either be a list or an array!')
                         feats = np.unique(data_y)
                 else:
-                    if len(self.csv_file) == len(self.data_y):
-                        data_y = np.array(self.csv_file.label)
+                    if len(self.training_data) == len(self.data_y):
+                        data_y = np.array(self.training_data.label)
                         feats = np.unique(data_y)
                     else:
                         data_y = self.data_y
@@ -551,10 +551,10 @@ class Classifier:
             classes = [str(label) for label in np.unique(data_y)]
         else:
             if self.data_y_ is None:
-                if self.csv_file is None:
+                if self.training_data is None:
                     classes = [str(label) for label in np.unique(self.data_y)]
                 else:
-                    classes = [str(label) for label in np.unique(np.array(self.csv_file.label))]
+                    classes = [str(label) for label in np.unique(np.array(self.training_data.label))]
             else:
                 classes = [str(label) for label in np.unique(self.data_y_)]
 
@@ -811,8 +811,8 @@ class Classifier:
             AxesImage
         """
 
-        if feat_names is None and self.csv_file is not None:
-            feat_names = self.csv_file.columns[:-1]
+        if feat_names is None and self.training_data is not None:
+            feat_names = self.training_data.columns[:-1]
 
         if feat_names == 'default':
             feat_names = ['Anderson-Darling', 'FluxPctRatioMid20', 'FluxPctRatioMid35', 'FluxPctRatioMid50', 'FluxPctRatioMid65', 'FluxPctRatioMid80', 
