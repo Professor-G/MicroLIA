@@ -370,7 +370,7 @@ Example: OGLE IV
 
 This excercise makes use of OGLE IV data (see: `Udalski et al 2015 <http://acta.astrouw.edu.pl/Vol65/n1/pdf/pap_65_1_1.pdf>`_).
 
-The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, optimized using 10-fold cross-validation with the ``limit_search`` flag set to False..
+The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, optimized using 10-fold cross-validation with the ``limit_search`` flag set to False.
 
 .. code-block:: python
    
@@ -381,7 +381,7 @@ The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloade
    # This will create a training set, the class names are the folder names
    data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV_REAL_LC', apply_weights=True, save_file=True)
 
-Next we will create an optimal classifier using XGBoost:
+Next we will create an optimal classifier using XGBoost (this model is available in the MicroLIA test folder, saved as **test_model_xgb**):
 
 .. code-block:: python
    
@@ -431,7 +431,7 @@ From the 148 statistical features computed, the feature selection routine identi
    new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000, boruta_model='xgb')
    new_model.create()
 
-This new model only requires _ features, but note the difference in performance:
+This new model only requires _ features, which will in turn yield faster predictions, but note the difference in performance:
 
 .. code-block:: python
    
