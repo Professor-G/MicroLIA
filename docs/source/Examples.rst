@@ -409,7 +409,7 @@ We can also visualize the optimization results:
 
 .. code-block:: python
 
-   model.plot_feature_opt(feat_names='default', top=20, flip_axes=False)
+   model.plot_feature_opt(feat_names='default', top=20, flip_axes=True)
    model.plot_hyper_opt(xlim=(1,100), ylim=(0.9775,0.995), xlog=True)
    model.save_hyper_importance()
    model.plot_hyper_param_importance(plot_time=True)
@@ -428,7 +428,7 @@ From the 148 statistical features computed, the feature selection routine identi
 
 .. code-block:: python
    
-   new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000, boruta_model='xgb')
+   new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, opt_cv=10, n_iter=100, boruta_trials=1000, boruta_model='xgb')
    new_model.create()
 
 We can see that this new model only requires 44 features:
