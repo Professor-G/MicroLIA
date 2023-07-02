@@ -370,7 +370,7 @@ Example: OGLE IV
 
 This excercise makes use of OGLE IV data (see: `Udalski et al 2015 <http://acta.astrouw.edu.pl/Vol65/n1/pdf/pap_65_1_1.pdf>`_).
 
-The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, optimized using 10-fold cross-validation with the ``limit_search`` flag set to False.
+The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloaded here <OGLE_IV.zip>`. This folder contains additional directories containing real OGLE IV lightcurves of cataclysmic variables (CV), long-period variables (LPV), and RRLyrae variables (RRLYR). In this example we will train a classifier using these real lightcurves, the training set will be created using the ``load_all`` function from the training_set module:
 
 .. code-block:: python
    
@@ -381,13 +381,13 @@ The lightcurves for 1000 OGLE IV microlensing events can be :download:`downloade
    # This will create a training set, the class names are the folder names
    data_x, data_y = training_set.load_all(path=path, convert=True, zp=22, filename='OGLE_IV_REAL_LC', apply_weights=True, save_file=True)
 
-Next we will create an optimal classifier using XGBoost (this model is available in the MicroLIA test folder, saved as **test_model_xgb**):
+Next we will create an optimal classifier using XGBoost (this model is available in the MicroLIA test folder, saved as **test_model_xgb**), using 10-fold cross-validation:
 
 .. code-block:: python
    
    from MicroLIA import ensemble_model
 
-   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000)
+   model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, opt_cv=10, n_iter=100, boruta_trials=1000)
    model.create()
    model.save('OGLE_IV_REAL')
 
@@ -405,7 +405,7 @@ We can now visualize the performance:
     :align: center
 |
 
-We can also visalize the optimization results:
+We can also visualize the optimization results:
 
 .. code-block:: python
 
@@ -431,12 +431,35 @@ From the 148 statistical features computed, the feature selection routine identi
    new_model = ensemble_model.Classifier(data_x, data_y, clf='xgb', impute=True, optimize=True, limit_search=False, opt_cv=10, n_iter=100, boruta_trials=1000, boruta_model='xgb')
    new_model.create()
 
-This new model only requires _ features, which will in turn yield faster predictions, but note the difference in performance:
+We can see that this new model only requires 44 features:
+   
+.. figure:: _static/feats_to_use_xgb.png
+    :align: center
+|
+This new model in turn yields faster predictions as only 30\% of the total features will be computed, yet given the the corresponding confusion matrix and the truncated feature space we can see similar model results:
 
 .. code-block:: python
    
    new_model.plot_conf_matrix() #Applies 10-fold CV by default
    new_model.plot_tsne()
+
+.. figure:: _static/Ensemble_Confusion_Matrix_xgb.png
+    :align: center
+|
+.. figure:: _static/tSNE_Projection_xgb.png
+    :align: center
+|
+
+Therefore, we can achieve similar 10-fold CV accuracies with only these features:
+
+.. code-block:: python
+   
+   model.plot_feature_opt(feat_names='default', top='all', flip_axes=False)
+
+.. figure:: _static/Feature_Importance_xgb.png
+    :align: center
+|
+In practice I have found that using less features can result in different probability predictions (lower probabilities than when using the rf-based selection), so proper analysis using leave-one-out cross validation, for example, is advised.
 
 Example: COSMOS
 ========
