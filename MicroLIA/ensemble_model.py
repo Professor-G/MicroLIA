@@ -647,6 +647,8 @@ class Classifier:
         tprs, aucs = [], []
         mean_fpr = np.linspace(0, 1, 100)
 
+        _set_style_() if savefig else None 
+
         fig, ax = plt.subplots()
 
         for i, (data_x, test) in enumerate(cv.split(data, self.data_y)):
@@ -673,7 +675,6 @@ class Classifier:
         ax.set_facecolor("white")
 
         if savefig:
-            _set_style_()
             plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
             plt.clf(); plt.style.use('default')
         else:
@@ -725,6 +726,8 @@ class Classifier:
             else:
                 break
 
+        _set_style_() if savefig else None 
+
         if baseline is not None:
             plt.axhline(y=baseline, color='k', linestyle='--', label='Baseline Model')
             ncol=3
@@ -765,7 +768,6 @@ class Classifier:
             plt.yscale('log')
         
         if savefig:
-            _set_style_()
             plt.savefig('Ensemble_Hyperparameter_Optimization.png', bbox_inches='tight', dpi=300)
             plt.clf(); plt.style.use('default')
         else:
@@ -916,6 +918,8 @@ class Classifier:
         
         y, y_err = np.array(y), np.array(y_err)
 
+        _set_style_() if savefig else None 
+
         fig, ax = plt.subplots()
         if flip_axes:
             lns, = ax.plot(y, np.arange(len(x_names)), 'k*--', lw=0.77)
@@ -960,7 +964,6 @@ class Classifier:
         ax.set_title('Feature Importance')
 
         if savefig:
-            _set_style_()
             plt.savefig('Feature_Importance.png', bbox_inches='tight', dpi=300)
             plt.clf(); plt.style.use('default')
         else:
@@ -1009,6 +1012,8 @@ class Classifier:
 
         xtick_labels = format_labels(params)
 
+        _set_style_() if savefig else None 
+
         fig, ax = plt.subplots()
         ax.barh(xtick_labels, importance, label='Importance for Classification', color=mcolors.TABLEAU_COLORS["tab:blue"], alpha=0.87)
         if plot_time:
@@ -1020,7 +1025,6 @@ class Classifier:
         plt.gca().invert_yaxis()
 
         if savefig:
-            _set_style_()
             if plot_time:
                 plt.savefig('Ensemble_Hyperparameter_Importance.png', bbox_inches='tight', dpi=300)
             else:
@@ -1159,7 +1163,6 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
     
     if savefig:
-        _set_style_()
         plt.savefig('Ensemble_Confusion_Matrix.png', bbox_inches='tight', dpi=300)
         plt.clf(); plt.style.use('default')
     else:
@@ -1180,6 +1183,8 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
     Returns:
         AxesImage object. 
     """
+
+    _set_style_() if savefig else plt.style.use('default')
 
     if normalize:
         conf_matrix = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
