@@ -455,7 +455,7 @@ class objective_cnn(object):
 
         ### Learning Rate & Optimizer ###
         lr = trial.suggest_float('lr', 1e-6, 1e-3, step=5e-6) 
-        decay=0 #decay = trial.suggest_float('decay', 0.0, 0.1, step=1e-3)
+        decay = 0 #decay = trial.suggest_float('decay', 0.0, 0.1, step=1e-3)
         optimizer = trial.suggest_categorical('optimizer', ['sgd', 'adam', 'adamax', 'nadam', 'adadelta', 'rmsprop'])
 
         #All use inverse time decay, a few use rho as well, and Adam-based optimizers use beta_1 and beta_2 
@@ -1828,7 +1828,7 @@ def borutashap_opt(data_x, data_y, boruta_trials=50, model='rf', importance_type
     if model == 'rf':
         classifier = RandomForestClassifier(random_state=1909)
     elif model == 'xgb':
-        classifier = XGBClassifier(tree_method='exact', max_depth=20, importance_type=importance_type, random_state=1909)
+        classifier = XGBClassifier(random_state=1909)#tree_method='exact', max_depth=20, importance_type=importance_type)
     else:
         raise ValueError('Model argument must either be "rf" or "xgb".')
     
@@ -1883,7 +1883,7 @@ def boruta_opt(data_x, data_y):
     feats = np.array([str(feat) for feat in feat_selector.support_])
     index = np.where(feats == 'True')[0]
 
-    print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support)))
+    print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support_)))
 
     return index
 
@@ -1931,13 +1931,14 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
         new data, prior to predictions. 
     """
 
-    column_missing_ratios = np.mean(np.isnan(data), axis=0)
-    columns_to_ignore = np.where(column_missing_ratios > nan_threshold)[0]
-    if len(columns_to_ignore) > 0:
-        print(f"WARNING: At least one data column has too many nan values according to the following threshold: {nan_threshold}. These columns have been zeroed out completely: {columns_to_ignore}")
-        data[:,columns_to_ignore] = 0
-
     if imputer is None:
+
+        column_missing_ratios = np.mean(np.isnan(data), axis=0)
+        columns_to_ignore = np.where(column_missing_ratios > nan_threshold)[0]
+        if len(columns_to_ignore) > 0:
+            print(f"WARNING: At least one data column has too many nan values according to the following threshold: {nan_threshold}. These columns have been zeroed out completely: {columns_to_ignore}")
+            data[:,columns_to_ignore] = 0
+        
         if strategy == 'mean':
             imputer = SimpleImputer(strategy='mean')
         elif strategy == 'median':
