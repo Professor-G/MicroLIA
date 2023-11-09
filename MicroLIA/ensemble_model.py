@@ -1158,9 +1158,9 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
 
     plt.figure()
     if normalize:
-        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
+        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title, savefig=savefig)
     else:
-        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title)
+        generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title, savefig=savefig)
     
     if savefig:
         plt.savefig('Ensemble_Confusion_Matrix.png', bbox_inches='tight', dpi=300)
@@ -1168,7 +1168,7 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
     else:
         plt.show()
     
-def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix'):
+def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix', savefig=False):
     """
     Generates the confusion matrix figure object, but does not plot.
     
@@ -1179,6 +1179,7 @@ def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix
         normalize (bool, optional): If True the matrix accuracy will be normalized
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
+        savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
 
     Returns:
         AxesImage object. 
