@@ -817,7 +817,7 @@ class Classifier:
             feat_names = self.training_data.columns[:-1]
 
         if feat_names is not None:
-            if feat_names == 'default':
+            if str(feat_names) == 'default':
                 feat_names = ['Anderson-Darling', 'FluxPctRatioMid20', 'FluxPctRatioMid35', 'FluxPctRatioMid50', 'FluxPctRatioMid65', 'FluxPctRatioMid80', 
                     'Median-Based Skew', 'Linear Trend', 'Max Slope', 'Pair Slope Trend', 'Percent Amp.', 'Percent DiffFluxPct', 'Above 1', 'Above 3', 
                     'Above 5', 'Abs. Energy', 'Abs. Sum Changes', 'Amplitude', 'Autocorrelation', 'Below 1', 'Below 3', 'Below 5', 'Benford Correlation', 
