@@ -356,6 +356,10 @@ class Classifier:
     def predict(self, time, mag, magerr, convert=True, apply_weights=True, zp=24):
         """
         Predics the class label of new, unseen data.
+        
+        Note:
+            If the model classes are string labels then the output including the probability
+            prediction will be strings instead of floats!
 
         Args:
             time (ndarray): Array of observation timestamps.
@@ -382,14 +386,20 @@ class Classifier:
         if self.imputer is None and self.feats_to_use is None:
             stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp))
             pred = self.model.predict_proba(stat_array)
-            return np.c_[classes, pred[0]]
+            if np.all(np.array([isinstance(item, str) for item in classes])):
+                return np.c_[classes, np.array(pred[0], dtype=str)]
+            else:
+                return np.c_[classes, pred[0]] 
         
         stat_array.append(extract_features.extract_all(time, mag, magerr, convert=convert, apply_weights=apply_weights, zp=zp, feats_to_use=self.feats_to_use))        
         stat_array = self.imputer.transform(stat_array) if self.imputer is not None else stat_array
 
         pred = self.model.predict_proba(stat_array)
 
-        return np.c_[classes, pred[0]]
+        if np.all(np.array([isinstance(item, str) for item in classes])):
+            return np.c_[classes, np.array(pred[0], dtype=str)]
+        else:
+            return np.c_[classes, pred[0]]
 
     def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, 
         legend_loc='upper center', title='Feature Parameter Space', savefig=False):
