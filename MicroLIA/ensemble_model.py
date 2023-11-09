@@ -1119,6 +1119,9 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
         The second output is the 1D array of the predicted class labels.
     """
 
+    if isinstance(data_y, pd.core.series.Series): #In case the training set is loaded as a pd_dataframe
+        data_y = np.array(data_y) 
+        
     kf = KFold(n_splits=k_fold, shuffle=True, random_state=42)
     predicted_targets = []
     actual_targets = []
