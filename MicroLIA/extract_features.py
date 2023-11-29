@@ -117,12 +117,12 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
 
         if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
             try:
-                feature = func[1](time, flux, flux_err, apply_weights=apply_weights)  #amplitude dependent features use non-normalized flux
+                feature = func[1](time, flux_deriv, flux_deriv_err, apply_weights=apply_weights)  #amplitude dependent features use non-normalized flux
             except:# (ZeroDivisionError, ValueError, IndexError):
                 feature = np.nan
         else:
             try:
-                feature = func[1](time, norm_flux, norm_fluxerr, apply_weights=apply_weights)
+                feature = func[1](time, norm_flux_deriv, norm_flux_deriv_err, apply_weights=apply_weights)
             except:# (ZeroDivisionError, ValueError, IndexError):
                 feature = np.nan
 
