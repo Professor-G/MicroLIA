@@ -176,7 +176,7 @@ def con(time, mag, magerr, apply_weights=True):
     return con/len(mag)
 
 def kurtosis(time, mag, magerr, apply_weights=True):
-    """"
+    """
     This function returns the calculated kurtosis of the lightcurve.
     It's a measure of the peakedness (or flatness) of the lightcurve relative
     to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
