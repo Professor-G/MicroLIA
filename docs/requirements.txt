@@ -5,3 +5,4 @@ numpy
 setuptools>=40.6.0
 setuptools_scm
 sphinx-autoapi
+sphinx_rtd_theme>=1.2
