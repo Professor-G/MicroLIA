@@ -96,6 +96,7 @@ pygments_style = None
 html_static_path = ["./source/_static"]
 html_logo = "./source/_static/MicroLIA_logo.png"
 html_theme_options = {"logo_only": True}
+html_css_files = ['theme_overrides.css']
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
