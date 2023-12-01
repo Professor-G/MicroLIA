@@ -9,7 +9,7 @@ MicroLIA is an open-source program for microlensing detection in wide-field surv
 
 While the program is intended for microlensing signal detection, the API has been coded as a general-purpose tool and thus includes a function to generate a training set using any type of time-series data. To do this you can utilize the `load_all <https://microlia.readthedocs.io/en/latest/_modules/MicroLIA/training_set.html#load_all>`_ function available in the `training_set <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_ module. This function requires that your training data contain at least 2-arrays (time + measurements), and while a third array is required (measurement errors), this can be zeros and will be ignored with the ``apply_weights`` parameter set to ``False``. For a complete list of statistical features the program calculates on your data, review the `features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/features/index.html>`_ module.
 
-With a generate training set, you can easily train and assess a production-ready machine learning model using the `Classifier <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/ensemble_model/index.html#MicroLIA.ensemble_model.Classifier>`_ class. For more information refer to the API documentation. 
+With a generated training set, you can easily train and assess a production-ready machine learning model using the `Classifier <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/ensemble_model/index.html#MicroLIA.ensemble_model.Classifier>`_ class. For more information refer to the API documentation. 
 
 
 Installation
