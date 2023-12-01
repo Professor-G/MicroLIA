@@ -5,9 +5,12 @@
 
 Welcome to MicroLIA's documentation!
 ===============================
-MicroLIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of MicroLIA supports two additional models: Extreme Gradient Boost and Neural Network. 
+MicroLIA is an open-source program for microlensing detection in wide-field surveys. The original engine that was published used the machine learning Random Forest model, trained using a variety of lightcurve statistics. The current version of MicroLIA supports two additional models: eXtreme Gradient Boost and Neural Network. 
 
 You can find information on the program development in the `paper <https://arxiv.org/abs/2004.14347>`_.
+
+While the program is intended for microlensing signal detection, the API has been coded as a general-purpose tool and thus includes a function to generate a training set using any type of time-series data. To do this you can utilize the `load_all <https://microlia.readthedocs.io/en/latest/_modules/MicroLIA/training_set.html#load_all>`_ function available in the `training_set <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/training_set/index.html>`_ module. This function requires that your training data contain at least 2-arrays (time + measurements), and while a third array is required (measurement errors), this can be zeros and will be ignored with the ``apply_weights`` parameter to ``False``. With a custom training set, you can easily train a machine learning model using the `Classifier <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/ensemble_model/index.html#MicroLIA.ensemble_model.Classifier>`_ class. For more information refer to the API documentation. 
+
 
 Installation
 ==================
