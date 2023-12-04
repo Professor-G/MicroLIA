@@ -104,12 +104,15 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
         counter += 1
             
     #Derivative space
-    dx = np.gradient(time)
-    dy = np.gradient(flux)
-    dy_err = np.gradient(flux_err)
+    dx, dy, dy_err = np.gradient(time), np.gradient(flux), np.gradient(flux_err)
     
     flux_deriv = dy / dx
     flux_deriv_err = dy_err / dx
+
+    # If dx is 0, avoid NaNs!
+    flux_deriv[~np.isfinite(flux_deriv)] = 0
+    flux_deriv_err[~np.isfinite(flux_deriv_err)] = 0
+
     #flux_deriv = np.gradient(flux, time)
     #flux_deriv_err = np.gradient(flux_err, time) 
     
