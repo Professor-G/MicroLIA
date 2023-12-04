@@ -108,16 +108,13 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
     
     flux_deriv = dy / dx
     flux_deriv_err = dy_err / dx
-
-    # If dx is 0, avoid NaNs!
-    flux_deriv[~np.isfinite(flux_deriv)] = 0
-    flux_deriv_err[~np.isfinite(flux_deriv_err)] = 0
-
-    #flux_deriv = np.gradient(flux, time)
-    #flux_deriv_err = np.gradient(flux_err, time) 
     
     norm_flux_deriv = flux_deriv / np.max(flux_deriv)
     norm_flux_deriv_err = flux_deriv_err * (norm_flux_deriv / flux_deriv)
+
+    # If dx is 0, avoid NaNs!
+    norm_flux_deriv[~np.isfinite(norm_flux_deriv)] = 0
+    norm_flux_deriv_err[~np.isfinite(norm_flux_deriv_err)] = 0
 
     for func in all_features_functions:
         if feats_to_use is not None:
