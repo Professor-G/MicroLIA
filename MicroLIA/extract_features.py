@@ -68,7 +68,7 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
     time, mag, magerr = time[mask], mag[mask], magerr[mask]
 
     if convert is True:
-        flux = 10**(-(mag-zp) / 2.5)
+        flux = 10**(-(mag - zp) / 2.5)
         flux_err = (magerr * flux) / (2.5) * np.log(10)
     elif convert is False:
         flux, flux_err = mag, magerr
@@ -104,8 +104,14 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
         counter += 1
             
     #Derivative space
-    flux_deriv = np.gradient(flux, time)
-    flux_deriv_err = np.gradient(flux_err, time) 
+    dx = np.gradient(time)
+    dy = np.gradient(flux)
+    dy_err = np.gradient(flux_err)
+    
+    flux_deriv = dy / dx
+    flux_deriv_err = dy_err / dx
+    #flux_deriv = np.gradient(flux, time)
+    #flux_deriv_err = np.gradient(flux_err, time) 
     
     norm_flux_deriv = flux_deriv / np.max(flux_deriv)
     norm_flux_deriv_err = flux_deriv_err * (norm_flux_deriv / flux_deriv)
@@ -130,8 +136,10 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
         counter += 1
 
     stats = np.array(stats)
-    stats[np.isfinite(stats)==False] = np.nan
-    stats[stats>1e7], stats[(stats<1e-7)&(stats>0)], stats[stats<-1e7] = 1e7, 1e-7, -1e7
+    # Ensure non-finite values are set to NaN
+    stats[np.isfinite(stats) == False] = np.nan
+    # Float limits (models break otherwise)
+    stats[stats > 1e7], stats[(stats<1e-7) & (stats>0)], stats[stats < -1e7] = 1e7, 1e-7, -1e7
 
     if return_names is False:
         return stats
