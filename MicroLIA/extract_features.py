@@ -102,15 +102,28 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
 
         feature_names.append(func[0]); stats.append(feature)
         counter += 1
-            
-    #Derivative space
-    dx, dy, dy_err = np.gradient(time), np.gradient(flux), np.gradient(flux_err)
-    
+
+    # Derivative space
+    dx, dy = np.gradient(time), np.gradient(flux)
+
     flux_deriv = dy / dx
-    flux_deriv_err = dy_err / dx
-    
-    norm_flux_deriv = flux_deriv / np.max(flux_deriv)
-    norm_flux_deriv_err = flux_deriv_err * (norm_flux_deriv / flux_deriv)
+    flux_deriv_err = np.sqrt(
+        (np.gradient(flux_deriv, time) / flux_deriv) ** 2 * flux_err**2
+    )
+    mask_1 = np.where(
+        np.isfinite(time) & np.isfinite(flux_deriv) & np.isfinite(flux_deriv_err)
+    )[0]
+
+    norm_flux_deriv = flux_deriv[mask_1] / np.max(flux_deriv[mask_1])
+    norm_flux_deriv_err = np.sqrt(
+        (np.gradient(norm_flux_deriv, time[mask_1]) / norm_flux_deriv) ** 2
+        * norm_fluxerr[mask_1] ** 2
+    )
+    mask_2 = np.where(
+        np.isfinite(time[mask_1])
+        & np.isfinite(norm_flux_deriv)
+        & np.isfinite(norm_flux_deriv_err)
+    )[0]
 
     for func in all_features_functions:
         if feats_to_use is not None:
@@ -119,13 +132,23 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
 
         if func[0] == 'amplitude' or func[0] == 'median_buffer_range':
             try:
-                feature = func[1](time, flux_deriv, flux_deriv_err, apply_weights=apply_weights)  #amplitude dependent features use non-normalized flux
-            except:# (ZeroDivisionError, ValueError, IndexError):
+                feature = func[1](
+                    time[mask_1],
+                    flux_deriv[mask_1],
+                    flux_deriv_err[mask_1],
+                    apply_weights=apply_weights,
+                )  # amplitude dependent features use non-normalized flux
+            except:  # (ZeroDivisionError, ValueError, IndexError):
                 feature = np.nan
         else:
             try:
-                feature = func[1](time, norm_flux_deriv, norm_flux_deriv_err, apply_weights=apply_weights)
-            except:# (ZeroDivisionError, ValueError, IndexError):
+                feature = func[1](
+                    time[mask_1][mask_2],
+                    norm_flux_deriv[mask_2],
+                    norm_flux_deriv_err[mask_2],
+                    apply_weights=apply_weights,
+                )
+            except:  # (ZeroDivisionError, ValueError, IndexError):
                 feature = np.nan
 
         feature_names.append(func[0]+'_deriv'); stats.append(feature)
