@@ -1626,8 +1626,8 @@ def Gskew(time, mag, magerr, apply_weights=True):
 
         # Calculate the indices of the median and quantiles
         median_index = np.searchsorted(cum_weights, 0.5 * cum_weights[-1])
-        q3_index = np.searchsorted(cum_weights, 0.03 * cum_weights[-1])
-        q97_index = np.searchsorted(cum_weights, 0.97 * cum_weights[-1])
+        q3_index = max(1, np.searchsorted(cum_weights, 0.03 * cum_weights[-1]))
+        q97_index = min(len(cum_weights), np.searchsorted(cum_weights, 0.97 * cum_weights[-1]))
 
         # Calculate the median and quantiles
         median_mag = sorted_mag[median_index]
