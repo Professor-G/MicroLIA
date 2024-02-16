@@ -433,7 +433,7 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         for j in range(len(filenames)):
             k+=1
             try:
-                lightcurve = np.loadtxt(sub_directories[i]+'/'+filenames[j])
+                lightcurve = np.loadtxt(sub_directories[i]+'/'+filenames[j], skiprows=1)
                 time, mag, magerr = lightcurve[:,0], lightcurve[:,1], lightcurve[:,2]
             except:
                 print(); print('WARNING: File {} could not be loaded, skipping...'.format(filenames[j]))
@@ -471,7 +471,7 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         _file_ = path+'all_features_'+filename+'.txt' if filename is not None else path+'all_features.txt'
 
         with open(path+'__temporary_feats__.txt', 'r') as infile, open(_file_, 'w') as outfile:    
-            outfile.write('# ' + ', '.join(feature_names) + '\n')
+            outfile.write('# CLASS, ID, ' + ', '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
             data = data.replace(",", "")
