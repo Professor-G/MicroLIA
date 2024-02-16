@@ -373,7 +373,7 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     return data_x, data_y
 
-def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_file=True):
+def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_file=True, skiprows=0):
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
@@ -402,6 +402,9 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         save_file : bool
             If True the lightcurve.fits and all_features.txt files will be
             saved to the home directory. Defaults to True.
+        skiprows : int
+            Used to exclude comments which may be present at the top of the data files. Defaults to 0 which
+            skips no rows. 
     
     Returns:
     -------
@@ -433,7 +436,7 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         for j in range(len(filenames)):
             k+=1
             try:
-                lightcurve = np.loadtxt(sub_directories[i]+'/'+filenames[j], skiprows=1)
+                lightcurve = np.loadtxt(sub_directories[i]+'/'+filenames[j], skiprows=skiprows)
                 time, mag, magerr = lightcurve[:,0], lightcurve[:,1], lightcurve[:,2]
             except:
                 print(); print('WARNING: File {} could not be loaded, skipping...'.format(filenames[j]))
