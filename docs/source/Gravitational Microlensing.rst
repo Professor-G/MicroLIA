@@ -44,7 +44,7 @@ Microlensing refers to the particular case of gravitational lensing in which the
 
     Figure 4: Event in which the light of multiple distant galaxies bent around the Einstein radius of a lensing galaxy. Axes units are in terms of arcseconds. Image from the 2003 book by Hartle.
 
-In the event that the source star and the lens star are perfectly aligned, the images create a ring around the lens, known as the Einstein Ring, :math:`R_E` - an example of this is displayed in Figure 4, with the light bending around the Einstein Ring of a distant galaxy. :math:`R_E` is expressed as
+In the event that the source star and the lens star are perfectly aligned, the images create a ring around the lens, known as the Einstein Ring,$`\sqrt{3}`$,$`\sqrt{3}`$,$`R_E`$, aaa :math:`R_E` - an example of this is displayed in Figure 4, with the light bending around the Einstein Ring of a distant galaxy. :math:`R_E` is expressed as 
 
 .. math:: 
 	R_E = \sqrt{\frac{4GMD}{c^2}} 
