@@ -55,6 +55,12 @@ class Classifier:
         limit_search (bool): If False, the search space for the parameters will be expanded,
             as there are some hyperparameters that can range from 0 to inf. Defaults to True to
             limit the search and speed up the optimization routine.
+        min_gamma (float): Controls the optimization of the gamma Tree Booster hyperparameter. Only applicable if
+            clf='xgb', and optimize=True. The gamma parameter is the lowest loss reduction needed on a tree leaf node 
+            in order to partition again. The algorithm's level of conservatism increases with gamma, therefore it acts 
+            as a regularizer. By default, during the optimization routine will consider a miminum value of 0 when tuning the gamma 
+            parameter, unless this min_gamma input is set. This parameter determines the lowest gamma value the optimizer should consider. 
+            Must be less than 5. Defaults to 0. Consider increasing this to ~1 if the optimized models are overfitting.
         impute (bool): If True data imputation will be performed to replace NaN values. Defaults to False.
             If set to True, the imputer attribute will be saved for future transformations. 
         imp_method (str, optional): Imputation strategy to use if impute is set to True.
@@ -81,7 +87,7 @@ class Classifier:
     """
 
     def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        limit_search=True, impute=False, imp_method='knn', n_iter=25, 
+        limit_search=True, min_gamma=0, impute=False, imp_method='knn', n_iter=25, 
         boruta_trials=50, boruta_model='rf', balance=True, training_data=None):
 
         self.data_x = data_x
@@ -90,6 +96,7 @@ class Classifier:
         self.optimize = optimize 
         self.opt_cv = opt_cv 
         self.limit_search = limit_search
+        self.min_gamma = min_gamma
         self.impute = impute
         self.imp_method = imp_method
         self.n_iter = n_iter
@@ -214,10 +221,11 @@ class Classifier:
 
         if self.n_iter > 0:
             self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, 
-                return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
+                return_study=True, limit_search=self.limit_search, min_gamma=self.min_gamma, opt_cv=self.opt_cv)
         else:
             print("Fitting and returning final model...")
-            self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True, limit_search=self.limit_search, opt_cv=self.opt_cv)
+            self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True, limit_search=self.limit_search, 
+                min_gamma=self.min_gamma, opt_cv=self.opt_cv)
 
         self.model.fit(data_x, self.data_y)
         self.data_x = data_x if overwrite_training else self.data_x
@@ -270,18 +278,13 @@ class Classifier:
                 raise ValueError('Tried to create "MicroLIA_ensemble_model" directory in specified path but folder already exists! If you wish to overwrite set overwrite=True.')
         
         path += 'MicroLIA_ensemble_model/'
-        if self.model is not None:
-            joblib.dump(self.model, path+'Model')
-        if self.imputer is not None:
-            joblib.dump(self.imputer, path+'Imputer')
-        if self.feats_to_use is not None:
-            joblib.dump(self.feats_to_use, path+'Feats_Index')
-        if self.optimization_results is not None:
-            joblib.dump(self.optimization_results, path+'HyperOpt_Results')
-        if self.best_params is not None:
-            joblib.dump(self.best_params, path+'Best_Params')
-        if self.feature_history is not None:
-            joblib.dump(self.feature_history, path+'FeatureOpt_Results')
+        
+        if self.model is not None: joblib.dump(self.model, path+'Model')
+        if self.imputer is not None: joblib.dump(self.imputer, path+'Imputer')
+        if self.feats_to_use is not None: joblib.dump(self.feats_to_use, path+'Feats_Index')
+        if self.optimization_results is not None: joblib.dump(self.optimization_results, path+'HyperOpt_Results')
+        if self.best_params is not None: joblib.dump(self.best_params, path+'Best_Params')
+        if self.feature_history is not None: joblib.dump(self.feature_history, path+'FeatureOpt_Results')
 
         print('Files saved in: {}'.format(path))
 
@@ -391,8 +394,8 @@ class Classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, 
-        legend_loc='upper center', title='Feature Parameter Space', savefig=False):
+    def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, return_data=False,
+        xlim=None, ylim=None, legend_loc='upper center', title='Feature Parameter Space', savefig=False):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
@@ -447,9 +450,11 @@ class Classifier:
         feats = TSNE(n_components=2, method=method, learning_rate=1000, perplexity=35, init='random').fit_transform(data)
         x, y = feats[:,0], feats[:,1]
      
-        markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*']
+        markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*', '*', '>', '<', 'p', 'h', 'x', '.', 'v', '+', 's', 'o']
         #color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'b', 'g', 'r', 'c']
-        color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#e41a1c', '#377eb8'] #Update the last two!
+        color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#e41a1c', '#377eb8', '#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#e41a1c', '#377eb8', '#e41a1c', '#377eb8']
+
+        _set_style_() if savefig else plt.style.use('default')
 
         if data_y is None:
             if self.data_y_ is None:
@@ -498,18 +503,22 @@ class Classifier:
                 raise ValueError('The data_y array does not contain the value input in the special_class parameter.')
             plt.scatter(x[mask], y[mask], marker='*', c='red', label=special_class, s=200, alpha=1.0)
         
+        plt.xlim((xlim)) if xlim is not None else None 
+        plt.ylim((ylim)) if ylim is not None else None 
         plt.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)
         plt.title(title); plt.ylabel('t-SNE Dimension 1'); plt.xlabel('t-SNE Dimension 2')
         plt.xticks(); plt.yticks()
 
         if savefig:
-            _set_style_()
             plt.savefig('tSNE_Projection.png', bbox_inches='tight', dpi=300)
             plt.clf(); plt.style.use('default')
         else:
             plt.show()
 
-        return
+        if return_data:
+            return x, y
+        else:
+            return
 
     def plot_conf_matrix(self, data_y=None, norm=False, pca=False, k_fold=10, normalize=True, 
         title='Confusion Matrix', savefig=False):
@@ -626,6 +635,8 @@ class Classifier:
         
         model0 = copy.deepcopy(self.model)
 
+        _set_style_() if savefig else plt.style.use('default')
+
         if len(np.unique(self.data_y)) != 2:
             test_size = 1. / k_fold
             X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=test_size, random_state=0)
@@ -634,7 +645,6 @@ class Classifier:
             plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='nipy_spectral', plot_macro=False, plot_micro=False)
             
             if savefig:
-                _set_style_()
                 plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
                 plt.clf(); plt.style.use('default')
             else:
@@ -646,8 +656,6 @@ class Classifier:
         
         tprs, aucs = [], []
         mean_fpr = np.linspace(0, 1, 100)
-
-        _set_style_() if savefig else None 
 
         fig, ax = plt.subplots()
 
@@ -726,7 +734,7 @@ class Classifier:
             else:
                 break
 
-        _set_style_() if savefig else None 
+        _set_style_() if savefig else plt.style.use('default') 
 
         if baseline is not None:
             plt.axhline(y=baseline, color='k', linestyle='--', label='Baseline Model')
@@ -776,9 +784,9 @@ class Classifier:
         return
 
     def plot_feature_opt(self, feat_names=None, top='all', include_other=True, include_shadow=True, 
-        include_rejected=False, flip_axes=True, save_data=False, savefig=False):
+        include_rejected=False, flip_axes=True, title='Feature Importance', save_data=False, savefig=False):
         """
-        Returns whisker plot displaying the z-score distribution of each feature
+        Returns plot displaying the z-score distribution of each feature
         across all trials.
     
         Note:
@@ -918,7 +926,7 @@ class Classifier:
         
         y, y_err = np.array(y), np.array(y_err)
 
-        _set_style_() if savefig else None 
+        _set_style_() if savefig else plt.style.use('default') 
 
         fig, ax = plt.subplots()
         if flip_axes:
@@ -961,7 +969,7 @@ class Classifier:
             ax.set_ylim((np.min(y)-1, np.max(y)+1))
 
         ax.legend([(lns, lns_sigma)], [r'$\pm$ 1$\sigma$'], loc='upper right', ncol=1, frameon=False, handlelength=2)
-        ax.set_title('Feature Importance')
+        ax.set_title(title)
 
         if savefig:
             plt.savefig('Feature_Importance.png', bbox_inches='tight', dpi=300)
@@ -1012,7 +1020,7 @@ class Classifier:
 
         xtick_labels = format_labels(params)
 
-        _set_style_() if savefig else None 
+        _set_style_() if savefig else plt.style.use('default') 
 
         fig, ax = plt.subplots()
         ax.barh(xtick_labels, importance, label='Importance for Classification', color=mcolors.TABLEAU_COLORS["tab:blue"], alpha=0.87)
@@ -1123,8 +1131,8 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
         data_y = np.array(data_y) 
         
     kf = KFold(n_splits=k_fold, shuffle=True, random_state=42)
-    predicted_targets = []
-    actual_targets = []
+
+    predicted_targets, actual_targets = [], []
 
     for train_index, test_index in kf.split(data_x):
         classifier.fit(data_x[train_index], data_y[train_index])
