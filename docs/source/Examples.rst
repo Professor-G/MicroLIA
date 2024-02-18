@@ -29,7 +29,7 @@ Adaptive cadence is extremely important as this allows MicroLIA to detect microl
       time = np.loadtxt(path+name)[:,0]
       timestamps.append(time)
 
-This timestamps list will be used to simulate the training data, as each time a lightcurve is simulated a timestamp from the list will be random selected. In this example, we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class`` to be 100, which corresponds to the size of each training class. The ``training_set`` module simulates the lightcurves:
+This timestamps list will be used to simulate the training data, as each time a lightcurve is simulated a timestamp from the list will be random selected. In this example, we will set the ``min_mag`` of the survey to be 15, and the ``max_mag`` to be 20. We will also set ``n_class`` to be 100, which corresponds to the size of each training class. The ``training_data`` module simulates the lightcurves:
 
 .. code-block:: python
 
@@ -69,7 +69,7 @@ The simulated lightcurves will be saved by default in a 'lightcurves.fits' file,
 
    from MicroLIA import ensemble_model
    
-   model = ensemble_model.Classifier(training_set=csv_file)
+   model = ensemble_model.Classifier(training_data=csv_file)
 
 .. figure:: _static/model_load_1.png
     :align: center
@@ -85,7 +85,7 @@ Ensemble Classification Engine
 -----------
 We will create our ensemble machine learning model using the statistical features of the lightcurves, which are saved in the 'all_features.txt' file when the training set was genereated. The first column is the lightcurve class, and therefore will be loaded as our training labels. The second column is the unique ID of the simulated lightcurve, which will be ignored. 
 
-In this example we will load this file to re-generate the data_x and data_y arrays, although note above that the training set routine returns ``data_x`` and ``data_y`` as outputs, and more conveniently, the ``training_set`` can be input instead (and if need-be the statistics can always be re-computed using the `extract_features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_) function.
+In this example we will load this file to re-generate the data_x and data_y arrays, although note above that the training set routine returns ``data_x`` and ``data_y`` as outputs, and more conveniently, the ``training_data`` can be input instead (and if need-be the statistics can always be re-computed using the `extract_features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html>`_) function.
 
 .. code-block:: python
    
@@ -150,7 +150,7 @@ In the above example, `test_model` folder will be created by the program and hen
    # Load the csv file that was saved after creating the training data
    csv = pd.read_csv('MicroLIA_Training_Set.csv')
 
-   model = ensemble_model.Classifier(clf='xgb', impute=True, training_set=csv)
+   model = ensemble_model.Classifier(clf='xgb', impute=True, training_data=csv)
    model.load(path='test_model')
 
 .. figure:: _static/load_model_1.png
@@ -187,7 +187,7 @@ We can visualize the training feature space using a two-dimensional `tSNE projec
 .. figure:: _static/tSNE_Projection_1.png
     :align: center
 |
-We can also plot the `feature selection history <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/ensemble_model/index.html#MicroLIA.ensemble_model.Classifier.plot_feature_opt>`_ as output by the feature optimization routine, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``training_set``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the custom names, especially helpful for publication purposes in which we may wish to properly format the feature names and/or include special characters using LaTex format. 
+We can also plot the `feature selection history <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/ensemble_model/index.html#MicroLIA.ensemble_model.Classifier.plot_feature_opt>`_ as output by the feature optimization routine, which by default will associate the feature names with the index at which they are present in the ``data_x`` array; unless the ``training_data``  argument was input when creating the model, in which case the column names will be used to represent the features. To override this at any point, we can input a custom ``feat_names`` list containing the custom names, especially helpful for publication purposes in which we may wish to properly format the feature names and/or include special characters using LaTex format. 
 
 Additionally, we can set ``feat_names`` argument to 'default', which is only applicable if the features in the input `data_x` array were calculated using MicroLIA's `extract_features <https://microlia.readthedocs.io/en/latest/autoapi/MicroLIA/extract_features/index.html#MicroLIA.extract_features.extract_all>`_. module (thus not applicable if using a custom data_x array or if the training data was generated elsewhere).
 
@@ -249,7 +249,7 @@ To include the parameter space of the real OGLE II microlensing lightcurves in c
    ogle_data_x, ogle_data_y = np.array(ogle_data_x), np.array(ogle_data_y)
 
    # Create a new model, only need to specify the training set csv
-   new_model = ensemble_model.Classifier(training_set=csv)
+   new_model = ensemble_model.Classifier(training_data=csv)
    new_model.load('test_model')
 
    # Add the OGLE ML data arrays
