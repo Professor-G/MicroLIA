@@ -440,6 +440,7 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
                 time, mag, magerr = lightcurve[:,0], lightcurve[:,1], lightcurve[:,2]
             except:
                 print(); print('WARNING: File {} could not be loaded, skipping...'.format(filenames[j]))
+                progess_bar.next() 
                 continue
 
             source_class_list.append([dir_name]*len(time)); id_list.append([k]*len(time))
