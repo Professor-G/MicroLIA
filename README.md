@@ -4,7 +4,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2004.14347-b31b1b.svg)](https://arxiv.org/abs/2004.14347)
 
 # MicroLIA: MicroLensing Identification Algorithm
-MicroLIA is an open-source program for detecting microlensing events in wide-field surveys — it’s currently adapted for single lens detection only. 
+MicroLIA is an open-source program for detecting microlensing events in wide-field surveys. You can use the built-in modules to simulate lightcurves with adaptive cadence (the program only provides PSPL simulations), or you can utilize your own set of lightcurves.
 <img src="https://user-images.githubusercontent.com/19847448/51231407-4cce2a80-1918-11e9-8c4b-aaafeddbd335.jpg" width="900" height="500">
 
 # Installation
@@ -15,17 +15,16 @@ MicroLIA is an open-source program for detecting microlensing events in wide-fie
 
 # Version 2
 
-As of version 2.6.0, MicroLIA provides the following new features and improvements:
+As of version 2.7.0, MicroLIA provides the following new features and improvements:
 
-* New time-series features (74 total). To enhance the analysis, we now take the derivative of the lightcurve and re-compute the features in this derivative space, for a grand total of 148 metrics.
+* New time-series features (74 total). To enhance the analysis, we now take the derivative of the lightcurve and re-compute the features in derivative space, for a total of 148 statistical metrics.
 * Lightcurve features can now be calculated by taking into account the flux/mag errors, thus allowing for proper weighting of data points.
-* We include a feature selection procedure so as to identify the metrics that carry useful information given the training set.
-* The short-period variables are now simulated using real RR-Lyrae templates.
+* We include a feature selection procedure so as to identify the metrics that carry useful information given the training set, and remove features that contain no information for the classification task.
+* Short-period variables can now be simulated using real RR-Lyrae templates.
 * The training set can now be generated using your own directory of lightcurves, no limit on the amount of classes.
-* After a training set is generated a csv file is saved which can be directly input when creating the classifier; in addition, the training set module contains a plot function to visualize the generated lightcurves.
-* The ensemble engine hyperparameters can now be optimized using Bayesian analysis. 
-* We added data imputation techniques to better handle undefined values in the training data.
-* We include a CNN model for image classification purposes, including a data augmentation routine and an optimization procedure for identifying the proper augmentations to perform given the training set images.
+* After a training set is generated, a csv file is saved which can be directly input when creating the classifier; in addition, the training set module contains a plot function to visualize the simulated lightcurves.
+* The machine learning engine hyperparameters can now be optimized using Bayesian analysis. 
+* We added data imputation techniques to handle undefined values in the training data.
 * Built-in class methods are now available to visualize the engine parameters and performance, as well as to save and load models post-processing.
 
 
