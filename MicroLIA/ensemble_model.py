@@ -218,7 +218,10 @@ class Classifier:
             print('The feats_to_use attribute already exists, skipping feature selection...')
 
         #Re-construct the imputer with the selected features as new predictions will only compute these metrics, so need to fit again!
-        data_x, self.imputer = impute_missing_values(self.data_x[:,self.feats_to_use], strategy=self.imp_method) if self.impute else self.data_x[:,self.feats_to_use]
+        if self.impute:
+            data_x, self.imputer = impute_missing_values(self.data_x[:,self.feats_to_use], strategy=self.imp_method)
+        else:
+            data_x, self.imputer = self.data_x[:,self.feats_to_use], None
 
         if self.n_iter > 0:
             self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, 
