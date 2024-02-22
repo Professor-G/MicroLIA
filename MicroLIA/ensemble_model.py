@@ -50,8 +50,9 @@ class Classifier:
             hyperparameters will be determined using Bayesian optimization (if n_iter > 0).
         opt_cv (int): Cross-validations to perform when assesing the performance during the
             hyperparameter optimization. For example, if cv=3, then each optimization trial
-            will be assessed according to the 3-fold cross validation accuracy. Defaults to 10.
-            NOTE: The higher this number, the longer the optimization will take.
+            will be assessed according to the 3-fold cross validation accuracy. Defaults to 10. If set
+            to None then it will default to 5-fold CV. Cannot be disabled, therefore must be greater than 1. 
+            NOTE: The higher this value, the longer the optimization will take.
         limit_search (bool): If False, the search space for the parameters will be expanded,
             as there are some hyperparameters that can range from 0 to inf. Defaults to True to
             limit the search and speed up the optimization routine.

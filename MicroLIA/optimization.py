@@ -44,7 +44,7 @@ class objective_xgb(object):
         so as to speed up the XGB optimization. A random validation data will be generated according to this ratio,
         which will replace the cross-validation method used by default. It will prune according
         to the f1-score of the validation data, which would be 10% of the training data if opt_cv=0.1, for example. 
-        Need more testing to make this more robust.
+        Need more testing to make this more cross-validation routine more robust. Recommend to set opt_cv > 1. 
         
     Args:
         data_x (ndarray): 2D array of size (n x m), where n is the
@@ -56,7 +56,7 @@ class objective_xgb(object):
             hyperparameter optimization trial. For example, if cv=3, then each optimization trial
             will be assessed according to the 3-fold cross validation accuracy. If this is
             between 0 and 1, this value would be used as the ratio of the validation to training data.
-            Defaults to None, in which case the cross-validation procedure will be employed.
+            Defaults to 3. Can be set to None in which case 5-fold cross-validation is employed. Cannot be 1. 
         eval_metric (str): The evaluation metric when evaluating the validation data, used when
             opt_cv is less than 1. Defaults to "f1". For all options see eval_metric from: https://xgboost.readthedocs.io/en/latest/parameter.html#metrics
         min_gamma (float): Controls the optimization of the gamma Tree Booster hyperparameter. The gamma parameter is the 
@@ -81,6 +81,9 @@ class objective_xgb(object):
 
         if self.min_gamma >= 5:
             raise ValueError('The min_gamma parameter must be less than 5!')
+
+        if self.opt_cv is None:
+            self.opt_cv = 5 # This is the default behavior of cross_validate, setting here to avoid NoneType errors
 
     def __call__(self, trial):
 
