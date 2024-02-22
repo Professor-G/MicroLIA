@@ -60,7 +60,7 @@ class Classifier:
             in order to partition again. The algorithm's level of conservatism increases with gamma, therefore it acts 
             as a regularizer. By default, during the optimization routine will consider a miminum value of 0 when tuning the gamma 
             parameter, unless this min_gamma input is set. This parameter determines the lowest gamma value the optimizer should consider. 
-            Must be less than 5. Defaults to 0. Consider increasing this to ~1 if the optimized models are overfitting.
+            Must be less than 5. Defaults to 0. Consider increasing this value to ~1 if the optimized models are overfitting.
         impute (bool): If True data imputation will be performed to replace NaN values. Defaults to False.
             If set to True, the imputer attribute will be saved for future transformations. 
         imp_method (str, optional): Imputation strategy to use if impute is set to True.
