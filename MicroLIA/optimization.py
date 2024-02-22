@@ -483,7 +483,7 @@ def hyper_opt(data_x=None, data_y=None, clf='rf', n_iter=25, opt_cv=None, balanc
             layers = tuple(params[layer] for layer in layers)
             model = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
                 activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
-                batch_size='auto', solver=params['solver'], max_iter=2500, random_state=1909)
+                batch_size='auto', solver=params['solver'], max_iter=200, random_state=1909)
         except:
             print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
             params = {
