@@ -55,7 +55,7 @@ def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None)
         t_E : float
             The timescale of the event in days.
         blend_ratio : float
-            The blending coefficient chosen between 0 and 10.     
+            The blending coefficient chosen between 0 and 1.     
     """   
 
     if u0_dist:
