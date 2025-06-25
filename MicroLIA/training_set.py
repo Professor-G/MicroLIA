@@ -550,3 +550,35 @@ def plot(hdu, ID=None, label=None, savefig=False):
         plt.clf()
     else:
         plt.show()
+
+# Add this function to the end of MicroLIA/training_set.py
+from tqdm import tqdm
+
+def create_cnn_set(timestamps, n_events_per_class=250, n_points=1200, noise_model=None, zp=24.0):
+    all_light_curves = []; all_labels = []
+    baseline_mag = 20.0
+    classes_to_simulate = {
+        "PSPL": simulate.microlensing, "CV": simulate.cv, "VARIABLE": simulate.rrlyr_variable,
+        "CONSTANT": simulate.constant, "ML_BINARY": 'custom_binary'
+    }
+    for label, sim_func in classes_to_simulate.items():
+        for _ in tqdm(range(n_events_per_class), desc=f"Simulating {label}"):
+            time = random.choice(timestamps)
+            if sim_func == 'custom_binary':
+                baseline_flux = 10**(-(baseline_mag - zp) / 2.5)
+                flux, _ = simulate.binary_microlensing_flux(time, baseline_flux)
+                noisy_flux = flux + np.random.normal(0, 0.05 * baseline_flux, size=flux.shape)
+            else:
+                if label == 'PSPL': mags, _, _, _, _ = sim_func(time, baseline_mag)
+                elif label == 'VARIABLE': mags, _, _ = sim_func(time, baseline_mag)
+                elif label == 'CV': mags, _, _, _, _ = sim_func(time, baseline_mag)
+                else: mags = sim_func(time, baseline_mag)
+                if noise_model: noisy_mags, _ = noise_model(mags, zp=zp)
+                else: noisy_mags = mags + np.random.normal(0, 0.05, size=mags.shape)
+                noisy_flux = 10**(-(noisy_mags - zp) / 2.5)
+            final_lc = np.nan_to_num(noisy_flux, nan=0.0)
+            if len(final_lc) > n_points: final_lc = final_lc[:n_points]
+            else: final_lc = np.concatenate([final_lc, np.zeros(n_points - len(final_lc))])
+            all_light_curves.append(final_lc)
+            all_labels.append(label)
+    return np.array(all_light_curves), np.array(all_labels)

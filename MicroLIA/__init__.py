@@ -14,3 +14,5 @@ for i in np.unique(hdu[1].data['ID']):
 	magerr = np.array(hdu[1].data['magerr'][index])
 	np.savetxt(str(label)+'_'+str(k), np.c_[time,mag,magerr])
 """
+from .cnn_model import CNNClassifier
+from .training_set import create_cnn_set

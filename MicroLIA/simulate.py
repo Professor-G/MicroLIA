@@ -13,6 +13,7 @@ import importlib.util
 import numpy as np
 import os
 import sys
+import warnings
 
 
 def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None):
@@ -1185,3 +1186,22 @@ class RRLyraeTemplateModelerMultiband(PeriodicModelerMultiband):
             result[mask] = self.modeldict_[filt].predict(t[mask], period)
         return result
    
+
+
+import VBMicrolensing
+import numpy as np
+import random
+
+VBM = VBMicrolensing.VBMicrolensing()
+VBM.RelTol = 1e-03
+VBM.Tol = 1e-03
+
+def binary_microlensing_flux(timestamps, baseline_flux, s_dist=(0.1, 2.5), q_dist=(0.1, 1.0), rho_dist=(0.01, 0.1), tE_dist=(10, 100)):
+    s = np.random.uniform(*s_dist); q = np.random.uniform(*q_dist); rho = np.random.uniform(*rho_dist)
+    alpha = np.random.uniform(0, 2 * np.pi); tE = np.random.uniform(*tE_dist)
+    t0 = np.random.uniform(np.min(timestamps), np.max(timestamps)); u0 = np.random.uniform(0.01, 0.5)
+    vbm_params = [np.log(s), np.log(q), u0, alpha, np.log(rho), np.log(tE), t0]
+    magnification = np.array(VBM.BinaryLightCurve(vbm_params, timestamps)[0])
+    magnification[magnification <= 0] = 1.0
+    flux = baseline_flux * magnification
+    return flux, {'s':s, 'q':q, 'u0':u0}
