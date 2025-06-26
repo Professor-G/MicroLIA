@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -10,16 +8,14 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 import joblib
 import os
-from tqdm import tqdm
 
 class CNNClassifier:
     """
     Time-step based 1D-CNN classifier for multi-channel light curves.
-    NOTE: This model is memory-intensive and intended for use on machines with significant RAM.
+    NOTE: This model is memory-intensive and intended for clusters with significant RAM.
     """
     def __init__(self, sequence_length=1500, num_channels=6, confidence_threshold=0.8):
-        self.sequence_length = sequence_length
-        self.num_channels = num_channels
+        self.sequence_length = sequence_length; self.num_channels = num_channels
         self.confidence_threshold = confidence_threshold
         self.model = None; self.history = None; self.classes_ = None; self.label_map = None
         self.scaler = StandardScaler()
@@ -27,12 +23,9 @@ class CNNClassifier:
     def build_model(self):
         self.model = Sequential([
             Conv1D(filters=128, kernel_size=5, activation="relu", padding="same", input_shape=(self.sequence_length, self.num_channels)),
-            Dropout(0.3),
-            Conv1D(filters=64, kernel_size=3, activation="relu", padding="same"),
-            Dropout(0.3),
-            Conv1D(filters=32, kernel_size=3, activation="relu", padding="same"),
-            Dropout(0.3),
-            TimeDistributed(Flatten()),
+            Dropout(0.3), Conv1D(filters=64, kernel_size=3, activation="relu", padding="same"),
+            Dropout(0.3), Conv1D(filters=32, kernel_size=3, activation="relu", padding="same"),
+            Dropout(0.3), TimeDistributed(Flatten()),
             TimeDistributed(Dense(len(self.classes_), activation="softmax"))
         ])
         self.model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
@@ -45,8 +38,7 @@ class CNNClassifier:
         return scaled_data.reshape(nsamples, nx, ny)
 
     def fit(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=16):
-        self.classes_ = np.unique(y_train)
-        self.label_map = {label: i for i, label in enumerate(self.classes_)}
+        self.classes_ = np.unique(y_train); self.label_map = {label: i for i, label in enumerate(self.classes_)}
         y_train_int = np.array([self.label_map[label] for label in y_train])
         y_val_int = np.array([self.label_map[label] for label in y_val])
         X_train_prep = self.preprocess(X_train, fit_scaler=True)
@@ -55,8 +47,7 @@ class CNNClassifier:
         y_val_cat = tf.keras.utils.to_categorical(y_val_int, num_classes=len(self.classes_))
         y_train_repeated = np.repeat(y_train_cat[:, np.newaxis, :], self.sequence_length, axis=1)
         y_val_repeated = np.repeat(y_val_cat[:, np.newaxis, :], self.sequence_length, axis=1)
-        self.build_model()
-        self.model.summary()
+        self.build_model(); self.model.summary()
         early_stop = EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True)
         self.history = self.model.fit(
             X_train_prep, y_train_repeated, epochs=epochs, batch_size=batch_size,
@@ -68,7 +59,7 @@ class CNNClassifier:
         X_test_prep = self.preprocess(X_test, fit_scaler=False)
         predictions = self.model.predict(X_test_prep, verbose=0)
         decisions_list = []
-        for sample_pred in tqdm(predictions, desc="Making Decisions"):
+        for sample_pred in predictions:
             decision_made = False
             for t_pred in sample_pred:
                 pred_idx = np.argmax(t_pred)
@@ -93,5 +84,3 @@ class CNNClassifier:
             for j in range(cm.shape[1]):
                 ax.text(j, i, format(cm[i, j], 'd'), ha="center", va="center", color="white" if cm[i, j] > thresh else "black")
         fig.tight_layout(); plt.show()
-    
-    # ... include other methods like plot_history, get_decision_steps etc.
