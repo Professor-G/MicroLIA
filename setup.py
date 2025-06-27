@@ -44,7 +44,8 @@ setup(
         "dill",
         "gatspy==0.3",
         #shap==0.44.0,
-        "astroML==1.0.2.post1"
+        "astroML==1.0.2.post1",
+        "tensorflow",
     ],
     python_requires=">=3.9, <3.10",
     include_package_data=True,
