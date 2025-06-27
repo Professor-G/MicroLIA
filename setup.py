@@ -43,7 +43,8 @@ setup(
         "pandas==1.4.1",
         "dill",
         "gatspy==0.3",
-        "astroML==1.0.2.post1"
+        "astroML==1.0.2.post1",
+        "tensorflow",
     ],
     python_requires=">=3.9, <3.10",
     include_package_data=True,
