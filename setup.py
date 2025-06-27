@@ -43,6 +43,7 @@ setup(
         "pandas==1.4.1",
         "dill",
         "gatspy==0.3",
+        #shap==0.44.0,
         "astroML==1.0.2.post1"
     ],
     python_requires=">=3.9, <3.10",
