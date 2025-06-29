@@ -8,96 +8,92 @@ from __future__ import division, print_function
 from gatspy.datasets import fetch_rrlyrae_templates
 from scipy.optimize import minimize
 from scipy.interpolate import UnivariateSpline
-import pkg_resources
+
+import importlib.resources as resources
+from pathlib import Path
+
+
+
+
 import importlib.util
 import numpy as np
 import os
 import sys
 
+def microlensing(
+    timestamps: ArrayLike,
+    baseline: float,
+    t0_dist: Tuple[float, float] | None = None,
+    u0_dist: Tuple[float, float] | None = None,
+    tE_dist: Tuple[float, float] | None = None,
+) -> Tuple[np.ndarray, float, float, float, float]:
+    """
+    Simulate a single-lens, point-source microlensing event with blending.
 
-def microlensing(timestamps, baseline, t0_dist=None, u0_dist=None, tE_dist=None):
-    """Simulates a microlensing event.  
-    The microlensing parameter space is determined using data from an 
+    If not defined, the microlensing parameter space is determined using data from an 
     analysis of the OGLE III microlensing survey from Y. Tsapras et al (2016).
     See: The OGLE-III planet detection efficiency from six years of microlensing observations (2003 to 2008).
     (https://arxiv.org/abs/1602.02519)
 
-    Parameters:
+    Parameters
     ----------
-        timestamps : array
-            Timestamps of the lightcurve.
-        baseline : float
-            Baseline magnitude of the lightcurve.
-        t0_dist: array, tuple, optional
-            An array or tuple containing two values, the minimum and maximum value (in that order) to 
-            consider when simulating the microlensing events (in days), as this t0 parameter will be selected
-            using a random uniform distribution according to these bounds. Defaults to None, which will 
-            compute an appropriate t0 according to the range of the input timestamps.
-        u0_dist: array, tuple, optional
-            An array or tuple containing two values, the minimum and maximum value (in that order) to 
-            consider when simulating the microlensing events, as this u0 parameter will be selected
-            using a random uniform distribution according to these bounds. Defaults to None, which will 
-            set these bounds to (0, 1).
-        te_dist: array, tuple, optional
-            An array or tuple containing the mean and standard deviation (in that order) to consider for this tE parameter
-            during the microlensing simulations, as this value will be selected from a random normal distribution
-            using the specified mean and standard deviation. Defaults to None which will apply a mean of 30 with
-            a spread of 10 days.
+    timestamps : array-like
+        Observation epochs (days).
+    baseline : float
+        Baseline magnitude outside the event.
+    t0_dist : (float, float), optional
+        Uniform bounds for ``t0`` (time of peak).  Defaults to the middle
+        98% of the supplied `timestamps` plus a cushion of 0.5 `t_E` on each
+        side.
+    u0_dist : (float, float), optional
+        Uniform bounds for ``u0`` (impact parameter).  Default: (0, 1).
+    tE_dist : (float, float), optional
+        Mean and standard deviation for normally distributed ``t_E``
+        (Einstein-radius crossing time).  Default: 30 plus/minus 10 days.
 
-    Returns:
+    Returns
     -------
-        mag : array
-            Simulated magnitude given the timestamps.
-        u_0 : float
-            The source minimum impact parameter.
-        t_0 : float
-            The time of maximum magnification.
-        t_E : float
-            The timescale of the event in days.
-        blend_ratio : float
-            The blending coefficient chosen between 0 and 1.     
-    """   
+    Tuple
+        * `mag` – simulated magnitudes (np.ndarray)
+        * `u0` – drawn impact parameter
+        * `t0` – drawn peak time (days)
+        * `tE` – drawn event timescale (days)
+        * `blend_ratio` – flux blending ratio *f_b / f_s*
+    """
+    
+    ts = np.asarray(timestamps, dtype=float)
 
-    if u0_dist:
-       lower_bound, upper_bound = u0_dist[0], u0_dist[1]
+    # Draw parameters
+    u0_min, u0_max = u0_dist if u0_dist is not None else (0.0, 1.0)
+    u0 = np.random.uniform(u0_min, u0_max)
+
+    tE_mean, tE_std = tE_dist if tE_dist is not None else (30.0, 10.0)
+    tE = np.random.normal(tE_mean, tE_std)
+
+    if t0_dist is not None:
+        t0_min, t0_max = t0_dist
     else:
-        lower_bound, upper_bound = 0.0, 1.0
+        t0_min = np.percentile(ts, 1) - 0.5 * tE
+        t0_max = np.percentile(ts, 99) + 0.5 * tE
+    t0 = np.random.uniform(t0_min, t0_max)
 
-    u_0 = np.random.uniform(lower_bound, upper_bound) 
+    blend_ratio = np.random.uniform(0.0, 1.0)
 
-    if tE_dist:
-       tE_mean, tE_std = tE_dist[0], tE_dist[1]
-    else:
-       tE_mean, tE_std = 30.0, 10.0
+    # Magnification curve
+    u_t = np.sqrt(u0**2 + ((ts - t0) / tE) ** 2)
+    A_t = (u_t**2 + 2.0) / (u_t * np.sqrt(u_t**2 + 4.0))
 
-    t_e = np.random.normal(tE_mean, tE_std) 
+    # Convert to observed magnitudes with blending 
+    mag_base = constant(ts, baseline)
+    flux_base = 10.0 ** (-0.4 * mag_base)
 
-    if t0_dist:
-        lower_bound, upper_bound = t0_dist[0], t0_dist[1]
-    else:
-        # Set bounds to ensure enough measurements are available near t_0 
-        lower_bound = np.percentile(timestamps, 1)-0.5*t_e
-        upper_bound = np.percentile(timestamps, 99)+0.5*t_e
+    f_s = np.median(flux_base) / (1.0 + blend_ratio)  # source flux
+    f_b = blend_ratio * f_s # blend flux
+    flux_obs = f_s * A_t + f_b
 
-    t_0 = np.random.uniform(lower_bound, upper_bound)  
+    mag_obs = -2.5 * np.log10(flux_obs)
 
-    blend_ratio = np.random.uniform(0, 1)
-
-    u_t = np.sqrt(u_0**2 + ((timestamps - t_0) / t_e)**2)
-    magnification = (u_t**2 + 2.) / (u_t * np.sqrt(u_t**2 + 4.))
-
-    mag = constant(timestamps, baseline)
-    flux = 10**((mag) / -2.5)
-
-    flux_base = np.median(flux)
-
-    f_s = flux_base / (1 + blend_ratio)
-    f_b = blend_ratio * f_s
-
-    flux_obs = f_s*magnification + f_b
-    microlensing_mag = -2.5*np.log10(flux_obs)
-
-    return np.array(microlensing_mag), u_0, t_0, t_e, blend_ratio
+    return mag_obs, u0, t0, tE, blend_ratio
     
 def cv(timestamps, baseline):
     """Simulates Cataclysmic Variable event.
@@ -182,288 +178,28 @@ def cv(timestamps, baseline):
 
     return np.array(lc), np.array(start_times), np.array(outburst_end_times), np.array(end_rise_times), np.array(end_high_times)
 
-def constant(timestamps, baseline):
-    """Simulates a constant source displaying no variability.  
 
-    Parameters:
+
+def constant(timestamps: ArrayLike, baseline: float) -> np.ndarray:
+    """
+    Generate a non-variable light curve.
+
+    Parameters
     ----------
-        timestamps : array
-            Times at which to simulate the lightcurve.
-        baseline : float
-            Baseline magnitude of the lightcurve.
-
-    Returns:
-    -------
-    array
-        Simulated magnitudes given the timestamps.
-    """
-
-    mag = [baseline] * len(timestamps)
-
-    return np.array(mag)
-
-def variable(timestamps, baseline, bailey=None):       
-    """Simulates a variable star. Theory from McGill et al. (2018).
-    
-    This function is outdated! Replaced with rrlyr_variable which employs the use
-    of templates, thus more representative of true RRLyrae stars.
-
-    Parameters:
-    ----------
-        timestamps : array
-            Times at which to simulate the lightcurve.
-        baseline : float
-            Baseline magnitude at which to simulate the lightcurve.
-        bailey : int, optional 
-            The type of variable to simulate. A bailey
-            value of 1 simulaes RR Lyrae type ab, a value
-            of 2 simulates RR Lyrae type c, and a value of 
-            3 simulates a Cepheid variable. If not provided
-            it defaults to a random choice between the three. 
-
-    Returns:
-    -------
-        mag : array
-            Simulated magnitudes given the timestamps.
-        amplitude : float
-            Amplitude of the signal in mag. 
-        bailey : float
-            Period of the signal in days.   
-    """
-
-    time, ampl_k, phase_k, period = setup_parameters(timestamps, bailey)
-    lightcurve = np.array(baseline)
-
-    for idx in range(len(ampl_k)):
-        lightcurve = lightcurve + ampl_k[idx] * np.cos(((2*np.pi*(idx+1))/period)*time+phase_k[idx])
-
-    amplitude = np.ptp(lightcurve) / 2.0
-
-    return np.array(lightcurve), amplitude, period 
-
-def simulate_mira_lightcurve(timestamps, baseline, primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
-    """
-    Simulates a Mira long-period variable (LPV) lightcurve.
-
-    Parameters:
-    ----------
-        timestamps : array-like
-            Times at which to simulate the lightcurve.
-        baseline : float
-            Baseline magnitude at which to simulate the lightcurve.
-        primary_period : float
-            Primary period of the Mira.
-        amplitude_pp : float
-            Amplitude of the primary period.
-        secondary_period : float
-            Secondary period of the Mira.
-        amplitude_sp : float
-            Amplitude of the secondary period.
-        tertiary_period : float
-            Tertiary period of the Mira.
-        amplitude_tp : float
-            Amplitude of the tertiary period.
-
-    Returns:
-    -------
-    array
-        Simulated magnitudes given the timestamps.
-    """
-
-    amplitudes, periods = random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp)
-    lc = np.array(baseline)
-
-    for idx in range(len(amplitudes)):
-        lc = lc + amplitudes[idx]* np.cos((2*np.pi*(idx+1))/periods[idx]*timestamps)
-
-    return np.array(lc)
-
-
-#McGill et al. (2018): Microlens mass determination for Gaia’s predicted photometric events.
-
-def parametersRR0():            
-    """
-    Returns the physical parameters for RR0 type variable stars.
-    
-    The f1, f2, and f3 parameters in the Mira lightcurve simulations represent the factors that control 
-    the amplitude of the secondary, tertiary, and higher-order periodic variations in the Mira lightcurve. 
-    These parameters allow for the modulation of the amplitudes of the secondary and tertiary periods relative 
-    to the primary period.
-
-    In the context of the Mira lightcurve simulation, these parameters determine the contribution of the secondary 
-    and tertiary periods to the overall variability of the lightcurve. By adjusting the values of f1, f2, and f3, you 
-    can control the relative strengths of these additional periodic variations.
-
-    These parameters are specific to the simulation model and are chosen based on the desired characteristics of the 
-    simulated Mira lightcurve. They are typically determined based on observational data or theoretical considerations.
-
-    Returns:
-    -------
-        a1 : float
-            Parameter a1.
-        ratio12 : float
-            Ratio between parameter 1 and parameter 2.
-        ratio13 : float
-            Ratio between parameter 1 and parameter 3.
-        ratio14 : float
-            Ratio between parameter 1 and parameter 4.
-        f1 : float
-            Parameter f1.
-        f2 : float
-            Parameter f2.
-        f3 : float
-            Parameter f3.
-    """
-
-    a1=  0.31932222222222223
-    ratio12 = 0.4231184105222867 
-    ratio13 = 0.3079439089738683 
-    ratio14 = 0.19454399944326523
-    f1 =  3.9621766666666667
-    f2 =  8.201326666666667
-    f3 =  6.259693777777778
-
-    return a1, ratio12, ratio13, ratio14, f1, f2, f3
-
-def parametersRR1():
-    """
-    Returns the physical parameters for RR1 type variable stars.
+    timestamps : array-like
+        Observation epochs (any shape) in days.
+    baseline : float
+        Constant magnitude to assign.
 
     Returns
     -------
-        a1 : float
-            Parameter a1.
-        ratio12 : float
-            Ratio between parameter 1 and parameter 2.
-        ratio13 : float
-            Ratio between parameter 1 and parameter 3.
-        ratio14 : float
-            Ratio between parameter 1 and parameter 4.
-        f1 : float
-            Parameter f1.
-        f2 : float
-            Parameter f2.
-        f3 : float
-            Parameter f3.
+    np.ndarray
+        Array with the same shape as `timestamps`, filled with `baseline`.
     """
+    return np.full_like(np.asarray(timestamps, dtype=float),
+                        fill_value=baseline,
+                        dtype=float)
 
-    a1 =  0.24711999999999998
-    ratio12 = 0.1740045322110716 
-    ratio13 = 0.08066256609474477 
-    ratio14 = 0.033964605589727
-    f1 =  4.597792666666666
-    f2 =  2.881016
-    f3 =  1.9828297333333336
-
-    return a1, ratio12, ratio13, ratio14, f1, f2, f3
-
-def uncertainties(time, curve, uncertain_factor):       
-    """
-    Adds random uncertainties to a given curve.
-
-    Parameters:
-    ----------
-        time : array-like
-            Times at which the curve is defined.
-        curve : array-like
-            Curve values.
-        uncertain_factor : float
-            Uncertainty factor in percentage.
-
-    Returns:
-    -------
-    array
-        Curve with added uncertainties.
-    """
-
-    N = len(time)
-    uncertainty = np.random.normal(0, uncertain_factor/100, N)
-    realcurve = []   
-    #curve with uncertainties
-    for idx in range(N):
-        realcurve.append(curve[idx]+uncertainty[idx])
-
-    return realcurve
-
-def setup_parameters(timestamps, bailey=None):   
-    """
-    Setup of random physical parameters
-    
-    Parameters:
-    ----------
-    timestamps : array
-        Times at which to simulate the lightcurve.
-    bailey : int, optional 
-        The type of variable to simulate. A bailey
-        value of 1 simulaes RR Lyrae type ab, a value
-        of 2 simulates RR Lyrae type c, and a value of 
-        3 simulates a Cepheid variable. If not provided
-        it defaults to a random choice between the three. 
-    
-    Returns:
-    -------
-    array, float
-        Outputs four values: time (array), amplitude (float), phase (float), and period (float).
-    """
-
-    time = np.array(timestamps) 
-    if bailey is None:
-        bailey = np.random.randint(1,4)
-    if bailey < 0 or bailey > 3:
-        raise RuntimeError("Bailey out of range, must be between 1 and 3.")
-
-    a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR1()
-
-    if bailey == 1:
-        period = np.random.normal(0.6, 0.15)
-        a1, ratio12, ratio13, ratio14, f1, f2, f3  = parametersRR0()
-    elif bailey == 2:
-        period = np.random.normal(0.33, 0.1)
-    elif bailey == 3:
-        period = np.random.lognormal(0., 0.2)
-        period = 10**period
-
-    s = 20
-    period=np.abs(period)  
-    n1 = np.random.normal(a1, 2*a1/s)
-    ampl_k = [n1, np.random.normal(n1*ratio12, n1*ratio12/s), np.random.normal(n1*ratio13, n1*ratio13/s), np.random.normal(n1*ratio14, n1*ratio14/s)]
-    phase_k = [0, np.random.normal(f1, f1/s), np.random.normal(f2, f2/s), np.random.normal(f3, f3/s)]
-    
-    return time, ampl_k, phase_k, period
-
-def random_mira_parameters(primary_period, amplitude_pp, secondary_period, amplitude_sp, tertiary_period, amplitude_tp):
-    """
-    Sets up random physical parameters for simulating Mira lightcurves.
-
-    Parameters:
-    ----------
-        primary_period : array-like
-            Array of primary periods.
-        amplitude_pp : array-like
-            Array of amplitudes for the primary periods.
-        secondary_period : array-like
-            Array of secondary periods.
-        amplitude_sp : array-like
-            Array of amplitudes for the secondary periods.
-        tertiary_period : array-like
-            Array of tertiary periods.
-        amplitude_tp : array-like
-            Array of amplitudes for the tertiary periods.
-
-    Returns:
-    -------
-        amplitudes : list
-            List of amplitudes for the simulated lightcurve.
-        periods : list
-            List of periods for the simulated lightcurve.
-    """
-
-    len_miras = len(primary_period)
-    rand_idx = np.random.randint(0,len_miras,1)
-    amplitudes = [amplitude_pp[rand_idx], amplitude_sp[rand_idx], amplitude_tp[rand_idx]]
-    periods = [primary_period[rand_idx], secondary_period[rand_idx], tertiary_period[rand_idx]]
-
-    return amplitudes, periods
 
 
 def rrlyr_variable(timestamps, baseline, bailey=None):
@@ -556,11 +292,11 @@ def get_rrlyr_data_path():
         Path to the data directory.
     """
 
-    resource_package = __name__
-    resource_path = 'data'
-    data_path = pkg_resources.resource_filename(resource_package, resource_path)
-    
-    return data_path
+    #resource_package = __name__
+    #resource_path = 'data'
+    #data_path = pkg_resources.resource_filename(resource_package, resource_path)
+    #return data_path
+    return str(resources.files(__package__) / 'data')
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
