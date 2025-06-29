@@ -1,3116 +1,4020 @@
-# -*- coding: utf-8 -*-
-"""
-    Created on Thu Jan 12 14:30:12 2017
-    
-    @author: danielgodinez
-"""
-from __future__ import print_function
 import numpy as np
-import itertools
-import math
-import peakutils
-import scipy.integrate as sintegrate
-import scipy.signal as ssignal
+from scipy.special import erf         
+from scipy.stats import invgauss    
+from scipy import signal as ssignal
+from MicroLIA import helper_features
 import scipy.stats as sstats
 
-import warnings; warnings.filterwarnings("ignore")
-
-def shannon_entropy(time, mag, magerr, apply_weights=True):
+def abs_energy(time, mag, magerr, apply_weights=True):
     """
-    Shannon entropy (Shannon et al. 1949) is used as a metric to quantify the amount of
-    information carried by a signal. The procedure employed here follows that outlined by
-    (D. Mislis et al. 2015). The probability of each point is given by a Cumulative Distribution
-    Function (CDF). Following the same procedure as (D. Mislis et al. 2015), this function employs
-    both the normal and inversed gaussian CDF, with the total shannon entropy given by a combination of
-    the two. See: (SIDRA: a blind algorithm for signal detection in photometric surveys, D. Mislis et al., 2015)
-    
-    Does not incorporate errors.
+    Compute the absolute energy of a light curve.
 
-    Parameters:
+    This statistic measures the total signal energy, defined as the sum of squared amplitudes.
+    It is useful as a general indicator of overall variability, but does not consider time structure.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values corresponding to each measurement. Not used in this function, but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with `mag`.
+    apply_weights : bool, optional (default=True)
+        Whether to apply inverse-variance weighting using `magerr`.
 
-    Returns:
-    -------  
-    float
-        The Shannon Entropy of the lightcurve.
-    """
-    
-    mean = np.median(mag)
-    RMS = root_mean_squared(time, mag, magerr, apply_weights=False)
-    
-    p_list1 = []
-    p_list2 = []
-    inv_list1 = []
-    inv_list2 = []
-    
-    t = range(0, len(mag))
-    d_delta = [i*2.0 for i in magerr]
-    
-    """Error fn definition: http://mathworld.wolfram.com/Erf.html"""
-    def errfn(x):
-        def integral(t):
-            integrand =  (2./np.sqrt(np.pi))*np.e**(-t**2)
-            return integrand
-        integ, err = sintegrate.quad(integral, 0, x)
-        return integ
-    
-    """The Gaussian CDF: http://mathworld.wolfram.com/NormalDistribution.html"""
-    def normal_gauss(x):
-        return 0.5*(1. + errfn(x))
-    
-    """Inverse Gaussian CDF: http://mathworld.wolfram.com/InverseGaussianDistribution.html"""
-    def inv_gauss(x, y):
-        return 0.5*(1. + errfn(x)) + (0.5*np.e**((2.*RMS)/mean))*(1. - errfn(y))
-    
-    for i in t:
-        val = normal_gauss((mag[i] + magerr[i] - mean)/(RMS*np.sqrt(2)))
-        p_list1.append(val if val >0 else 1)
-        
-        val2 = normal_gauss((mag[i] - magerr[i] - mean)/(RMS*np.sqrt(2)))
-        p_list2.append(val2 if val2 >0 else 1)
-        
-        val3 = inv_gauss(np.sqrt(RMS/(2.*(mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) - 1.), np.sqrt(RMS/(2.*(mag[i] + magerr[i])))*(((mag[i] + magerr[i])/mean) + 1.))
-        inv_list1.append(val3 if val3 >0 else 1)
-        
-        val4 = inv_gauss(np.sqrt(RMS/(2.*(mag[i] - magerr[i])))*(((mag[i] - magerr[i])/mean) - 1.), np.sqrt(RMS/(2.*(mag[i] - magerr[i])))*(((mag[i] - magerr[i])/mean) + 1.))
-        inv_list2.append(val4 if val4 >0 else 1)
-    
-    entropy1 = -sum(np.log2(p_list1)*d_delta + np.log2(p_list2)*d_delta)
-    entropy2 = -sum(np.log2(inv_list1)*d_delta + np.log2(inv_list2)*d_delta)
-
-    total_entropy = np.nan_to_num(entropy1 + entropy2)
-
-    return total_entropy
-
-def con(time, mag, magerr, apply_weights=True):
-    """
-    Con is defined as the number of clusters containing three or more
-    consecutive observations with magnitudes brighter than the reference
-    magnitude plus 3 standard deviations. For a microlensing event Con = 1,
-    assuming a  flat lightcurve prior to the event. The magnitude measurements
-    are split into bins such that the reference  magnitude is defined as the mean
-    of the measurements in the largest bin.
-
-    In this updated version of the con function, the upper and lower bounds for each 
-    measurement are defined as mag[i] + 3*magerr[i] and mag[i] - 3*magerr[i], respectively. 
-    These bounds are then used to check if a measurement is within a cluster. 
-    If a measurement is outside the bounds and we're in a cluster, the cluster is ended.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
+    Returns
     -------
     float
-        The ratio of clusters satisfying the conditions to the total number of measurements.     
+        Absolute energy of the light curve.
+
+    Notes
+    -----
+    - If `apply_weights=True`, the energy is computed as a weighted sum using weights ∝ 1 / magerr².
+    - Input can be magnitudes or fluxes, but **normalized flux** (e.g., min-max scaling) is recommended to ensure consistent interpretation across objects.
+    - This feature is insensitive to time sampling and **does not require even sampling**.
     """
 
-    if len(mag) < 3:
-        return 0
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
 
-    # Find the median of the magnitudes
-    mean = np.median(mag)
+    if not apply_weights:
+        return np.dot(mag, mag)
 
-    # Initialize variables
-    con = 0
-    deviating = False
+    w = helper_features._safe_weights(magerr)
 
-    if apply_weights:
-        # Loop over the magnitudes
-        for i in range(len(mag)-2):
-            
-            # Define the upper and lower bounds for each measurement
-            upper_bound = mag[i] + 3*magerr[i]
-            lower_bound = mag[i] - 3*magerr[i]
-            
-            # Check if the current measurement is within the bounds
-            if (mag[i] <= upper_bound and mag[i] >= lower_bound and
-                mag[i+1] <= upper_bound and mag[i+1] >= lower_bound and
-                mag[i+2] <= upper_bound and mag[i+2] >= lower_bound):
-                
-                # If the current measurement is within the bounds and we're not
-                # already in a cluster, start a new cluster
-                if (not deviating):
-                    con += 1
-                    deviating = True
-                
-                # If the current measurement is within the bounds and we're already
-                # in a cluster, do nothing
-                elif deviating:
-                    pass
-            
-            # If the current measurement is outside the bounds and we're in a
-            # cluster, end the cluster
-            elif deviating:
-                deviating = False
-    else:
-        for i in range(len(mag)-2):
-            first = mag[i]
-            second = mag[i+1]
-            third = mag[i+2]
-            if (first <= mean+3*magerr[i] and
-                second <= mean+3*magerr[i+1] and
-                third <= mean+3*magerr[i+2]):
-                if (not deviating):
-                    con += 1
-                    deviating = True
-                elif deviating:
-                    deviating = False
+    return np.sum(w * mag**2)
 
-    return con/len(mag)
 
-def kurtosis(time, mag, magerr, apply_weights=True):
+def abs_sum_changes(time, mag, magerr, apply_weights=True):
     """
-    This function returns the calculated kurtosis of the lightcurve.
-    It's a measure of the peakedness (or flatness) of the lightcurve relative
-    to a normal distribution. See: www.xycoon.com/peakedness_small_sample_test_1.htm
-    
-    This updated implementation calculates the weighted mean x_mean and the weighted 
-    standard deviation sigma using numpy.average() with the weights parameter set to 1/magerr**2. 
-    Then it calculates the weighted kurtosis using the above formula and returns the result.
+    Compute the absolute sum of changes in a light curve.
 
-    Parameters:
+    This metric quantifies the total variation by summing the absolute differences 
+    between consecutive measurements. It serves as a simple indicator of 
+    short-timescale variability.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values corresponding to each measurement. Not used in this function, but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with `mag`.
+    apply_weights : bool, optional (default=True)
+        If True, differences are weighted by the inverse uncertainty in each pair of measurements (1 / sqrt(σ_i² + σ_{i+1}²)).
 
-    Returns:
+    Returns
     -------
     float
-        The calculated kurtosis of the lightcurve.
+        Sum of absolute changes, optionally weighted by uncertainty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Useful for identifying short-term variability or stochastic behavior.
+    - Not robust to outliers unless pre-processed or normalized.
     """
 
-    if apply_weights:
-        x_mean = np.average(mag, weights=1/magerr**2)
-        sigma = np.sqrt(np.average((mag-x_mean)**2, weights=1/magerr**2))
-        kurtosis = np.sum((mag-x_mean)**4 * 1/magerr**2) / (np.sum(1/magerr**2) * sigma**4) - 3
-    else:
-        kurtosis = sstats.kurtosis(mag)
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
 
-    return kurtosis
+    if mag.size < 2:
+        return 0.0
 
-def skewness(time, mag, magerr, apply_weights=True):
-    """
-    Skewness measures the asymmetry of a lightcurve, with a positive skewness
-    indicating a skew to the right, and a negative skewness indicating a skew to the left.
-    
-    This function calculates the weighted mean and standard deviation using the photometric 
-    errors as weights, and then uses these values to compute the weighted skewness.
+    dmag = np.abs(np.diff(mag))
 
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    if not apply_weights:
+        return np.sum(dmag)
 
-    Returns:
-    -------
-    float
-        The calculated skewness of the lightcurve.
-    """
-    
-    if apply_weights:
-        # Calculate the weighted mean and standard deviation
-        wmean = np.average(mag, weights=1/magerr**2)
-        wstd = np.sqrt(np.sum((mag - wmean)**2 / magerr**2) / np.sum(1/magerr**2))
-        skewness = np.sum(((mag - wmean) / wstd)**3 * 1/magerr**2) / np.sum(1/magerr**2)
-    else:
-        skewness = sstats.skew(mag)
+    derr = np.sqrt(magerr[:-1]**2 + magerr[1:]**2)
+    valid = derr > 0
 
-    return skewness
+    return np.sum(dmag[valid] / derr[valid])
 
-def vonNeumannRatio(time, mag, magerr, apply_weights=True):
-    """
-    The von Neumann ratio η was defined in 1941 by John von Neumann and serves as the
-    mean square successive difference divided by the sample variance. When this ratio is small,
-    it is an indication of a strong positive correlation between the successive photometric 
-    data points. See: (J. Von Neumann, The Annals of Mathematical Statistics 12, 367 (1941))
-    
-    In this updated version, np.average() is used to calculate the weighted average of the measurement 
-    errors squared as the sample variance. The weights argument in np.average() is used to specify 
-    the weights for each element in the input array, with larger weights given to elements with smaller errors. 
-    We also modify the calculation of delta to take into account the measurement errors by dividing the 
-    differences between successive magnitudes by the corresponding errors.
 
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The calculated von Neumann Ratio of the lightcurve.
-    """
-    
-    if apply_weights:
-        n = float(len(mag))
-        delta = sum(((mag[1:] - mag[:-1]) / magerr[:-1])**2 / (n-1.))
-        sample_variance = np.average(magerr**2, weights=1/magerr**2)
-        vNR = delta / sample_variance
-    else:
-        n = float(len(mag))
-        delta = sum((mag[1:] - mag[:-1])**2 / (n-1.))
-        sample_variance = np.std(mag)**2
-        vNR = delta / sample_variance
-
-    return vNR
-
-def stetsonJ(time, mag, magerr, apply_weights=True):
-    """
-    The variability index J was first suggested by Peter B. Stetson and serves as a
-    measure of the correlation between the data points, tending to 0 for variable stars
-    and getting large as the difference between the successive data points increases.
-    See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
-    
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The calculated stetsonJ variability index of the lightcurve.
-    """
-    
-    n = float(len(mag))
-    mean = np.median(mag)
-    delta_list=[]
-    
-    for i in range(0, len(mag)-1):
-        delta = np.sqrt(n/(n-1.))*((mag[i] - mean)/magerr[i])
-        delta2 = np.sqrt(n/(n-1.))*((mag[i+1] - mean)/magerr[i+1])
-        delta_list.append(np.nan_to_num(delta*delta2))
-    
-    stetj = sum(np.sign(delta_list)*np.sqrt(np.abs(delta_list)))
-
-    return stetj
-
-def stetsonK(time, mag, magerr, apply_weights=True):
-    """
-    The variability index K was first suggested by Peter B. Stetson and serves as a
-    measure of the kurtosis of the magnitude distribution.
-    See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The calculated stetsonK variability index of the lightcurve.
-    """  
-    
-    n = float(len(mag))
-    mean = np.median(mag)
-    delta = np.sqrt((n/(n-1.)))*((mag - mean)/magerr)
-    
-    stetsonK = ((1./n)*sum(abs(delta)))/(np.sqrt((1./n)*sum(delta**2)))
-
-    return np.nan_to_num(stetsonK)
-
-def stetsonL(time, mag, magerr, apply_weights=True):
-    """
-    The variability index L was first suggested by Peter B. Stetson and serves as a
-    means of distinguishing between different types of variation. When individual random
-    errors dominate over the actual variation of the signal, K approaches 0.798 (Gaussian limit).
-    Thus, when the nature of the errors is Gaussian, stetsonL = stetsonJ, except it will be amplified
-    by a small factor for smoothly varying signals, or suppressed by a large factor when data
-    is infrequent or corrupt. 
-    See: (P. B. Stetson, Publications of the Astronomical Society of the Pacific 108, 851 (1996)).
-        
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The calculated stetsonL variability index of the lightcurve.   
-    """  
-    
-    stetL = (stetsonJ(time, mag, magerr, apply_weights=apply_weights)*stetsonK(time, mag, magerr, apply_weights=apply_weights)) / 0.798
-
-    return stetL
-
-def median_buffer_range(time, mag, magerr, apply_weights=True):
-    """
-    This function returns the ratio of points that are between plus or minus 10% of the
-    amplitude value over the mean.
-
-    In this updated version, we compute the weighted mean of the mag array using the 
-    corresponding magerr values as weights. Then we use the weighted mean to compute a and b values 
-    for the range around the mean that we want to consider. Finally, we compute the ratio of points 
-    within this range to the total number of points.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of points that are between plus or minus 10% of the lightcurve's amplitude value over the mean.
-    """
-    
-    amp = amplitude(time, mag, magerr, apply_weights=apply_weights)
-
-    if apply_weights:
-        w_mean = np.average(mag, weights=1/magerr**2)
-        a = w_mean - amp*0.1
-        b = w_mean + amp*0.1
-    else:
-        #mean = meanMag(mag, magerr)
-        mean = np.median(mag)
-        a = mean - amp*0.1
-        b = mean + amp*0.1
-        
-    return len(np.argwhere((mag > a) & (mag < b))) / float(len(mag))
-
-def std_over_mean(time, mag, magerr, apply_weights=True):
-    """
-    A measure of the ratio of standard deviation and mean.
-    
-    In this version, weights is calculated as the inverse square 
-    of magerr. The weighted_mean is calculated as the weighted average 
-    of mag, where the weights are given by weights. weighted_var is the 
-    weighted variance, and weighted_std is the square root of weighted_var. 
-    The final line returns the ratio of weighted_std and weighted_mean.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of standard deviation to the lightcurve's mean.
-    """
-
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        mean = np.sum(mag * weights) / np.sum(weights)
-        weighted_var = np.sum(weights * (mag - mean) ** 2) / np.sum(weights)
-        std = np.sqrt(weighted_var)
-    else:
-        std, mean = np.std(mag), np.median(mag)
-
-    return std / mean
-
-def amplitude(time, mag, magerr, apply_weights=True):
-    """
-    This amplitude metric is defined as the difference between the maximum magnitude
-    measurement and the lowest magnitude measurement, divided by 2. We account for outliers by
-    removing the upper and lower 2% of magnitudes.
-    
-    In this updated implementation we first sort the magnitude and error arrays based on the magnitude values. 
-    We then compute the median magnitude value after excluding the upper and lower 2% of magnitudes to account 
-    for outliers. We compute both the standard amplitude and the weighted amplitude, where each magnitude measurement 
-    is weighed by its corresponding error. The weighted amplitude is then returned by the function.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-    
-    Returns:
-    -------
-    float
-        The calculated amplitude of the lightcurve.
-    """
-    
-    if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        n = len(mag)
-        lower_bound = int(n*0.02)
-        upper_bound = int(n*(1-0.02))
-        mag_median = np.median(sorted_mag[lower_bound:upper_bound])
-        amplitude = (np.max(sorted_mag[lower_bound:upper_bound]) - np.min(sorted_mag[lower_bound:upper_bound])) / 2.0
-        amp = np.sum(np.abs(sorted_mag[lower_bound:upper_bound] - mag_median) * sorted_magerr[lower_bound:upper_bound]) / np.sum(sorted_magerr[lower_bound:upper_bound])
-    else:
-        amp = (np.percentile(mag, 98) - np.percentile(mag, 2)) / 2.0
-
-    return amp
-
-def median_distance(time, mag, magerr, apply_weights=True):
-    """
-    This function calculates the median Euclidean distance between each photometric
-    measurement, a helpful metric for detecting overlapped lightcurves.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The calculated median Euclidean distance between each lightcurve measurement.
-    """
-
-    if apply_weights:
-        delta_mag = (mag[1:] - mag[:-1])**2
-        delta_t = (time[1:] - time[:-1])**2
-        delta_magerr = (magerr[1:]**2 + magerr[:-1]**2)
-        return np.median(np.sqrt(delta_mag/delta_magerr + delta_t/delta_magerr))
-    else:
-        delta_mag = (mag[1:] - mag[:-1])**2
-        delta_t = (time[1:] - time[:-1])**2      
-        return np.median(np.sqrt(delta_mag + delta_t))   
-    
 def above1(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are above 1 standard deviation
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are above 1 standard deviation from the median magnitude is returned.
-    By weighting each data point according to its error, we are taking into account the fact 
-    that more weight should be given to data points that have lower measurement uncertainties. 
+    Fraction of points more than 1σ above the median.
 
-    Parameters:
+    This statistic measures the proportion of light curve points that lie 
+    more than one standard deviation above the median value. It can be used 
+    as a simple indicator of asymmetric variability or outburst-like behavior.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points above 1 standard deviation from the light curve's median measurement.
+        Fraction of data points that are >1σ above the median.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best used with **normalized flux**, but compatible with magnitudes or raw flux values.
+    - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_above1 = np.mean((mag - median_mag) > std)
-        weighted_above1 /= np.mean((mag - median_mag + std) / magerr**2)
-        return weighted_above1
-    else:
-        above1 = np.mean((mag - median_mag) > std)
-        return above1
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=+1)
+
 
 def above3(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are above 3 standard deviations
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are above 3 standard deviations from the median magnitude is returned.
+    Fraction of points more than 3σ above the median.
 
-    Parameters:
+    This statistic quantifies the fraction of light curve values that exceed the
+    median by more than three times the local uncertainty (3σ). It highlights strong
+    positive deviations that may correspond to flares, outbursts, or anomalies.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points above 3 standard deviations from the light curve's median measurement.
+        Fraction of data points that are >3σ above the median.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best used with **normalized flux**, but compatible with magnitudes or raw flux values.
+    - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_above3 = np.mean((mag - median_mag) > 3 * std)
-        weighted_above3 /= np.mean((mag - median_mag + 3 * std) / magerr**2)
-        return weighted_above3
-    else:
-        above3 = np.mean((mag - median_mag) > 3 * std)
-        return above3
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=+3)
+
 
 def above5(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are above 5 standard deviations
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are above 5 standard deviations from the median magnitude is returned.
+    Fraction of points more than 5σ above the median.
 
-    Parameters:
+    This statistic calculates the proportion of light curve values that are more than
+    five standard deviations above the median. It is useful for identifying extreme 
+    positive outliers such as strong flares, transients, or artifacts.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points above 5 standard deviations from the light curve's median measurement.
+        Fraction of data points that are >5σ above the median.
+
+    Notes
+    -----
+    - Suitable for light curves with **uneven sampling**, since time information is not used.
+    - Best used with **normalized flux**, but compatible with magnitudes or raw flux values.
+    - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_above5 = np.mean((mag - median_mag) > 5 * std)
-        weighted_above5 /= np.mean((mag - median_mag + 5 * std) / magerr**2)
-        return weighted_above5
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=+5)
+
+
+def amplitude(time, mag, magerr, apply_weights=True, pct_clip=1.0):
+    """
+    Estimate the amplitude of a light curve using clipped percentiles.
+
+    This statistic computes the difference between the upper and lower percentile 
+    bounds of the light curve, which serves as a robust proxy for amplitude. 
+    The percentile clipping (e.g., 1st–99th) reduces the influence of outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values corresponding to each measurement. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies inverse-variance weighting when computing percentiles.
+    pct_clip : float, optional (default=1.0)
+        Lower and upper percentiles used to define amplitude. For example, `pct_clip=1.0` computes the 1st–99th percentile range. Must be between 0 and 50.
+
+    Returns
+    -------
+    float
+        Estimated amplitude (difference between high and low clipped percentiles).
+
+    Notes
+    -----
+    - Robust to noise and outliers due to percentile-based clipping.
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best used with **normalized flux**, but compatible with magnitudes or raw flux values.
+    - If `magerr` is poorly estimated or zero everywhere, unweighted percentiles are used.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        lo = np.percentile(mag, pct_clip)
+        hi = np.percentile(mag, 100.0 - pct_clip)
+        return hi - lo
+
+    # weighted version
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        lo = np.percentile(mag, pct_clip)
+        hi = np.percentile(mag, 100.0 - pct_clip)
     else:
-        above5 = np.mean((mag - median_mag) > 5 * std)
-        return above5
+        lo = helper_features._weighted_percentile(mag, w, pct_clip)
+        hi = helper_features._weighted_percentile(mag, w, 100.0 - pct_clip)
+
+    return hi - lo
+
+
+def AndersonDarling(time, mag, magerr, apply_weights=True):
+    """
+    Compute the Anderson–Darling statistic as a measure of normality.
+
+    This function evaluates how well the distribution of light curve values fits a 
+    Gaussian profile, using the Anderson–Darling test. A logistic transformation 
+    is applied to the statistic to bound the output between 0 and 1, with higher 
+    values indicating stronger deviation from normality.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, the Anderson–Darling test is applied to the standardized residuals using inverse-variance weights.
+
+    Returns
+    -------
+    float
+        A logistic-transformed Anderson–Darling score between 0 and 1, where higher values
+        indicate greater deviation from normality.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best applied to **normalized flux** to reduce scaling sensitivity.
+    - The output is **nonlinearly scaled** using a logistic transformation of the A² statistic, bounding it between 0 and 1.
+    - When `apply_weights=True`, the test uses weighted estimates for the mean and variance.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        a2 = sstats.anderson(mag, dist='norm').statistic
+    else:
+        w = helper_features._safe_weights(magerr)
+        mu = np.sum(w * mag) / w.sum() if w.sum() else np.mean(mag)
+        var = np.sum(w * (mag - mu)**2) / w.sum() if w.sum() else np.var(mag, ddof=0)
+        z = np.sort((mag - mu) / np.sqrt(var))
+        n = z.size
+        eps = np.finfo(float).eps # smallest representable positive number to avoid nans below
+        cdf = np.clip(sstats.norm.cdf(z), eps, 1 - eps)
+        i = np.arange(1, n + 1)
+        a2 = -n - np.sum((2 * i - 1) * (np.log(cdf) + np.log1p(-cdf[::-1]))) / n
+
+    return 1.0 / (1.0 + np.exp(-10.0 * (a2 - 0.3)))
+
+
+def auto_corr(time, mag, magerr, apply_weights=True):
+    """
+    Compute the lag-1 autocorrelation of a light curve.
+
+    This metric measures the correlation between adjacent points in the light curve,
+    i.e., how similar each value is to its immediate neighbor. A high value indicates
+    smooth, slowly varying behavior; a low or negative value suggests more random
+    or rapidly changing signals.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies inverse-variance weighting when computing the autocorrelation.
+
+    Returns
+    -------
+    float
+        Lag-1 autocorrelation coefficient. Returns NaN if the input is too short
+        or the denominator is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best used with **normalized flux**, but compatible with magnitudes or raw flux values.
+    - If `apply_weights=True`, weighted means and covariances are used.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    n = mag.size
+    if n < 2:
+        return np.nan
+
+    if not apply_weights:
+        return np.corrcoef(mag[:-1], mag[1:])[0, 1]
+
+    w = helper_features._safe_weights(magerr)
+    wp = np.sqrt(w[:-1] * w[1:])
+    if wp.sum() == 0:
+        return np.corrcoef(mag[:-1], mag[1:])[0, 1]
+
+    mu = np.sum(w * mag) / w.sum()
+    num = np.sum(wp * (mag[:-1] - mu) * (mag[1:] - mu))
+    den = np.sum(w * (mag - mu) ** 2)
+
+    return num / den if den > 0 else np.nan
+
 
 def below1(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are below 1 standard deviation
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are below 1 standard deviation from the median magnitude is returned.
+    Fraction of points more than 1σ below the median.
 
-    Parameters:
+    This statistic measures the proportion of light curve values that lie more than 
+    one standard deviation below the median. It serves as an indicator of 
+    dimming events or asymmetric variability skewed toward fainter fluxes.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points below 1 standard deviation from the light curve's median measurement.
+        Fraction of data points that are >1σ fainter than the median.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_below1 = np.mean((-mag + median_mag) > std)
-        weighted_below1 /= np.mean((-mag + median_mag + std) / magerr**2)
-        return weighted_below1
-    else:
-        below1 = np.mean((-mag + median_mag) > std)
-        return below1
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=-1)
+
 
 def below3(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are below 3 standard deviations
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are below 3 standard deviations from the median magnitude is returned.
+    Fraction of points more than 3σ below the median.
 
-    Parameters:
+    This statistic measures the proportion of light curve values that are more than
+    three standard deviations fainter than the median. It is designed to capture
+    deep dimming events, eclipses, or significant negative outliers.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points below 3 standard deviations from the light curve's median measurement.
+        Fraction of data points that are >3σ fainter than the median.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_below3 = np.mean((-mag + median_mag) > 3 * std)
-        weighted_below3 /= np.mean((-mag + median_mag + 3 * std) / magerr**2)
-        return weighted_below3
-    else:
-        below3 = np.mean((-mag + median_mag) > 3 * std)
-        return below3
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=-3)
+
 
 def below5(time, mag, magerr, apply_weights=True):
     """
-    This function measures the ratio of data points that are below 5 standard deviations
-    from the median magnitude, weighted by their errors.
-    
-    In this updated function, each data point is weighed according to its error. The weighted 
-    ratio of points that are below 5 standard deviations from the median magnitude is returned.
+    Fraction of points more than 5σ below the median.
 
-    Parameters:
+    This statistic measures the proportion of light curve values that are more than
+    five standard deviations fainter than the median. It is particularly useful for
+    detecting rare or extreme dimming events such as deep eclipses or dropouts.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the light curve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted fraction using inverse-variance weighting.
 
-    Returns:
+    Returns
     -------
     float
-        The number of points below 5 standard deviations from the light curve's median measurement.
+        Fraction of data points that are >5σ fainter than the median.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
-    median_mag = np.median(mag)
-    std = np.std(mag)
-    
-    if apply_weights:
-        weighted_below5 = np.mean((-mag + median_mag) > 5 * std)
-        weighted_below5 /= np.mean((-mag + median_mag + 5 * std) / magerr**2)
-        return weighted_below5
+
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
+                       apply_weights=apply_weights, sign=-5)
+
+
+def benford_correlation(time, mag, magerr, apply_weights=True):
+    """
+    Correlation with Benford's Law based on first significant digit frequencies.
+
+    This statistic compares the distribution of first significant digits in the 
+    light curve values to the expected distribution from Benford's Law. A high 
+    correlation indicates that the data follow Benford-like behavior, which has 
+    been proposed as a signature of natural, noise-like variability.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes weighted digit frequencies using inverse-variance weights.
+
+    Returns
+    -------
+    float
+        Pearson correlation coefficient between the observed digit distribution and 
+        the theoretical Benford distribution. Returns NaN if input is empty or 
+        contains no valid digits.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Best used with **raw or log-transformed fluxes**; normalized flux may suppress digit diversity.
+    - First significant digits are extracted by computing: floor(|x| / 10^floor(log10(|x|))) for each nonzero, finite value x in `mag`. For example: 345.2 --> 3, 0.012 --> 1
+    - Benford's Law expects first digits to follow a logarithmic distribution:  `P(d) = log10(1 + 1/d)`, for `d ∈ {1,...,9}`.
+    - May serve as a statistical regularity check or anomaly detector.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    digits = helper_features._first_sig_digit(mag)
+    mask = digits > 0
+    digits = digits[mask]
+    if digits.size == 0:
+        return np.nan
+
+    benford = np.log10(1 + 1.0 / np.arange(1, 10))
+
+    if not apply_weights:
+        data_freq = np.array([(digits == d).mean() for d in range(1, 10)])
     else:
-        below5 = np.mean((-mag + median_mag) > 5 * std)
-        return below5
+        w = helper_features._safe_weights(magerr)[mask]
+        if w.sum() == 0:
+            data_freq = np.array([(digits == d).mean() for d in range(1, 10)])
+        else:
+            data_freq = np.array([w[digits == d].sum() for d in range(1, 10)])
+            data_freq = data_freq / data_freq.sum()
 
-def medianAbsDev(time, mag, magerr, apply_weights=True):
+    return np.corrcoef(benford, data_freq)[0, 1]
+
+
+def c3(time, mag, magerr, apply_weights=True, lag=1):
     """
-    A measure of the mean average distance between each magnitude value
-    and the mean magnitude. https://en.wikipedia.org/wiki/Median_absolute_deviation 
-    
-    This updated function first calculates the median of the magnitude array, 
-    then calculates the absolute deviation from the median, divided by the corresponding error value. 
-    The median of these absolute deviations is returned as the MAD value.
+    Third-order autocorrelation statistic (C₃) of a light curve.
 
-    Parameters:
+    This feature measures the average product of triplets of light curve values 
+    separated by a fixed lag. It captures higher-order temporal structure, such as 
+    phase correlations and coherent trends beyond simple pairwise autocorrelation.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    lag : int, optional (default=1)
+        Time step (in array index units) between elements in the triplet. The function evaluates the product of values at positions (i, i+lag, i+2*lag).
+    apply_weights : bool, optional (default=True)
+        If True, each triplet is weighted by the inverse variance of the combined uncertainty.
 
-    Returns:
+    Returns
     -------
     float
-        The median absolute deviation of the lightcurve.
+        Mean third-order product of lagged triplets, optionally weighted. Returns NaN
+        if the array is too short for the specified lag.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Can detect asymmetries and nonlinear temporal correlations not captured by standard autocorrelation.
+    - Requires at least `2 * lag + 1` points to be valid.
     """
 
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    n = mag.size
+    if n < 2 * lag + 1:
+        return np.nan
+
+    x0 = mag[:-2*lag]
+    x1 = mag[lag:-lag]
+    x2 = mag[2*lag:]
+    triple = x0 * x1 * x2
+
+    if not apply_weights:
+        return triple.mean()
+
+    w = 1.0 / (magerr[:-2*lag]**2 + magerr[lag:-lag]**2 + magerr[2*lag:]**2)
+
+    if w.sum() == 0:
+        return triple.mean()
+
+    return np.sum(w * triple) / w.sum()
+
+
+def check_for_duplicate(time, mag, magerr, apply_weights=True):
+    """
+    Check for duplicate or nearly duplicate light curve values.
+
+    This function detects whether the input light curve contains repeated values. 
+    If `apply_weights=True`, values are considered duplicates if they are 
+    indistinguishable within photometric uncertainty using a tolerance-based comparison.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses a tolerance-based comparison that accounts for measurement errors. If False, checks for exact duplicates.
+
+    Returns
+    -------
+    int
+        1 if any duplicates are detected, 0 otherwise.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Useful for detecting flat or non-variable signals. 
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    return helper_features._dup_with_tol(mag, magerr) if apply_weights else int(mag.size != np.unique(mag).size)
+
+
+def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
+    """
+    Check for duplicate maximum values in a light curve.
+
+    This function determines whether the **maximum value** in the light curve appears 
+    more than once. If `apply_weights=True`, values are considered equal if they are 
+    within 3σ of each other, accounting for photometric uncertainty.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, duplicates of the maximum value are detected within a tolerance of 3 times the corresponding measurement error. If False, an exact match is required.
+
+    Returns
+    -------
+    int
+        1 if the maximum value (within tolerance) appears more than once, 0 otherwise.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Useful for detecting plateau-like maxima or saturation effects in light curves.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    max_val = np.max(mag)
+    idx = np.where(np.isclose(mag, max_val,
+                              atol=(3 * magerr if apply_weights else 0),
+                              rtol=0))[0]
+
+    return int(idx.size > 1)
+
+
+def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
+    """
+    Check for duplicate minimum values in a light curve.
+
+    This function determines whether the **minimum value** in the light curve appears 
+    more than once. If `apply_weights=True`, values are considered equal if they are 
+    within 3σ of each other, accounting for photometric uncertainty.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, duplicates of the minimum value are detected within a tolerance of 3 times the corresponding measurement error. If False, an exact match is required.
+
+    Returns
+    -------
+    int
+        1 if the minimum value (within tolerance) appears more than once, 0 otherwise.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Useful for identifying repeated dimming events, eclipses, or floor effects in light curves.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    min_val = np.min(mag)
+    idx = np.where(np.isclose(mag, min_val,
+                              atol=(3 * magerr if apply_weights else 0),
+                              rtol=0))[0]
+
+    return int(idx.size > 1)
+
+
+def check_max_last_loc(time, mag, magerr, apply_weights=True):
+    """
+    Relative position of the last occurrence of the maximum value in a light curve.
+
+    This function checks where (in normalized index units) the last occurrence of the 
+    maximum value appears in the light curve. If `apply_weights=True`, matches to the 
+    maximum value are allowed within a 3σ photometric uncertainty tolerance.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, the maximum match is evaluated using a tolerance of 3 times the measurement error. If False, an exact match is used.
+
+    Returns
+    -------
+    float
+        A value between 0 and 1 indicating how close to the end of the time series the 
+        last occurrence of the maximum value occurs. Returns NaN if the input is empty 
+        or no match is found.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Useful for detecting whether a light curve ends with a peak (e.g., rising events, flares).
+    - A value close to 1 means the max value appears near the **start** of the time series; close to 0 means it appears near the **end**.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    max_val = np.max(mag)
+    tol = 3 * magerr if apply_weights else 0
+    idx = np.where(np.isclose(mag, max_val, atol=tol, rtol=0))[0]
+
+    return 1.0 - idx[-1] / mag.size if idx.size else np.nan
+
+
+def check_min_last_loc(time, mag, magerr, apply_weights=True):
+    """
+    Relative position of the last occurrence of the minimum value in a light curve.
+
+    This function determines where (in normalized index units) the last occurrence of 
+    the minimum value appears in the light curve. If `apply_weights=True`, values 
+    within 3σ of the minimum are treated as equivalent matches.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, the minimum match is evaluated using a tolerance of 3 times the 
+        measurement error. If False, an exact match is used.
+
+    Returns
+    -------
+    float
+        A value between 0 and 1 indicating how close to the end of the time series the 
+        last occurrence of the minimum value appears. Returns NaN if the input is empty 
+        or no match is found.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Useful for detecting events where dimming or troughs occur at the end of the observation window.
+    - A value near 0 implies the minimum occurred near the **end**; near 1 implies it occurred near the **start** of the light curve.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    min_val = np.min(mag)
+    tol = 3 * magerr if apply_weights else 0
+    idx = np.where(np.isclose(mag, min_val, atol=tol, rtol=0))[0]
+
+    return 1.0 - idx[-1] / mag.size if idx.size else np.nan
+
+
+def complexity(time, mag, magerr, apply_weights=True):
+    """
+    Estimate the local complexity of a light curve using root-mean-square of differences.
+
+    This feature quantifies short-timescale variability by computing the RMS of 
+    first-order differences in the light curve. It reflects the degree of irregularity in the signal 
+    and is sensitive to noise, flickering, and fast variability.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, weights the squared differences using the inverse variance from `magerr`.
+
+    Returns
+    -------
+    float
+        Root-mean-square of first-order differences, optionally weighted. Returns NaN
+        if the input length is less than 2 or weights are zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Sensitive to both real high-frequency variability and measurement noise.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size < 2:
+        return np.nan
+
+    diff = np.diff(mag)
+
+    if not apply_weights:
+        return np.sqrt(np.mean(diff**2))
+
+    w = helper_features._safe_weights(magerr[:-1])
+
+    if w.sum() == 0:
+        return np.sqrt(np.mean(diff**2))
+
+    return np.sqrt(np.sum(w * diff**2) / w.sum())
+
+
+def con_above1(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly bright points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥1σ brighter than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 1 × `magerr` relative to the median. If False, uses a global 1σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥1σ bright excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Used to detect **bursting** or **flare-like** variability patterns.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
     if apply_weights:
+        dev_mask = mag >= (baseline + 1.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag >= (baseline + 1.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for bright in dev_mask:
+        if bright:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def con_above3(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly bright points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥3σ brighter than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can be fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 3 × `magerr` relative to the median. If False, uses a global 3σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥3σ bright excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Used to detect **bursting** or **flare-like** variability patterns.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
+    if apply_weights:
+        dev_mask = mag >= (baseline + 3.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag >= (baseline + 3.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for bright in dev_mask:
+        if bright:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def con_above5(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly bright points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥5σ brighter than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can fluxes, or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 5 × `magerr` relative to the median. If False, uses a global 5σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥5σ bright excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Used to detect **bursting** or **flare-like** variability patterns.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
+    if apply_weights:
+        dev_mask = mag >= (baseline + 5.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag >= (baseline + 5.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for bright in dev_mask:
+        if bright:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def con_below1(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly dim points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥1σ dimmer than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can be fluxes or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 1 × `magerr` relative to the median. If False, uses a global 1σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥1σ dim excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Useful for detecting **dips**, **eclipses**, or **transits**.
+    """
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
+    if apply_weights:
+        dev_mask = mag <= (baseline - 1.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag <= (baseline - 1.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for dim in dev_mask:
+        if dim:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def con_below3(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly dim points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥3σ dimmer than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can be fluxes or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 3 × `magerr` relative to the median. If False, uses a global 3σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥3σ dim excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Useful for detecting **dips**, **eclipses**, or **transits**.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
+    if apply_weights:
+        dev_mask = mag <= (baseline - 3.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag <= (baseline - 3.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for dim in dev_mask:
+        if dim:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def con_below5(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of clusters of ≥3 consecutive significantly dim points.
+
+    This metric identifies and counts "clusters" of three or more consecutive light-curve 
+    points that are ≥5σ dimmer than the baseline magnitude. The result is normalized 
+    by the total number of light-curve points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can be fluxes or normalized fluxes.
+    magerr : array-like
+        Measurement uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, applies a per-point threshold of 5 × `magerr` relative to the median. If False, uses a global 5σ threshold based on the standard deviation of `mag`.
+
+    Returns
+    -------
+    float
+        Fraction of light curve points that are part of clusters of ≥3 consecutive 
+        ≥5σ dim excursions. Defined as `N_clusters / N_points`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Useful for detecting **dips**, **eclipses**, or **transits**.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return 0.0
+
+    baseline = np.median(mag)
+
+    if apply_weights:
+        dev_mask = mag <= (baseline - 5.0 * magerr)
+    else:
+        sigma = np.std(mag, ddof=1)
+        dev_mask = mag <= (baseline - 5.0 * sigma)
+
+    clusters = 0
+    run_len  = 0
+    for dim in dev_mask:
+        if dim:
+            run_len += 1
+            if run_len == 3:
+                clusters += 1
+        else:
+            run_len = 0
+
+    return clusters / mag.size
+
+
+def count_above(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of light curve points above the median.
+
+    This metric calculates the proportion of light curve values that are greater than
+    the median. It is a simple measure of asymmetry or skewness in the distribution 
+    of values. When `apply_weights=True`, the comparison is made to the weighted 
+    median, and the result is a weighted fraction.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weights to compute the median and resulting fraction. If False, performs an unweighted comparison to the simple median.
+
+    Returns
+    -------
+    float
+        Fraction of values greater than the (weighted) median. Returns a weighted 
+        sum of points above the median if `apply_weights=True`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if not apply_weights:
+        return (mag > np.median(mag)).sum() / mag.size
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        return (mag > np.median(mag)).sum() / mag.size
+
+    med = helper_features._weighted_median(mag, w)
+
+    return w[mag > med].sum() / w.sum()
+
+
+def count_below(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of light curve points below the median.
+
+    This metric computes the proportion of light curve values that are less than
+    the median. It is a simple measure of asymmetry or skewness in the distribution 
+    of values. When `apply_weights=True`, the comparison is made to the weighted 
+    median, and the result is a weighted fraction.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weights to compute the median and resulting fraction. If False, performs an unweighted comparison to the simple median.
+
+    Returns
+    -------
+    float
+        Fraction of values less than the (weighted) median. Returns a weighted 
+        sum of points below the median if `apply_weights=True`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if not apply_weights:
+        return (mag < np.median(mag)).sum() / mag.size
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        return (mag < np.median(mag)).sum() / mag.size
+
+    med = helper_features._weighted_median(mag, w)
+
+    return w[mag < med].sum() / w.sum()
+
+
+def cusum(time, mag, magerr, apply_weights=True):
+    """
+    Cumulative sum (CUSUM) variability index.
+
+    This statistic quantifies the overall deviation from stationarity by computing 
+    the normalized cumulative sum of residuals from the median. The final value is 
+    the range between the maximum and minimum of the CUSUM series. It captures 
+    gradual trends, systematic drifts, or long-term changes in the light curve.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting to compute a weighted standard deviation. If False, uses the unweighted standard deviation.
+
+    Returns
+    -------
+    float
+        The maximum cumulative deviation from the median, normalized by light curve 
+        length and scatter. Returns NaN if the input is empty and 0.0 if the scatter is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Sensitive to slow drifts or systematic trends in the light curve.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    med = np.median(mag)
+
+    if not apply_weights:
+        sig = np.std(mag, ddof=0)
+    else:
+        w = helper_features._safe_weights(magerr)
+        sig = np.sqrt(np.sum(w * (mag - med)**2) / w.sum()) if w.sum() else np.std(mag, ddof=0)
+
+    if sig == 0:
+        return 0.0
+
+    c = np.cumsum(mag - med) / (mag.size * sig)
+
+    return np.max(c) - np.min(c)
+
+
+def first_loc_max(time, mag, magerr, apply_weights=True):
+    """
+    Normalized location of the first occurrence of the maximum value.
+
+    This feature identifies the first (or weighted) index at which the light curve 
+    reaches its maximum value and returns its position normalized by the total 
+    number of points. It provides a simple temporal indicator of where brightening 
+    events occur in the light curve.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, the product of `mag * weight` is used to determine the maximum value, where weight is the inverse-variance from `magerr`. If False, the raw maximum is used.
+
+    Returns
+    -------
+    float
+        Index of the first occurrence of the (weighted) maximum, normalized by array size.
+        Returns NaN if the input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return np.argmax(mag) / mag.size
+
+    w = helper_features._safe_weights(magerr)
+    idx = np.argmax(mag * w)
+
+    return idx / mag.size
+
+
+def first_loc_min(time, mag, magerr, apply_weights=True):
+    """
+    Normalized location of the first occurrence of the minimum value.
+
+    This feature identifies the first (or weighted) index at which the light curve 
+    reaches its minimum value and returns its position normalized by the total 
+    number of points. It provides a simple temporal indicator of where dimming 
+    events occur in the light curve.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, the product of `mag * weight` is used to determine the minimum value,
+        where weight is the inverse-variance from `magerr`. If False, the raw minimum
+        is used.
+
+    Returns
+    -------
+    float
+        Index of the first occurrence of the (weighted) minimum, normalized by array size.
+        Returns NaN if the input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return np.argmin(mag) / mag.size
+
+    w = helper_features._safe_weights(magerr)
+    idx = np.argmin(mag * w)
+
+    return idx / mag.size
+
+
+def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
+    """
+    Flux percentile ratio for the middle 20% of the light curve.
+
+    This metric computes the ratio of the flux range between the 40th and 60th percentiles 
+    to the full flux range (2nd to 98th percentiles). It captures the concentration of 
+    values near the median and helps distinguish compact versus broad distributions.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting when computing percentiles.
+
+    Returns
+    -------
+    float
+        Ratio of the 40–60th percentile range to the 2–98th percentile range.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Higher values indicate that more of the light curve is concentrated near the median.
+    """
+
+    return helper_features._flux_percentile_ratio(mag, magerr, 0.40, 0.60, apply_weights)
+
+
+def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
+    """
+    Flux percentile ratio for the middle 35% of the light curve.
+
+    Computes the ratio of the 32.5–67.5th percentile flux range to the total flux range 
+    (2nd to 98th percentiles). This measures how tightly flux values cluster around 
+    the center of the distribution.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values. Not used in the calculation.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Associated 1σ uncertainties.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting for percentile calculations.
+
+    Returns
+    -------
+    float
+        Ratio of the 32.5–67.5 percentile range to the 2–98 percentile range.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Useful for identifying symmetric, compact light curve profiles.
+    """
+
+    return helper_features._flux_percentile_ratio(mag, magerr, 0.325, 0.675, apply_weights)
+
+
+def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
+    """
+    Flux percentile ratio for the middle 50% of the light curve.
+
+    Computes the ratio of the interquartile range (25th to 75th percentile) to the 
+    total flux range (2nd to 98th percentiles), measuring the spread of the 
+    central portion of the distribution.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values. Not used in the calculation.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Associated 1σ uncertainties.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting for percentile calculations.
+
+    Returns
+    -------
+    float
+        Ratio of the 25–75 percentile range to the 2–98 percentile range.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Equivalent to the **interquartile flux ratio** normalized to the full flux spread.
+    """
+
+    return helper_features._flux_percentile_ratio(mag, magerr, 0.25, 0.75, apply_weights)
+
+
+def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
+    """
+    Flux percentile ratio for the middle 65% of the light curve.
+
+    Calculates the ratio between the 17.5–82.5th percentile flux range and the 
+    total flux range (2nd to 98th percentiles). Captures more of the light curve's 
+    distribution than narrower windows.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values. Not used in the calculation.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Associated 1σ uncertainties.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting for percentile calculations.
+
+    Returns
+    -------
+    float
+        Ratio of the 17.5–82.5 percentile range to the 2–98 percentile range.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Useful for characterizing moderately broad light curve distributions.
+    """
+
+    return helper_features._flux_percentile_ratio(mag, magerr, 0.175, 0.825, apply_weights)
+
+
+def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
+    """
+    Flux percentile ratio for the middle 80% of the light curve.
+
+    Calculates the ratio between the 10–90th percentile flux range and the 
+    total flux range (2nd to 98th percentiles). Captures the majority of 
+    the distribution while being robust to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values. Not used in the calculation.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Associated 1σ uncertainties.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting for percentile calculations.
+
+    Returns
+    -------
+    float
+        Ratio of the 10–90 percentile range to the 2–98 percentile range.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Captures broad variability without being fully dominated by outliers.
+    """
+
+    return helper_features._flux_percentile_ratio(mag, magerr, 0.10, 0.90, apply_weights)
+
+
+def Gskew(time, mag, magerr, apply_weights=True):
+    """
+    Robust skewness estimator using extreme quantiles (G-skew).
+
+    This statistic measures the asymmetry of the light curve distribution by comparing 
+    the medians of the lower and upper 3% tails to the global median. It is more robust 
+    to outliers and non-Gaussian noise than classical skewness metrics.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values for the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Associated 1σ uncertainties for each value in `mag`.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting when computing medians and quantiles. If False, computes the unweighted G-skew.
+
+    Returns
+    -------
+    float
+        G-skew value, defined as: `(median of bottom 3%) + (median of top 3%) - 2 × global median`.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - More robust than classical skewness for non-symmetric or noisy light curves.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
         med = np.median(mag)
-        absdev = np.abs(mag - med) / magerr
-        mad = np.median(absdev)
-        return mad
-    else:
-        array = np.ma.array(mag).compressed() 
-        med = np.median(array)
-        return np.median(np.abs(array - med))
+        p3, p97 = np.percentile(mag, [3, 97])
+        return np.median(mag[mag <= p3]) + np.median(mag[mag >= p97]) - 2 * med
 
-def root_mean_squared(time, mag, magerr, apply_weights=True):
+    idx = np.argsort(mag)
+    w = helper_features._safe_weights(magerr)[idx]
+    x = mag[idx]
+
+    p3, med, p97 = helper_features._weighted_percentiles(x, w, [0.03, 0.5, 0.97])
+
+    mq3 = helper_features._weighted_percentiles(x[x <= p3], w[x <= p3], 0.5)[0] if np.any(x <= p3) else np.nan
+    mq97 = helper_features._weighted_percentiles(x[x >= p97], w[x >= p97], 0.5)[0] if np.any(x >= p97) else np.nan
+
+    return mq3 + mq97 - 2 * med
+
+
+def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
     """
-    A measure of the root mean square deviation that takes into account the photometric errors.
-    
-    In this new version, the magnitudes are weighted by their corresponding errors, which takes
-    into account the uncertainty in the measurements. The weighted mean of the magnitudes is 
-    subtracted from each magnitude to calculate the weighted deviations, which are then squared 
-    and averaged to get the weighted mean of the squared deviations. Finally, the square root of 
-    this quantity gives the root mean square deviation that takes into account the photometric errors.
+    Ratio of variability amplitude above vs. below the median.
 
-    Parameters:
+    This statistic compares the root-mean-square (RMS) scatter of light curve points 
+    that are greater than the median to those that are lower, by computing:
+
+        sqrt( Σ[(Δm)²]_greater / Σ[(Δm)²]_lower )
+
+    where Δm is the deviation from the median. This provides a compact measure 
+    of flux asymmetry about the median. 
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting for the RMS computations.
 
-    Returns:
+    Returns
     -------
     float
-        The root-mean-square of the lightcurve.
+        Ratio of RMS scatter in the fainter half to that in the brighter half, 
+        relative to the median. Returns NaN if either side has zero variance 
+        or no data.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if apply_weights:
-        weighted_mean = np.sum(mag / magerr**2) / np.sum(1 / magerr**2)
-        weights = 1 / magerr**2
-        deviations = (mag - weighted_mean)
-        weighted_deviations = deviations * weights
-        weighted_dev_squared = np.sum(weighted_deviations**2) / np.sum(weights)
-        rms = np.sqrt(weighted_dev_squared) #Root mean square deviation
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    med = np.median(mag)
+    mask_low = mag > med
+    mask_high = ~mask_low
+
+    if not apply_weights:
+        var_low = np.mean((mag[mask_low]  - med)**2) if mask_low.any() else np.nan
+        var_high = np.mean((mag[mask_high] - med)**2) if mask_high.any() else np.nan
     else:
-        rms = np.sqrt(np.median(mag)**2)
+        w_low = helper_features._safe_weights(magerr[mask_low])
+        w_high = helper_features._safe_weights(magerr[mask_high])
+        var_low = np.sum(w_low * (mag[mask_low]  - med)**2) / w_low.sum() if w_low.sum() else np.nan
+        var_high = np.sum(w_high * (mag[mask_high] - med)**2) / w_high.sum() if w_high.sum() else np.nan
 
-    return rms
+    return np.sqrt(var_low / var_high) if (var_low > 0 and var_high > 0) else np.nan
 
-def meanMag(time,mag, magerr, apply_weights=True):
+
+def index_mass_quantile(time, mag, magerr, apply_weights=True, r=0.5):
     """
-    Calculates mean magnitude, weighted by the errors.
-        
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    Index at which a given fraction of the absolute cumulative flux is reached.
 
-    Returns:
+    This metric computes the index location (normalized to [0,1]) at which a 
+    specified fraction `r` of the total **absolute flux** (or amplitude) is accumulated 
+    in the sorted light curve. It reflects how quickly the "mass" of the light curve 
+    builds up and characterizes burstiness or concentration.
+
+    Parameters
+    ----------
+    time : array-like
+        Time stamps of the light curve. Not used directly in the calculation.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    r : float, optional (default=0.5)
+        The cumulative mass quantile to evaluate (must be in (0, 1)).
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting (1 / magerr²) when computing cumulative mass.
+
+    Returns
     -------
     float
-        The weighted mean measurement of the lightcurve.
+        The normalized index location at which the cumulative absolute "mass" 
+        exceeds the specified fraction `r`. Returns NaN if input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Values closer to 0 imply early accumulation of flux; closer to 1 indicates late accumulation.
     """
-            
-    return sum(mag/magerr**2)/sum(1./magerr**2)
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    abs_mag = np.abs(mag)
+
+    if not apply_weights:
+        cdf = np.cumsum(abs_mag) / abs_mag.sum()
+    else:
+        w = 1.0 / magerr**2
+        cdf = np.cumsum(abs_mag * w) / (abs_mag * w).sum()
+
+    idx = np.searchsorted(cdf, r, side="left")
+
+    return (idx + 1) / mag.size
+
 
 def integrate(time, mag, magerr, apply_weights=True):
     """
-    Integrate magnitude using the trapezoidal rule.
-    See: http://en.wikipedia.org/wiki/Trapezoidal_rule
-    
-    In the case of integrating the magnitude using the trapezoidal rule, 
-    it is not necessary to incorporate the error since the error in magnitude 
-    will affect each individual data point, but not the overall integration. 
-    The trapezoidal rule uses the values of the magnitudes and their timestamps 
-    to compute the area under the curve, without considering the individual errors at each point.
+    Numerical integration of the light curve using the trapezoidal rule.
 
-    Parameters:
+    This function computes the integral of the magnitude time series using 
+    the trapezoidal rule. The integration is performed over the `time` array 
+    with respect to the `mag` values. Magnitude errors (`magerr`) are ignored, 
+    as they do not affect the integration of the signal itself.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values corresponding to each magnitude measurement.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with `mag`. Ignored in this function.
+    apply_weights : bool, optional (default=True)
+        Currently unused. Included for API compatibility only.
 
-    Returns:
+    Returns
     -------
     float
-        The integral value of the lightcurve.
+        The integrated magnitude over time, computed via the trapezoidal rule.
+
+    Notes
+    -----
+    - This is a purely geometric integration; `magerr` is not used.
+    - Works for **unevenly sampled** data.
     """
-    
+
+    #integrated_mag = np.trapezoid(mag, time)
     integrated_mag = np.trapz(mag, time)
     
     return integrated_mag
 
-def auto_corr(time, mag, magerr, apply_weights=True):
+
+def kurtosis(time, mag, magerr, apply_weights=True, fisher=True):
     """
-    Similarity between observations as a function of a time lag between them.
-    
-    This version of the function first calculates the mean and standard deviation 
-    of the magnitudes, and then uses these values to normalize the data before 
-    computing the autocovariance function. The weights for each data point are 
-    also calculated based on their measurement uncertainties, and are used to compute 
-    the weighted autocovariance. Finally, the autocovariance function is normalized by 
-    its value at zero lag to obtain the autocorrelation function.
+    Weighted or unweighted kurtosis of the light curve.
 
-    Parameters:
+    This statistic measures the "tailedness" of the light curve distribution. By default, 
+    the **Fisher definition** is used, where a normal distribution has kurtosis = 0. 
+    The function supports both weighted (inverse-variance) and unweighted computation.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties for each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes kurtosis using inverse-variance weights (1 / magerr²). If False, computes standard unweighted kurtosis via `scipy.stats.kurtosis()`.
+    fisher : bool, optional (default=True)
+        If True, returns **excess kurtosis** (i.e., subtracts 3 so that Gaussian = 0). If False, returns raw kurtosis (Gaussian = 3).
 
-    Returns:
+    Returns
     -------
     float
-        The auto-correlation measurement of the lightcurve.
+        Kurtosis of the light curve distribution. Returns NaN if the input length 
+        is < 4 or if the weighted variance is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - High positive kurtosis indicates heavy tails (outliers); negative kurtosis indicates a flat-topped distribution.
     """
 
-    if apply_weights:
-        # Calculate the mean and standard deviation of the magnitudes
-        mag_mean = np.mean(mag)
-        mag_std = np.std(mag)
-        
-        # Calculate the normalized magnitudes
-        normalized_mag = (mag - mag_mean) / mag_std
-        
-        # Calculate the autocovariance function
-        autocov = np.correlate(normalized_mag, normalized_mag, mode='full')
-        autocov = autocov[autocov.size // 2:]
-        
-        # Calculate the weights for each data point based on their measurement uncertainties
-        weights = 1. / magerr**2
-        
-        # Compute the weighted autocovariance function
-        weighted_autocov = np.sum(weights * autocov)
-        
-        # Normalize by the autocovariance at zero lag to obtain the autocorrelation function
-        auto_corr = weighted_autocov / (np.sum(weights) * autocov[0])
-    else:
-        # If weights are not applied, use the regular correlation function
-        auto_corr = np.corrcoef(mag[:-1], mag[1:])[1, 0]
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
 
-    return auto_corr
+    if mag.size < 4:
+        return np.nan
 
-def peak_detection(time, mag, magerr, apply_weights=True):
+    if not apply_weights:
+        return sstats.kurtosis(mag, fisher=fisher)
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        return np.nan
+
+    mean = np.sum(w * mag) / w.sum()
+    var = np.sum(w * (mag - mean) ** 2) / w.sum()
+
+    if var == 0:
+        return 0.0
+
+    fourth = np.sum(w * (mag - mean) ** 4) / w.sum()
+    g2 = fourth / var**2
+
+    return g2 - 3.0 if fisher else g2
+
+
+def large_standard_deviation(time, mag, magerr, apply_weights=True, r=0.3):
     """
-    Function to detect number of peaks.
-    
-    Does not need to incorporate error since it is simply detecting 
-    the number of peaks in the lightcurve, which is based on the 
-    magnitude values alone.
+    Binary indicator for large standard deviation relative to dynamic range.
 
-    Parameters:
+    This metric returns 1 if the standard deviation of the light curve exceeds 
+    the input fraction `r` of its total dynamic range (max - min), and 0 otherwise.
+    It is intended as a coarse flag for strong variability.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values for the light curve. Not used in the calculation but retained for API consistency.
+    mag : array-like
+        Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    r : float, optional (default=0.3)
+        Threshold ratio. Returns 1 if std > `r × (max - min)`; otherwise 0.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted standard deviation using inverse-variance weights.
 
-    Returns:
+    Returns
     -------
-    float
-        The number of peaks detected in the lightcurve.
+    int
+        1 if the standard deviation exceeds `r × (max - min)`, otherwise 0.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    rng = mag.max() - mag.min()
+
+    if rng == 0:
+        return 0
+
+    if not apply_weights:
+        return int(np.std(mag, ddof=0) > r * rng)
+
+    w = helper_features._safe_weights(magerr)
+    mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
+    sigma = np.sqrt((w * (mag - mu) ** 2).sum() / w.sum()) if w.sum() else np.std(mag)
     
-    mag = abs(mag - np.median(mag))
+    return int(sigma > r * rng)
 
-    try:
-        indices = peakutils.indexes(mag, thres=.5, min_dist=10)
-    except ValueError:
-        indices = []
-
-    return len(indices)/len(mag)
-
-"""
-#Below stats used by Richards et al (2011)
-"""
-
-def MaxSlope(time, mag, magerr, apply_weights=True):
-    """
-    Examining successive (time-sorted) magnitudes, the maximal first difference
-    (value of delta magnitude over delta time)
-    
-    In this updated version of the function, the slope between successive magnitudes 
-    is calculated using the errors as weights, and the weighted slope is returned as 
-    a single value, not the max slopes as is the case when apply_weights=False.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The maximum-slope detected within the lightcurve.
-    """
-
-    if apply_weights:
-        #Calculate the slope using the errors as weights
-        weights = 1 / magerr[:-1]**2 + 1 / magerr[1:]**2
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            slope = np.abs((mag[1:] - mag[:-1]) / (time[1:] - time[:-1]))
-        weighted_slope = np.sum(weights[np.isfinite(slope)] * slope[np.isfinite(slope)]) / np.sum(weights[np.isfinite(slope)])
-        return weighted_slope
-    else:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            slope = np.abs(mag[1:] - mag[:-1]) / (time[1:] - time[:-1])
-        return np.max(slope[np.isfinite(slope)])
 
 def LinearTrend(time, mag, magerr, apply_weights=True):
     """
-    Slope of a weighted linear fit to the light-curve.
+    Slope of the best-fit linear trend in the light curve.
 
-    Parameters:
+    This feature quantifies the overall linear trend in the light curve by fitting a line 
+    to `mag` as a function of `time`. The result is the **slope** of the fit, which indicates 
+    whether the light curve is systematically brightening or dimming over time.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties for each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, fits the line using weighted least squares (weights = 1 / magerr²). If False, uses an unweighted ordinary least squares fit.
 
-    Returns:
+    Returns
     -------
     float
-        The slope of a weighted linear fit to the lightcurve.
+        Slope of the best-fit line. A negative value indicates a brightening trend 
+        (in magnitudes), while a positive value indicates fading. Returns NaN if input 
+        is too short or the time variance is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if apply_weights:
-        # Perform weighted linear regression
-        weights = 1.0 / magerr**2
-        regression_slope = np.polyfit(time, mag, deg=1, w=weights)[0]
-    else:
-        regression_slope = sstats.linregress(time, mag)[0]
+    time = np.asarray(time, float)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
 
-    return regression_slope
+    if mag.size < 2:
+        return np.nan
 
-def PairSlopeTrend(time, mag, magerr, apply_weights=True):
-    """
-    This is the percentage of all pairs of consecutive flux measurements that have positive slope,
-    considering only the last 30 (time-sorted) magnitude measurements.
+    if not apply_weights:
+        return sstats.linregress(time, mag).slope
 
-    This updated function incorporates error by calculating the weighted first differences 
-    and then taking the weighted mean of the positive differences and negative differences separately.
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        return sstats.linregress(time, mag).slope
 
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    xm = np.sum(w * time) / w.sum()
+    ym = np.sum(w * mag) / w.sum()
+    cov = np.sum(w * (time - xm) * (mag - ym))
+    var = np.sum(w * (time - xm)**2)
 
-    Returns:
-    -------
-    float
-        The percentage of all pairs of consecutive lightcurve measurements that have positive a slope.
-    """
+    return cov / var if var > 0 else np.nan
 
-    if apply_weights:
-        data_last = mag[-30:]
-        err_last = magerr[-30:]
-        # Calculate the weighted first differences
-        weights = 1.0 / (err_last[:-1]**2 + err_last[1:]**2)
-        diff = data_last[1:] - data_last[:-1]
-        diff_weighted = diff * weights
-        pos_diff_weighted = diff_weighted[diff > 0]
-        neg_diff_weighted = diff_weighted[diff < 0]
-        # Calculate the weighted mean of positive and negative differences
-        pos_mean = np.mean(pos_diff_weighted) if len(pos_diff_weighted) > 0 else 0
-        neg_mean = np.mean(neg_diff_weighted) if len(neg_diff_weighted) > 0 else 0
-        # Calculate the percentage of pairs with a positive slope
-        PST = len(pos_diff_weighted) / (len(pos_diff_weighted) + len(neg_diff_weighted))
-    else:
-        data_last = mag[-30:]
-        #PST = (len(np.where(np.diff(data_last) > 0)[0]) - len(np.where(np.diff(data_last) <= 0)[0])) / 30.0
-        PST = len(np.where(np.diff(data_last) > 0)[0]) / 30.0
-
-    return PST
-
-def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
-    """
-    In order to characterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (60th - 40th) over (95th - 5th)
-    
-    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using the cumulative sum of the weights. 
-    We calculate the percentiles using np.interp with the cumulative sum of the weights, and then calculate the 
-    flux percentile ratios using the weighted percentiles.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the (60th - 40th) flux percentile over the (95th - 5th) percentile.
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-    
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        cumulative_weights = np.cumsum(weights)
-        percentiles = np.interp([0.05, 0.40, 0.60, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
-    else:
-        percentiles = np.percentile(sorted_data, [5, 40, 60, 95])
-    
-    F_40_60 = percentiles[2] - percentiles[1]
-    F_5_95 = percentiles[3] - percentiles[0]
-    F_mid20 = F_40_60 / F_5_95
-
-    return F_mid20
-
-def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
-    """
-    In order to characterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (67.5th - 32.5th) over (95th - 5th)
-    
-    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
-    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the (67.5th - 32.5th) flux percentile over the (95th - 5th) percentile.
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        cumulative_weights = np.cumsum(weights)
-        percentiles = np.interp([0.05, 0.325, 0.675, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
-    else:
-        percentiles = np.percentile(sorted_data, [5, 32.5, 67.5, 95])
-
-    F_325_675 = percentiles[2] - percentiles[1]
-    F_5_95 = percentiles[3] - percentiles[0]
-    F_mid35 = F_325_675 / F_5_95
-
-    return F_mid35
-
-def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
-    """
-    In order to characterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (75th - 25th) over (95th - 5th)
-    
-    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
-    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the (75th - 25th) flux percentile over the (95th - 5th) percentile.
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        cumulative_weights = np.cumsum(weights)
-        percentiles = np.interp([0.05, 0.25, 0.75, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
-    else:
-        percentiles = np.percentile(sorted_data, [5, 25, 75, 95])
-
-    F_25_75 = percentiles[2] - percentiles[1]
-    F_5_95 = percentiles[3] - percentiles[0]
-    F_mid50 = F_25_75 / F_5_95
-
-    return F_mid50
-
-def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
-    """
-    In order to characterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (82.5th - 17.5th) over (95th - 5th)
-
-    In this updated version of the function, we first sort the magnitude data and associated uncertainties. 
-    We then calculate the weighted percentiles of the magnitude data using np.interp with the cumulative sum of 
-    the weights, and then calculate the flux percentile ratios using the weighted percentiles.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the (82.5th - 17.5th) flux percentile over the (95th - 5th) percentile.
-    """
-
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        cumulative_weights = np.cumsum(weights)
-        percentiles = np.interp([0.05, 0.175, 0.825, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
-    else:
-        percentiles = np.percentile(sorted_data, [5, 17.5, 82.5, 95])
-
-    F_175_825 = percentiles[2] - percentiles[1]
-    F_5_95 = percentiles[3] - percentiles[0]
-    F_mid65 = F_175_825 / F_5_95
-
-    return F_mid65
-
-def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
-    """
-    In order to characterize the sorted magnitudes distribution we use percentiles. 
-    If F5,95 is the difference between 95% and 5% magnitude values, we calculate the following:
-    Ratio of flux percentiles (90th - 10th) over (95th - 5th)
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the (90th - 10th) flux percentile over the (95th - 5th) percentile.
-    """
- 
-    sorted_data = np.sort(mag)
-    lc_length = len(sorted_data)
-
-    if apply_weights:
-        weights = 1.0 / (magerr ** 2)
-        cumulative_weights = np.cumsum(weights)
-        percentiles = np.interp([0.05, 0.10, 0.90, 0.95], cumulative_weights / cumulative_weights[-1], sorted_data)
-    else:
-        percentiles = np.percentile(sorted_data, [5, 10, 90, 95])
-
-    F_10_90 = percentiles[2] - percentiles[1]
-    F_5_95 = percentiles[3] - percentiles[0]
-    F_mid80 = F_10_90 / F_5_95
-
-    return F_mid80
-
-def PercentAmplitude(time, mag, magerr, apply_weights=True):
-    """
-    The largest absolute departure from the median flux, divided by the median flux
-    Largest percentage difference between either the max or min magnitude and the median.
-    
-    This function calculates both the regular median and a weighted median that takes into 
-    account the photometric errors. It then calculates the largest absolute departure from 
-    each of these medians and returns the largest percentage difference between either the 
-    max or min magnitude and the weighted median.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The largest percentage difference present in the lightcurve with respect to the median.
-    """
-
-    if apply_weights:
-        weights = 1.0 / magerr**2
-        median = np.median(mag)
-        w_median = np.ma.average(mag, weights=weights)
-        distance_median = np.abs(mag - median)
-        w_distance_median = np.abs(mag - w_median)
-        max_distance = np.max(distance_median)
-        w_max_distance = np.max(w_distance_median)
-        percent_amplitude = max_distance / median
-        w_percent_amplitude = w_max_distance / w_median
-        return w_percent_amplitude
-    else:
-        median = np.median(mag)
-        distance_median = np.abs(mag - median)
-        max_distance = np.max(distance_median)
-        return max_distance / median
-
-def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the ratio of the flux difference between the 5th and 95th percentiles of 
-    the data (F5,95) to the median flux.
-
-    If apply_weights is set to True, the function first sorts the mag array and the corresponding magerr
-    based on the magnitude values. It then calculates the weighted percentiles by interpolating the values 
-    at the desired percentiles (2%, 5%, 95%, and 98%) using cumulative weights. The difference between 
-    the 95th and 5th percentiles (F5,95) is calculated based on the interpolated values.
-
-    If apply_weights is set to False, the function directly operates on the mag array. It sorts the array and 
-    calculates the indices corresponding to the 5th and 95th percentiles. The flux difference between these 
-    percentiles (F5,95) is then calculated.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of the flux difference between the 5th and 95th percentiles to the median lightcurve measurement.
-    """
-
-    if apply_weights:
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-        weights = 1 / sorted_magerr ** 2
-        total_weights = np.sum(weights)
-        cum_weights = np.cumsum(weights) / total_weights
-        percentile_95 = np.interp(0.95, cum_weights, sorted_mag)
-        percentile_5 = np.interp(0.05, cum_weights, sorted_mag)
-        F_5_95 = percentile_95 - percentile_5
-    else:
-        sorted_data = np.sort(mag)
-        lc_length = len(sorted_data)
-        F_5_index = int(math.ceil(0.05 * lc_length))
-        F_95_index = int(math.ceil(0.95 * lc_length))
-        F_5_95 = sorted_data[F_95_index] - sorted_data[F_5_index]
-
-    return F_5_95 / np.median(mag)
-
-#Below stats from Kim (2015), used in Upsilon
-#https://arxiv.org/pdf/1512.01611.pdf
-
-def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
-    """
-    The ratio of the squared sum of residuals of magnitudes that are either brighter 
-    than or fainter than the mean magnitude. For EB-like variability, having sharp 
-    flux gradients around its eclipses, this value is larger than 1.
-
-    In this modified version, the weighted standard deviation of each set of 
-    magnitudes (i.e., those above and those below the median) is used if apply_weights is set to True.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The ratio of squared residuals for measurements above and below the median.    
-    """
-
-    if apply_weights:
-        #For fainter magnitude than average.
-        avg = np.median(mag)
-        index = np.argwhere(mag > avg)
-        lower_mag = mag[index]
-        lower_magerr = magerr[index]
-        lower_weighted_std = np.sum((lower_mag - avg)**2 / lower_magerr**2) / np.sum(1. / lower_magerr**2)
-        #For brighter magnitude than average.
-        index = np.argwhere(mag <= avg)
-        higher_mag = mag[index]
-        higher_magerr = magerr[index]
-        higher_weighted_std = np.sum((higher_mag - avg)**2 / higher_magerr**2) / np.sum(1. / higher_magerr**2)
-        ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
-    else:
-        avg = np.median(mag)
-        index = np.argwhere(mag > avg)
-        lower_mag = mag[index]
-        lower_weighted_std = (1./len(index))*np.sum((lower_mag - avg)**2)
-        # For brighter magnitude than average.
-        index = np.argwhere(mag <= avg)
-        higher_mag = mag[index]
-        higher_weighted_std = (1./len(index))*np.sum((higher_mag - avg)**2)
-        ratio = np.sqrt(lower_weighted_std / higher_weighted_std)
-            
-    return ratio
-
-def cusum(time, mag, magerr, apply_weights=True):
-    """
-    Range of cumulative sum.
-
-    In this updated version, we first calculate the weighted standard deviation of 
-    the magnitude using the formula wstd = np.sqrt(np.sum((mag - np.median(mag))**2 / magerr**2) / np.sum(1. / magerr**2)). 
-    Then we use this value instead of np.std(mag) to normalize the cumulative sum. This takes into account the error in 
-    the measurements of the magnitude.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The range of the cumulative sums of the lightcurve measurements.
-    """
-
-    if apply_weights:
-        #Calculate the weighted standard deviation
-        wstd = np.sqrt(np.sum((mag - np.median(mag))**2 / magerr**2) / np.sum(1. / magerr**2))
-        c = np.cumsum(mag - np.median(mag)) * 1./(len(mag)*wstd)
-    else:
-        c = np.cumsum(mag - np.median(mag)) * 1./(len(mag)*np.std(mag))
-
-    return np.max(c) - np.min(c)
-
-def shapiro_wilk(time, mag, magerr, apply_weights=True):
-    """
-    The Shapiro-Wilk test tests the null hypothesis that the data was drawn from a normal distribution.
-    
-    If this statistic is close to 1, then it suggests that the null hypothesis cannot be rejected, 
-    which means the data is likely to follow a normal distribution. Note that there is no error incorporation, 
-    as the Shapiro-Wilk test implemented in scipy.stats does not provide an option to incorporate measurement error.
-    
-    Note that the Shapiro-Wilk test implemented in scipy.stats does not provide the option to incorporate measurement errors.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------
-    float
-        The Shapiro-Wilk statistic.
-    """
-
-    shapiro_w = sstats.shapiro(mag)[0]
-
-    return shapiro_w
-
-#Following stats pulled from FEETS
-#https://feets.readthedocs.io/en/latest/tutorial.html
-
-def AndersonDarling(time, mag, magerr, apply_weights=True):
-    """
-    The Anderson-Darling test is a statistical test of whether a given 
-    sample of data is drawn from a given probability distribution. 
-    When applied to testing if a normal distribution adequately describes a set of data, 
-    it is one of the most powerful statistical tools for detecting most departures from normality.
-    
-    It is a measure of how well the data fits a normal distribution. The AndersonDarling_Weighted() function applies the same test, but with weights based on the input errors magerr. 
-    Both functions return a value between 0 and 1, with values closer to 1 indicating a better fit to a normal distribution. In short, values closer to 1 indicate a higher confidence 
-    that the data follow a normal distribution.
-    
-    The weighted Anderson-Darling test is a statistical test of whether a given 
-    sample of data is drawn from a given probability distribution. 
-    When applied to testing if a normal distribution adequately describes a set of data, 
-    it is one of the most powerful statistical tools for detecting most departures from normality.
-    
-    From Kim et al. 2009: "To test normality, we use the Anderson–Darling test (Anderson & Darling 1952; Stephens 1974) 
-    which tests the null hypothesis that a data set comes from the normal distribution."
-    (Doi:10.1111/j.1365-2966.2009.14967.x.)
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The Anderson-Darling test statistic.
-    """
-    
-    if apply_weights:
-        weights = 1.0 / np.square(magerr)
-        wmag = np.average(mag, weights=weights)
-        wmagsq = np.average(np.square(mag), weights=weights)
-        wvar = wmagsq - wmag**2
-        z = (mag - wmag) / np.sqrt(wvar)
-        z_sorted = np.sort(z)
-        n = len(mag)
-        s = np.zeros(n)
-        for i in range(n):
-            s[i] = (2*i + 1) * np.log(sstats.norm.cdf(z_sorted[i])) + (2*(n-i)-1) * np.log(1 - sstats.norm.cdf(z_sorted[i]))
-        ander = -n - np.sum(s) / n
-    else:   
-        ander = sstats.anderson(mag)[0]
-
-    return 1 / (1.0 + np.exp(-10 * (ander - 0.3)))
-
-def Gskew(time, mag, magerr, apply_weights=True):
-    """
-    Gskew is a measure of the skewness of a distribution of magnitudes. It is defined as the 
-    sum of the medians of the magnitudes below and above the 3rd and 97th percentiles, respectively, 
-    minus twice the median magnitude. In other words, Gskew is a measure of the asymmetry of the 
-    distribution of magnitudes. A positive Gskew value indicates a distribution that is skewed to the 
-    right (has a long tail on the right side), while a negative Gskew value indicates a distribution 
-    that is skewed to the left (has a long tail on the left side).
-
-    It is essentially a median-based measure of the skewness. See: Lopez et al. 2016: "A machine learned classifier for RR Lyrae in the VVV survey" 
-
-    Gskew = mq3 + mq97 − 2m
-    mq3 is the median of magnitudes lesser or equal than the quantile 3.
-    mq97 is the median of magnitudes greater or equal than the quantile 97.
-    2m is 2 times the median magnitude.
-
-    If apply_weights=True a modified version will be used that incorporates the photometric 
-    errors of the data points. It calculates a weighted median for the magnitudes that 
-    fall below the 3rd percentile and above the 97th percentile, using the inverse 
-    square of the photometric errors as weights. The resulting weighted medians and 
-    the median magnitude are then used to calculate the Gskew value.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------  
-    float   
-        The median-based skewness of the lightcurve.
-    """
-
-    if apply_weights:
-        #Sort the magnitude and error arrays by magnitude
-        sorted_indices = np.argsort(mag)
-        sorted_mag = mag[sorted_indices]
-        sorted_magerr = magerr[sorted_indices]
-
-        # Calculate the cumulative weights
-        weights = 1.0 / np.square(sorted_magerr)
-        cum_weights = np.cumsum(weights)
-
-        # Calculate the indices of the median and quantiles
-        median_index = np.searchsorted(cum_weights, 0.5 * cum_weights[-1])
-        q3_index = max(1, np.searchsorted(cum_weights, 0.03 * cum_weights[-1]))
-        q97_index = min(len(cum_weights), np.searchsorted(cum_weights, 0.97 * cum_weights[-1]))
-
-        # Calculate the median and quantiles
-        median_mag = sorted_mag[median_index]
-        F_3_value = sorted_mag[q3_index]
-        F_97_value = sorted_mag[q97_index]
-
-        # Calculate the weighted median of magnitudes <= F_3_value
-        cum_weights_3 = cum_weights[:q3_index]
-        weights_3 = weights[:q3_index]
-        cum_weights_3 -= cum_weights_3[0]
-        cum_weights_3 /= cum_weights_3[-1]
-        mq3 = np.interp(0.5, cum_weights_3[::-1], sorted_mag[:q3_index][::-1])
-
-        # Calculate the weighted median of magnitudes >= F_97_value
-        cum_weights_97 = cum_weights[q97_index-1:]
-        weights_97 = weights[q97_index-1:]
-        cum_weights_97 -= cum_weights_97[0]
-        cum_weights_97 /= cum_weights_97[-1]
-        mq97 = np.interp(0.5, cum_weights_97, sorted_mag[q97_index-1:])
-
-        gs = mq3 + mq97 - 2 * median_mag
-
-    else:
-        median_mag = np.median(mag)
-        F_3_value = np.percentile(mag, 3)
-        F_97_value = np.percentile(mag, 97)
-        gs = (np.median(mag[mag <= F_3_value]) + np.median(mag[mag >= F_97_value]) - 2*median_mag)
-
-    return gs
-
-def abs_energy(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the absolute energy of the time series, defined to be the sum over the squared
-    values of the time-series.
-
-    If apply_weights is set to True, we calculate the inverse square of the photometric errors 
-    and use them as weights to calculate the weighted sum of squares of the magnitudes.
-    In the case where weights are applied, the magnitudes are multiplied by their corresponding 
-    weights (inverse square of photometric errors) before squaring and summing them. This results in 
-    a larger contribution from data points with smaller errors, as they receive higher weights. As a result, 
-    the absolute energy value increases. On the other hand, when weights are not applied (apply_weights=False), 
-    all magnitudes are squared and summed without considering their errors. This leads to a smaller 
-    absolute energy value as the contributions from individual data points are not scaled by their respective errors.
-
-
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------   
-    float  
-        The sum over the squared values of the lightcurve measurements.
-    """
-
-    if apply_weights:
-        weights = 1.0 / np.square(magerr)
-        abs_energy = np.sum(weights * np.square(mag))
-    else:
-        abs_energy = np.dot(mag, mag)
-
-    return abs_energy
-
-def abs_sum_changes(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the sum over the abs value of consecutive changes in mag, weighted by the errors.
-    
-    In this updated version we incorporate photometric errors by dividing the absolute value 
-    of the difference between consecutive magnitudes by the square root of the sum of their squared errors. 
-    Therefore larger errors will result in smaller weight for the corresponding changes in magnitude.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------    
-    float 
-        The sum over the absolute value of consecutive changes in the lightcurve measurements.
-    """
-
-    if apply_weights:
-        delta_mag = np.abs(np.diff(mag))
-        delta_err = np.sqrt(np.square(magerr[:-1]) + np.square(magerr[1:]))
-        weighted_delta = delta_mag / delta_err
-        return np.sum(weighted_delta)
-    else:
-        return np.sum(np.abs(np.diff(mag)))
-
-def benford_correlation(time, mag, magerr, apply_weights=True):
-    """
-    Useful for anomaly detection applications. Calculates the 
-    correlation from first digit distribution when compared to 
-    the Newcomb-Benford’s Law distribution, weighted by the inverse variance of the magnitudes.
-    
-    In this updated version, we calculate the weights as the inverse 
-    variance of the magnitudes (i.e., the inverse of the squared photometric errors), and use 
-    these weights to calculate the weighted distribution of the data. We then normalize this 
-    weighted distribution and compute the weighted correlation between the Benford distribution 
-    and the weighted data distribution.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The Benford Correlation statistic.
-    """
-
-    if apply_weights:
-        #Retrieve first digit from data
-        x = np.array([int(str(np.format_float_scientific(i))[:1]) for i in np.abs(np.nan_to_num(mag))])
-        # benford distribution
-        benford_distribution = np.array([np.log10(1 + 1 / n) for n in range(1, 10)])
-        #Calculate weights as inverse variance of magnitudes
-        weights = 1 / np.square(np.nan_to_num(magerr))
-        #Calculate weighted distribution of data
-        weighted_data_distribution = np.zeros(9)
-        for i in range(1, 10):
-            mask = (x == i)
-            weighted_data_distribution[i-1] = np.sum(weights[mask])
-        #Normalize weighted distribution
-        weighted_data_distribution /= np.sum(weights)
-        #Weighted correlation
-        benford_corr = np.corrcoef(benford_distribution, weighted_data_distribution)[0, 1]
-    else:
-        #Retrieve first digit from data
-        x = np.array([int(str(np.format_float_scientific(i))[:1]) for i in np.abs(np.nan_to_num(mag))])
-        #Benford distribution
-        benford_distribution = np.array([np.log10(1 + 1 / n) for n in range(1, 10)])
-        data_distribution = np.array([(x == n).mean() for n in range(1, 10)])
-        #np.corrcoef outputs the normalized covariance (correlation) between benford_distribution and data_distribution.
-        #In this case returns a 2x2 matrix, the  [0, 1] and [1, 1] are the values between the two arrays
-        benford_corr = np.corrcoef(benford_distribution, data_distribution)[0, 1]
-
-    return benford_corr
-
-def c3(time, mag, magerr, lag=1, apply_weights=True):
-    """
-    The C3 measure is a way to estimate the non-linearity of a time series by measuring the third-order 
-    correlation between the values of the time series. It is based on the idea that a truly linear time 
-    series will have a third-order correlation of zero, while a non-linear time series will have a 
-    non-zero third-order correlation. The lag parameter controls the distance between the three values 
-    of the time series that are used to calculate the third-order correlation. A larger lag value will 
-    capture longer-term correlations in the data, while a smaller lag value will capture shorter-term correlations.
-    
-    In this updated version, we first calculate the terms that make up the third-order correlation using the 
-    mag array and its two rolled versions. We then use the error propagation formula to calculate the errors associated 
-    with these terms. Finally, we calculate the third-order correlation as the weighted average of the terms, where the 
-    weights are given by the inverse squared errors. Note that this version of the function assumes Gaussian errors in the magerr array.
-
-    See: Measure of non-linearity in time series: [1] Schreiber, T. and Schmitz, A. (1997).
-    Discrimination power of measures for nonlinearity in a time series
-    PHYSICAL REVIEW E, VOLUME 55, NUMBER 5
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        lag: int
-            The lag to use. Defaults to 1.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------  
-    float   
-        The C3 non-linearity statistic.
-    """
-
-    n = len(mag)
-    if 2 * lag >= n:
-        return 0
-    else:
-        if apply_weights:
-            # Calculate third-order correlation with error propagation
-            roll1 = np.roll(mag, -lag)
-            roll2 = np.roll(mag, -2 * lag)
-            term1 = mag * roll1 * roll2
-            term2 = magerr**2 * (roll1 * roll2 + mag * roll2 + mag * roll1)
-            third_corr = np.sum(term1 / term2) / np.sum(1 / term2)
-            return third_corr
-        else:
-            return np.mean((np.roll(mag, 2 * -lag) * np.roll(mag, -lag) * mag)[0 : (n - 2 * lag)])
-
-def complexity(time, mag, magerr, apply_weights=True):
-    """
-    This function calculator is an estimate for a time series complexity.
-    A higher value represents more complexity (more peaks,valleys,etc.)
-    See: Batista, Gustavo EAPA, et al (2014). CID: an efficient complexity-invariant 
-    distance for time series. Data Mining and Knowledge Difscovery 28.3 (2014): 634-669.
-    
-    To incorporate errors into the complexity function, we apply the weighted standard deviation formula. 
-    We exclude the last element of magerr since np.diff reduces the size of the mag array 
-    by one. Also, if the sum of the weights is zero, we return 0 to avoid division by zero errors.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The complexity measurement of the lightcurve.
-    """
-
-    if apply_weights:
-        dmag = np.diff(mag)
-        w = 1 / magerr[:-1]**2  #weights based on magerr
-        w_sum = np.sum(w)
-        if w_sum == 0:
-            return 0
-        else:
-            #weighted standard deviation
-            sd = np.sqrt(np.average((dmag - np.average(dmag, weights=w))**2, weights=w))
-            return sd
-    else:
-        mag = np.diff(mag)
-        return np.sqrt(np.dot(mag, mag))
-
-def count_above(time, mag, magerr, apply_weights=True):
-    """
-    Number of values higher than the weighted median.
-
-    This function calculates the weighted median of the mag array using the photometric errors in magerr, 
-    and then counts the number of values in mag that are above the weighted median. The fraction of values 
-    above the weighted median is then calculated using the weights from magerr. If magerr is zero for all values, 
-    the function returns zero.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The number of lightcurve measurements above the median value.
-    """ 
-
-    if apply_weights:
-        #Calculate the weighted median
-        weights = 1.0 / (magerr ** 2)
-        w_median = np.median(np.insert(mag, 0, -np.inf))
-        
-        #Calculate the number of values above the weighted median
-        above = np.where(mag > w_median)[0].size
-        total = len(mag)
-        
-        #Calculate the weighted fraction of values above the median
-        w_above = np.sum(weights[mag > w_median])
-        w_total = np.sum(weights)
-        if w_total == 0:
-            return 0
-        else:
-            return w_above / w_total
-    else:
-        return (np.where(mag > np.median(mag))[0].size)/len(mag)
-
-def count_below(time, mag, magerr, apply_weights=True):
-    """
-    Number of values below the median.
-
-    To incorporate errors, we use the weighted median instead of the regular median. 
-    The weighted median takes into account the uncertainties associated with each data point.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The number of lightcurve measurements below the median value.
-    """
-
-    if apply_weights:
-        #Compute the weighted median
-        weights = 1/magerr**2
-        median = np.average(mag, weights=weights)
-        #Count the number of values below the weighted median
-        below_median = mag < median
-        return np.sum(below_median * weights) / np.sum(weights)
-    else:
-        return (np.where(mag < np.median(mag))[0].size)/len(mag)
-
-def first_loc_max(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the location of maximum mag relative to the length of mag array, 
-    weighted by inverse square of magerr if apply_weights is True.
-    
-    In this modified version, we first calculate the inverse square 
-    of magerr and set it to 0 where magerr2 is 0 to avoid division by zero. 
-    Then we multiply each value of mag by the corresponding inverse square of magerr, 
-    giving more weight to values with smaller magerr. Finally, we find the index of the 
-    maximum value in the weighted mag array using np.argmax, and return the location of 
-    the maximum relative to the length of mag.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The relative position of the maximum detected lightcurve measurement.
-    """
-
-    if len(mag) == 0:
-        return np.NaN
-
-    if apply_weights:
-        #Calculate inverse square of magerr
-        magerr2 = magerr ** 2
-        inv_magerr2 = np.where(magerr2 > 0, 1 / magerr2, 0)
-        #Weight the maximum value by inverse square of magerr
-        weighted_max = np.argmax(mag * inv_magerr2)
-        #Return location of maximum mag relative to the length of mag array
-        return weighted_max / len(mag)
-    else:
-        return np.argmax(mag) / len(mag)
-
-def first_loc_min(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the location of minimum mag relative to the 
-    length of mag array.
-    
-    This updated implementation first computes the weights for each measurement 
-    using the provided photometric errors in magerr. It then replaces all zero 
-    weights with 1 to avoid division by zero. Finally, it computes the location 
-    of the minimum mag by taking the weighted minimum of mag using the computed weights.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------    
-    float 
-        The relative position of the minimum detected lightcurve measurement.
-    """
-
-    if len(mag) == 0:
-        return np.NaN
-
-    if apply_weights:
-        # Compute weights
-        weights = 1.0 / (magerr ** 2)
-        # Replace all zero weights with 1 to avoid division by zero
-        weights[weights == 0] = 1
-        # Compute location of minimum mag
-        w_argmin = np.argmin(mag * weights)
-        loc_min = w_argmin / len(mag) 
-        return loc_min
-    else:
-        return np.argmin(mag) / len(mag)
-
-def check_for_duplicate(time, mag, magerr, apply_weights=True):
-    """
-    Checks if any value in mag repeats, taking into account photometric errors if apply_weights
-    is enabled so as to identify measurements that are within the error bars.
-    
-    To incorporate error, we use np.isclose to check if two values of mag are close to each other, 
-    taking into account their respective errors. The tolerance is set using the atol argument, which is 
-    set to the sum of the errors in quadrature, to account for the fact that two measurements with similar 
-    values but different errors may still be considered duplicates. If a duplicate is found, the function 
-    returns 1, otherwise it returns 0.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    int
-        Whether or not a duplicate lightcurve measurement is found, 1 for True, 0 for False.
-    """
-
-    if apply_weights:
-        # Check for duplicates with photometric error tolerance
-        for i in range(len(mag)):
-            for j in range(i+1, len(mag)):
-                if np.isclose(mag[i], mag[j], rtol=0, atol=2*np.sqrt(magerr[i]**2 + magerr[j]**2)):
-                    return 1
-        return 0
-    else:
-        if mag.size != np.unique(mag).size:
-            return 1
-        else:     
-            return 0
-
-def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
-    """
-    Checks if the maximum value in mag repeats, taking into account photometric errors if apply_weights
-    is enabled so as to identify measurements that are within the error bars.
-
-    To incorporate error, we use np.isclose to check if the maximum value in mag is close to any other
-    value in mag, taking into account their respective errors. The tolerance is set using the atol argument, 
-    which is calculated as the maximum of the maximum error and the error of the closest value to the maximum, 
-    to account for the fact that two measurements with similar values but different errors may still be 
-    considered duplicates. If a duplicate is found, the function returns 1, otherwise it returns 0.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------    
-    int 
-        Whether or not the maximum lightcurve measurement is found more than once, 1 for True, 0 for False.
-    """
-
-    if apply_weights:
-        max_mag = np.max(mag)
-        #Calculate the atol value based on the maximum error and the error of the closest value to the maximum
-        closest_mag_err = np.min(np.abs(mag - max_mag))  #error of the closest value to the maximum
-        atol = np.maximum(magerr, closest_mag_err)  # max of the maximum error and the error of the closest value to the maximum
-        #Check for duplicates with photometric error tolerance
-        for i in range(len(mag)):
-            if np.isclose(mag[i], max_mag, rtol=0, atol=atol[i]):
-                return 1
-        return 0
-    else:
-        if np.sum(mag == np.max(mag)) >= 2:
-             return 1
-        else:     
-             return 0
-
-def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
-    """
-    Checks if the minimum value in mag repeats, taking into account photometric errors if apply_weights
-    is enabled so as to identify measurements that are within the error bars.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    int
-        Whether or not the minimum lightcurve measurement is found more than once, 1 for True, 0 for False.
-    """
-
-    if apply_weights:
-        min_mag = np.min(mag)
-        #Find the indices of the minimum values in mag
-        min_idx = np.where(np.isclose(mag, min_mag, rtol=0, atol=magerr))[0]
-        #Check for duplicates with photometric error tolerance
-        num_duplicates = len(min_idx)
-        if num_duplicates > 1:
-            return 1
-        return 0
-    else:
-        if np.sum(mag == np.min(mag)) >= 2:
-            return 1
-        else:     
-            return 0
-
-def check_max_last_loc(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the position of last maximum mag relative to
-    the length of mag array, taking into account photometric errors.
-    
-    In this implementation, we first find the maximum value in mag and calculate the tolerance 
-    value atol as the maximum photometric error in magerr. We then use np.isclose() with atol 
-    as the atol argument to find the indices of all values in mag that are within tolerance of max_mag. 
-    We select the last index in the resulting array (which corresponds to the last maximum value in mag) and 
-    calculate its position relative to the length of mag. If there are no values within tolerance (3sigma), we return np.NaN.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
-    float
-        The relative position where the maximum lightcurve measurement was last found.
-    """
-
-    if apply_weights:
-        #Find the maximum value in mag
-        max_mag = np.max(mag)
-        #Calculate the tolerance value based on the photometric errors
-        atol = np.max(magerr) * 3
-        #Find the index of the last maximum value within tolerance
-        idx = np.where(np.isclose(mag, max_mag, rtol=0, atol=atol))[0]
-        if len(idx) > 0:
-            return 1.0 - idx[-1] / len(mag)
-        else:
-            return np.NaN
-    else:
-        return 1.0 - np.argmax(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
-
-def check_min_last_loc(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the position of last minimum mag relative to
-    the length of mag array, taking into account photometric errors.
-    
-    To incorporate errors, this implementation finds the minimum value in mag, 
-    then calculates the atol value based on the error of the minimum value and 
-    the error of the closest value to the minimum. It then uses np.isclose() with 
-    atol as the atol argument to find the indices of all values in mag that are within 
-    tolerance of min_mag. It selects the last index in the resulting array (which corresponds 
-    to the last minimum value in mag) and calculates its position relative to the length of mag. 
-    If there are no values within tolerance, it returns np.NaN.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The relative position where the minimum lightcurve measurement was last found.
-    """
-
-    if apply_weights:
-        #Find the minimum value in mag
-        min_mag = np.min(mag)
-        #Find the error of the closest value to the minimum in magerr
-        closest_mag_err = magerr[np.argmin(mag)]
-        #Calculate the atol value based on the minimum error and the error of the closest value to the minimum
-        atol = magerr + closest_mag_err
-        #Find the index of the last minimum value within tolerance
-        idx = np.where(np.isclose(mag, min_mag, rtol=0, atol=atol))[0]
-        if len(idx) > 0:
-            return 1.0 - idx[-1] / len(mag)
-        else:
-            return np.NaN
-    else:
-        return 1.0 - np.argmin(mag[::-1]) / len(mag) if len(mag) > 0 else np.NaN
 
 def longest_strike_above(time, mag, magerr, apply_weights=True):
     """
-    Calculates the length of the longest consecutive subsequence in 
-    mag that is bigger than the median. 
-    
-    This updated implementation first calculates the median of the mag 
-    array and creates a boolean mask of True for elements greater than the 
-    median plus their errors and False for elements less than or equal to the 
-    median plus their errors. It then splits the mask into groups of consecutive 
-    True values, and returns the length of the longest group as a fraction of 
-    the length of the mag array. If there are no values greater than the median plus 
-    their errors, the function returns 0.
+    Longest consecutive run of points significantly above the median.
 
-    Parameters:
+    This metric computes the longest sequence of consecutive light curve points 
+    that are above the (weighted or unweighted) median. If `apply_weights=True`, 
+    a point is considered "above" only if it exceeds the median by more than its 
+    associated 1σ uncertainty.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties for each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses `mag > (median + magerr)` to determine significance. If False, uses a simple comparison to the median.
 
-    Returns:
-    ------- 
-    float    
-        The length of the longest consecutive subsequence in the lightcurve measurements which are larger than the median.
+    Returns
+    -------
+    float
+        The longest sequence of consecutive "above-median" points, 
+        normalized by the total number of points. Returns NaN if input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if apply_weights:
-        median = np.median(mag)
-        mask = mag > median + magerr
-        if np.sum(mask) == 0:
-            return 0
-        else:
-            groups = np.split(mask, np.where(np.diff(mask.astype(int)) != 0)[0]+1)
-            return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
-    else:
-        val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-        return val / len(mag)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    med = np.median(mag) if not apply_weights else helper_features._weighted_median(mag, helper_features._safe_weights(magerr))
+    mask = mag > (med + magerr) if apply_weights else mag > med
+
+    return helper_features._longest_true_run(mask) / mag.size
+
 
 def longest_strike_below(time, mag, magerr, apply_weights=True):
     """
-    Calculates the length of the longest consecutive subsequence in mag 
-    that is smaller than the median.
-    
-    To incorporate errors, first we calculate the median of mag and create 
-    a boolean mask of True for elements smaller than the median minus their errors 
-    and False for elements greater than or equal to the median minus their errors. 
-    Then we split the mask into groups of consecutive True values, and return the 
-    length of the longest group as a fraction of the length of the mag array. If 
-    there are no values smaller than the median minus their errors, the function returns 0.
+    Longest consecutive run of points significantly below the median.
 
-    Parameters:
+    This metric computes the longest sequence of consecutive light curve points 
+    that are below the (weighted or unweighted) median. If `apply_weights=True`, 
+    a point is considered "below" only if it is less than the median by more than 
+    its associated 1σ uncertainty.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties for each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses `mag < (median - magerr)` to determine significance. If False, uses a simple comparison to the median.
 
-    Returns:
-    ------- 
-    float    
-        The length of the longest consecutive subsequence in the lightcurve measurements which are smaller than the median.
+    Returns
+    -------
+    float
+        The longest sequence of consecutive "below-median" points, 
+        normalized by the total number of points. Returns NaN if input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if apply_weights:
-        median = np.median(mag)
-        mask = mag < median - magerr
-        if np.sum(mask) == 0:
-            return 0
-        else:
-            groups = np.split(mask, np.where(np.diff(mask.astype(int)) != 0)[0]+1)
-            return np.max([len(group) for group in groups if np.all(group)]) / len(mag)
-    else:
-        val = np.max([len(list(group)) for value, group in itertools.groupby(mag) if value == 1]) if mag.size > 0 else 0
-        return val / len(mag)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
 
-def mean_change(time, mag, magerr, apply_weights=True):
+    if mag.size == 0:
+        return np.nan
+
+    med = np.median(mag) if not apply_weights else helper_features._weighted_median(mag, helper_features._safe_weights(magerr))
+    mask = mag < (med - magerr) if apply_weights else mag < med
+
+    return helper_features._longest_true_run(mask) / mag.size
+
+
+def MaxSlope(time, mag, magerr, apply_weights=True):
     """
-    Calculates mean over the differences between subsequent observations,
-    weighted by the inverse square of their errors if apply_weights is True.
+    Maximum or weighted average absolute slope between consecutive light curve points.
 
-    Parameters:
+    This statistic computes the maximum (or weighted average) of the absolute slope 
+    between consecutive time-adjacent measurements. It is designed to detect rapid 
+    changes in the light curve and is sensitive to flares, eclipses, or steep rises/falls.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Must be in a consistent time unit (e.g., days).
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, returns the weighted average of absolute slopes using inverse-variance weights. If False, returns the maximum absolute slope.
 
-    Returns:
-    -------  
-    float   
-        The mean over the differences between all subsequent lightcurve measurements.
+    Returns
+    -------
+    float
+        The maximum (or weighted average) absolute slope in units of `mag / time`.
+        Returns NaN if the light curve has fewer than two points or invalid time steps.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - If any `dt` is zero or non-finite, it is automatically excluded from the calculation. Therefore time must be strictly increasing and free of duplicate values to avoid division by zero.
     """
 
-    if apply_weights:
-        if len(mag) < 2:
-            return np.NaN
-        else:
-            diffs = np.diff(mag)
-            weights = 1.0 / (magerr[1:]**2 + magerr[:-1]**2)
-            return np.average(diffs, weights=weights)
-    else:
-        return (mag[-1] - mag[0]) / (len(mag) - 1) if len(mag) > 1 else np.NaN
+    time = np.asarray(time, float)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size < 2:
+        return np.nan
+
+    dt = time[1:] - time[:-1]
+    slope = np.abs((mag[1:] - mag[:-1]) / dt)
+    valid = np.isfinite(slope) & (dt != 0)
+
+    if not valid.any():
+        return np.nan
+
+    if not apply_weights:
+        return np.max(slope[valid])
+
+    w = 1.0 / (magerr[:-1]**2 + magerr[1:]**2)
+    w = w[valid]
+    s = slope[valid]
+
+    return np.sum(w * s) / w.sum()
+
 
 def mean_abs_change(time, mag, magerr, apply_weights=True):
     """
-    Calculates the mean absolute change in the magnitude per unit of error.
-    
-    To incorporate error we weight each absolute difference by the corresponding error, 
-    and then take the mean of the weighted differences. This would give a measure of the 
-    average absolute change in units of the error.
+    Mean or weighted mean of absolute changes between consecutive light curve points.
 
-    Parameters:
+    This statistic computes the mean of the absolute value of successive differences 
+    in the light curve values. It quantifies the typical fluctuation magnitude, 
+    regardless of direction, and is useful for measuring overall variability.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted mean using inverse-sum error weights. If False, computes an unweighted mean of absolute changes.
 
-    Returns:
-    -------  
-    float   
-        The mean absolute change in the lightcurve measurements.
-    """
-
-    if apply_weights:
-        diffs = np.abs(np.diff(mag))
-        weights = magerr[:-1] + magerr[1:]
-        return np.average(diffs, weights=weights)
-    else:
-        return np.mean(np.abs(np.diff(mag)))
-
-def mean_n_abs_max(time, mag, magerr, number_of_maxima=10, apply_weights=True):
-    """
-    Calculates the weighted arithmetic mean of the n absolute maximum values of the time series, n=10 by design.
-    
-    We incorporate errors in the calculation by sorting the absolute values of the magnitude and corresponding 
-    errors, and then taking the arithmetic mean of the top n maximum values weighted by their errors.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        number_of_maxima : int
-            The number of maxima to consider. Defaults to 10.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    -------     
+    Returns
+    -------
     float
-        The mean of the 10 absolute maximum values of the lightcurve. 
-    """
-    
-    if number_of_maxima >= len(mag):
-        return np.NaN
+        The mean (or weighted mean) of absolute changes in the light curve.
+        Returns NaN if fewer than two data points are present.
 
-    if apply_weights:
-        sort_idx = np.argpartition(np.abs(mag), -number_of_maxima)[-number_of_maxima:]
-        mag_sorted = mag[sort_idx]
-        magerr_sorted = magerr[sort_idx]
-        weights = 1 / np.square(magerr_sorted)
-        weighted_mean = np.sum(np.abs(mag_sorted) * weights) / np.sum(weights)
-        return weighted_mean
-    else:
-        n_absolute_maximum_values = np.sort(np.abs(mag))[-number_of_maxima:]
-        return np.mean(n_absolute_maximum_values)
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Sensitive to noise; a noisy light curve may show large average absolute changes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size < 2:
+        return np.nan
+
+    diffs = np.abs(np.diff(mag))
+
+    if not apply_weights:
+        return diffs.mean()
+
+    w = 1.0 / (magerr[:-1] + magerr[1:])
+
+    return np.sum(w * diffs) / w.sum() if w.sum() else diffs.mean()
+
+
+def mean_change(time, mag, magerr, apply_weights=True):
+    """
+    Mean or weighted mean of signed changes between consecutive light curve points.
+
+    This statistic computes the average of the signed differences between 
+    adjacent light curve measurements. It reflects any long-term slope 
+    or drift in brightness and can help detect slow trends.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted mean using inverse-variance weights from adjacent errors. If False, computes an unweighted mean.
+
+    Returns
+    -------
+    float
+        The mean (or weighted mean) of signed changes in the light curve.
+        Returns NaN if fewer than two data points are present.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Ideal for trend detection in smoothed or denoised light curves.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size < 2:
+        return np.nan
+
+    diffs = np.diff(mag)
+
+    if not apply_weights:
+        return diffs.mean()
+
+    w = 1.0 / (magerr[:-1]**2 + magerr[1:]**2)
+
+    return np.sum(w * diffs) / w.sum() if w.sum() else diffs.mean()
+
+
+def meanMag(time, mag, magerr, apply_weights=True):
+    """
+    Mean or weighted mean of the light curve values.
+
+    This statistic computes the average brightness of the light curve, either as a 
+    simple arithmetic mean or as an inverse-variance weighted mean, depending on 
+    whether `apply_weights` is enabled. It provides a measure of the central tendency 
+    of the light curve, useful for normalization or baseline estimation.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted mean using inverse-variance weights. If False, computes a simple unweighted mean.
+
+    Returns
+    -------
+    float
+        The mean (or weighted mean) of the light curve values.
+        Returns NaN if the array is empty.
+
+    Notes
+    -----
+    - MAY NOT BE APPROPRIATE FOR MACHINE LEARNING CLASSIFICATION
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return np.mean(mag)
+
+    w = helper_features._safe_weights(magerr)
+
+    return np.sum(w * mag) / w.sum() if w.sum() > 0 else np.mean(mag)
+
+
+def mean_n_abs_max(time, mag, magerr, apply_weights=True, number_of_maxima=10):
+    """
+    Mean or weighted mean of the top-N largest absolute light curve values.
+
+    This statistic computes the mean of the `N` largest absolute values in the light 
+    curve, optionally applying inverse-variance weighting. It is useful for capturing 
+    the contribution of extreme values (e.g., flares, outliers, strong variability) 
+    in magnitude or flux measurements.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    number_of_maxima : int, optional (default=10)
+        Number of largest absolute values to include in the average.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weighting. Otherwise, uses unweighted mean.
+
+    Returns
+    -------
+    float
+        Mean (or weighted mean) of the top-N absolute values.
+        Returns NaN if `number_of_maxima` is not in [1, len(mag)] or if `mag` is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - A small `N` emphasizes only the most extreme events, while a large `N` includes broader variability.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    n = int(number_of_maxima)
+
+    if n <= 0 or n > mag.size:
+        return np.nan
+
+    idx = np.argpartition(np.abs(mag), -n)[-n:]
+
+    if not apply_weights:
+        return np.abs(mag[idx]).mean()
+
+    w = helper_features._safe_weights(magerr[idx])
+
+    return np.sum(w * np.abs(mag[idx])) / w.sum() if w.sum() else np.abs(mag[idx]).mean()
+
 
 def mean_second_derivative(time, mag, magerr, apply_weights=True):
     """
-    Calculates the weighted mean value of a central approximation of the second derivative,
-    where weights are the inverse square of the errors. Note that the first and last values 
-    of the second derivative are not included in the calculation, as they cannot be approximated 
-    using a central difference.
-    
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    Mean or weighted mean of the discrete second derivative in a light curve.
 
-    Returns:
-    -------  
-    float   
-        The mean value of a central approximation of the second derivative.
+    This statistic estimates the average curvature of the light curve by computing 
+    the second derivative at each internal point using finite differences. It is 
+    sensitive to acceleration in brightness changes and can help identify sudden 
+    shifts in slope, such as flares or eclipses.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Must be in a consistent time unit (e.g., days).
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes a weighted average using inverse-variance weights from the three points contributing to each second-derivative estimate.
+
+    Returns
+    -------
+    float
+        The (weighted) mean of the discrete second derivative estimates. 
+        Returns NaN if fewer than three valid points exist or all weights are zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; each estimate uses three points: (i-1, i, i+1), assuming irregular sampling.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if len(mag) < 3:
-        return np.NaN
-    
+    time = np.asarray(time, float)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    n = mag.size
+    if n < 3:
+        return np.nan
+
+    dt_fwd = time[2:] - time[1:-1]
+    dt_bck = time[1:-1] - time[:-2]
+    dt_tot = time[2:]  - time[:-2]
+
+    valid = (dt_fwd > 0) & (dt_bck > 0) & (dt_tot > 0)
+    if not valid.any():
+        return np.nan
+
+    # centre indices for valid triplets
+    i = np.where(valid)[0] + 1
+
+    # second-derivative estimates
+    d2 = 2.0 / dt_tot[valid] * (
+            (mag[i+1] - mag[i]) / dt_fwd[valid] -
+            (mag[i] - mag[i-1]) / dt_bck[valid]
+         )
+
+    if not apply_weights:
+        return d2.mean()
+
+    # simple inverse-variance weights from the three contributing errors
+    w = 1.0 / (magerr[i-1]**2 + magerr[i]**2 + magerr[i+1]**2)
+    good_w = w > 0
+    if not good_w.any():
+        return d2.mean()
+
+    return np.sum(w[good_w] * d2[good_w]) / w[good_w].sum()
+
+
+def medianAbsDev(time, mag, magerr, apply_weights=True):
+    """
+    Median Absolute Deviation (MAD) of the light curve.
+
+    This statistic measures the median of the absolute deviations from the median value
+    of the light curve. It provides a robust estimate of variability that is less sensitive 
+    to outliers than the standard deviation.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes the weighted median and weighted MAD using inverse-variance weights. If False, uses standard unweighted medians.
+
+    Returns
+    -------
+    float
+        Median absolute deviation of the light curve. Returns NaN if input is empty or invalid.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        med = np.median(mag)
+        return np.median(np.abs(mag - med))
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        med = np.median(mag)
+        return np.median(np.abs(mag - med))
+
+    idx = np.argsort(mag)
+    med = helper_features._weighted_percentiles(mag[idx], w[idx], 0.5)[0]
+    mad = helper_features._weighted_percentiles(np.abs(mag[idx] - med), w[idx], 0.5)[0]
+
+    return mad
+
+
+def median_buffer_range(time, mag, magerr, apply_weights=True):
+    """
+    Fraction of light curve points within ±10% of the semi-amplitude around the central value.
+
+    This metric quantifies the concentration of measurements near the central brightness level
+    by computing the fraction of points that lie within a narrow buffer region centered on 
+    the mean or median magnitude. The buffer has a width of 20% of the full amplitude.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses the inverse-variance weighted mean as the center value.
+        If False, uses the unweighted median.
+
+    Returns
+    -------
+    float
+        Fraction of points within ±10% of the semi-amplitude around the center.
+        Returns NaN if the amplitude is undefined or the input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size == 0:
+        return np.nan
+
+    amp = amplitude(time, mag, magerr, apply_weights)
+    if not np.isfinite(amp):
+        return np.nan
+
     if apply_weights:
-        diffs = np.diff(mag)
-        times = np.diff(time)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            errors = np.abs(diffs / times ** 2) * np.sqrt((magerr[:-1] / diffs) ** 2 + (magerr[1:] / diffs) ** 2)
-        mask = np.isfinite(errors)
-        diffs, times, errors = diffs[mask], times[mask], errors[mask]
-        weights = 1 / errors ** 2
-        weighted_diffs = diffs[1:-1] * weights[1:-1]
-        return np.sum(weighted_diffs) / np.sum(weights[1:-1])
-    else:   
-        return (mag[-1] - mag[-2] - mag[1] + mag[0]) / (2 * (len(mag) - 2)) if len(mag) > 2 else np.NaN
+        w = helper_features._safe_weights(magerr)
+        mean = np.sum(w * mag) / w.sum() if w.sum() > 0 else np.mean(mag)
+    else:
+        mean = np.median(mag)
+
+    a = mean - 0.1 * amp
+    b = mean + 0.1 * amp
+
+    return np.count_nonzero((mag > a) & (mag < b)) / float(mag.size)
+
+
+def median_distance(time, mag, magerr, apply_weights=True):
+    """
+    Median Euclidean distance between consecutive light curve points in time-magnitude space.
+
+    This statistic measures the typical spacing between adjacent measurements in the 
+    (time, magnitude) plane. It captures the smoothness and sampling density of the 
+    light curve trajectory.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Must be in a consistent time unit (e.g., days).
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, normalizes the squared magnitude difference by the sum of the variances of adjacent points to account for measurement uncertainty.
+
+    Returns
+    -------
+    float
+        Median Euclidean distance between consecutive points. Units are in (mag² + time²)⁰·⁵ 
+        or (normalized) units depending on the input scale.
+        Returns NaN if fewer than two points or if all distances are invalid.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+    time = np.asarray(time, float)
+
+    if mag.size < 2:
+        return np.nan
+
+    dmag2 = (mag[1:] - mag[:-1]) ** 2
+    dt2 = (time[1:] - time[:-1]) ** 2
+
+    if apply_weights:
+        var_sum = magerr[1:] ** 2 + magerr[:-1] ** 2
+        good = var_sum > 0
+        dist = np.sqrt((dmag2[good] + dt2[good]) / var_sum[good])
+    else:
+        dist = np.sqrt(dmag2 + dt2)
+
+    return np.median(dist) if dist.size else np.nan
+
+
+def number_cwt_like_peaks(time, mag, magerr, apply_weights=True):
+    """
+    Normalized count of CWT-like peaks in a light curve using simple prominence and width criteria.
+
+    This statistic approximates a continuous wavelet transform (CWT)-style peak count by using 
+    `scipy.signal.find_peaks`. It identifies medium-scale features in the light curve such as flares or bumps.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, weights the magnitude values by the inverse of the error prior to peak detection.
+
+    Returns
+    -------
+    float
+        Number of detected peaks divided by the total number of points.
+        Returns 0.0 if the input array is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    - Intended as a lightweight proxy for more sophisticated wavelet-based peak detection.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return 0.0
+
+    if apply_weights and magerr is not None:
+        weights = 1.0 / np.maximum(magerr, 1e-6)
+        mag = mag * weights  # crude weighted signal copy
+
+    # CWT-like peak detection: medium prominence and width
+    peaks, _ = ssignal.find_peaks(mag, prominence=0.5, width=5)
+
+    return len(peaks) / mag.size
+
 
 def number_of_crossings(time, mag, magerr, apply_weights=True):
     """
-    Calculates the number of crossings of x on the median, m. A crossing is defined as two 
-    sequential values where the first value is lower than m and the next is greater, 
-    or vice-versa. If you set m to zero, you will get the number of zero crossings.
-    
-    We incorporate errors by calculating the differences between consecutive values of the positive array and store it in 
-    the crossings variable. Finally, we multiply the crossings array with a Boolean array that checks if the difference 
-    between consecutive values of mag is greater than the corresponding error in magerr. The resulting array will have a 
-    value of 1 for each crossing that is greater than the corresponding error, and 0 for each crossing that is smaller 
-    than or equal to the error. We then sum this array to get the total number of crossings.
+    Fraction of sign changes relative to the median of the light curve.
 
-    Parameters:
+    This statistic estimates how frequently the light curve crosses its median value, 
+    indicating the presence of variability. When `apply_weights` is True, only consider 
+    crossings with significant changes relative to photometric uncertainty.
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, only count crossings where the absolute difference exceeds the measurement error.
 
-    Returns:
-    ------- 
-    float    
-        The number of crossings about the lightcurve's median.
+    Returns
+    -------
+    float
+        Fraction of crossings relative to the total number of data points.
+        Returns 0.0 if fewer than two measurements are present.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves but best if time is evenly spaced; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    positive = mag > np.median(mag)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
 
-    if apply_weights:
-        crossings = np.abs(np.diff(positive))
-        # check if the difference is greater than the corresponding error
-        crossings = crossings * (np.abs(np.diff(mag)) > magerr[:-1])
-        return np.sum(crossings) / len(mag)
+    if mag.size < 2:
+        return 0.0
+
+    med = np.median(mag)
+    sign = mag > med
+    basic_cross = np.diff(sign).astype(np.bool_)
+
+    if not apply_weights:
+        return basic_cross.sum() / mag.size
+
+    strong = np.abs(np.diff(mag)) > magerr[:-1]
+
+    return (basic_cross & strong).sum() / mag.size
+
+
+def PairSlopeTrend(time, mag, magerr, apply_weights=True, n_last=30):
+    """
+    Trend fraction based on slopes of recent consecutive magnitude pairs.
+
+    This statistic computes the fraction of upward trends (positive slopes)
+    among the last `n_last` data points. When `apply_weights` is True, it returns 
+    the weighted fraction of positive slopes using inverse-variance weights.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, uses inverse-variance weights to compare rising vs. falling slopes.
+    n_last : int, optional (default=30)
+        Number of most recent points to consider. If fewer are available, all are used.
+
+    Returns
+    -------
+    float
+        Fraction of increasing slopes (weighted or unweighted) among recent pairs.
+        Returns NaN if fewer than two valid points or no valid weights.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if len(mag) < 2:
+        return np.nan
+
+    data = np.asarray(mag[-n_last:], float)
+    err = np.asarray(magerr[-n_last:], float)
+
+    diff = data[1:] - data[:-1]
+    pos = diff > 0
+    neg = diff < 0
+
+    if not apply_weights:
+        return pos.sum() / diff.size
+
+    w = 1.0 / (err[:-1]**2 + err[1:]**2)
+    w_pos = w[pos].sum()
+    w_neg = w[neg].sum()
+
+    return w_pos / (w_pos + w_neg) if (w_pos + w_neg) > 0 else np.nan
+
+
+def PercentAmplitude(time, mag, magerr, apply_weights=True):
+    """
+    Maximum percent deviation from the (weighted) median magnitude.
+
+    This statistic computes the maximum absolute deviation from the median,
+    normalized by the median itself: max(|m_i − median|) / median
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (e.g., magnitudes or fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes the weighted median using inverse-variance weights.
+
+    Returns
+    -------
+    float
+        Maximum fractional deviation from the median magnitude.
+        Returns NaN if the input is empty, or inf if the median is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        med = np.median(mag)
     else:
-        return (np.where(np.diff(positive))[0].size) / len(mag)
+        w = helper_features._safe_weights(magerr)
+        idx = np.argsort(mag)
+        med = helper_features._weighted_percentiles(mag[idx], w[idx], 0.5)[0]
 
-def number_of_peaks(time, mag, magerr, n=7, apply_weights=True):
+    amp = np.max(np.abs(mag - med))
+
+    return amp / med if med != 0 else np.inf
+
+
+def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
     """
-    Calculates the number of peaks of at least support n in the time series x. 
-    A peak of support n is defined as a subsequence of x where a value occurs, 
-    which is bigger than its n neighbors to the left and to the right.
-    n = 7
-    
-    Hence in the sequence:
+    Inter-percentile range divided by the median: (F95 − F5) / median.
 
-    >>> x = [3, 0, 0, 4, 0, 0, 13]
+    This variability metric captures the amplitude of the central 90% of the
+    light curve distribution relative to the median, providing a robust estimate
+    of variability that is less sensitive to outliers.
 
-    4 is a peak of support 1 and 2 because in the subsequences
-
-    >>> [0, 4, 0]
-    >>> [0, 0, 4, 0, 0]
-
-    4 is still the highest value. Here, 4 is not a peak of support 3 because 13 is the 3th neighbour to the right of 4
-    and its bigger than 4.
-    
-    To incorporate the error bars we first reduce the mag and magerr arrays by n elements from both ends to ensure that 
-    we can check for peaks of support n. We then iterate over the mag array and calculate the differences between 
-    the values of the mag array and its i-th neighbor to the left and to the right. We also calculate the corresponding 
-    errors for the differences using the error arrays magerr and xerr_reduced. We then check if the absolute value of 
-    the difference is greater than the corresponding error to determine if we have a peak of support n. Finally, we combine 
-    the results using logical AND to get the total number of peaks.
-
-    Parameters:
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        n : int
-            The support of the peak. Defaults to 7.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, computes weighted percentiles using inverse-variance weights.
 
-    Returns:
-    ------- 
-    float    
-        The number of peaks of at least support 7 within the lightcurve, normalized according to the size of the lightcurve.
+    Returns
+    -------
+    float
+        (95th percentile − 5th percentile) / median.
+        Returns NaN if input is empty, or inf if the median is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    if apply_weights:
-        x_reduced = mag[n:-n]
-        xerr_reduced = magerr[n:-n]
-        res = None
-        for i in range(1, n + 1):
-            # calculate differences with the i-th neighbor to the left and to the right
-            diff_left = x_reduced - np.roll(mag, i)[n:-n]
-            diff_right = x_reduced - np.roll(mag, -i)[n:-n]
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
 
-            # calculate the corresponding errors for the differences
-            err_left = np.sqrt(xerr_reduced ** 2 + np.roll(magerr, i)[n:-n] ** 2)
-            err_right = np.sqrt(xerr_reduced ** 2 + np.roll(magerr, -i)[n:-n] ** 2)
+    if mag.size == 0:
+        return np.nan
 
-            # check if the difference is greater than the corresponding error
-            result_first = np.abs(diff_left) > err_left
-            result_second = np.abs(diff_right) > err_right
-            # combine the results with logical AND
-            if res is None:
-                res = result_first & result_second
-            else:
-                res &= result_first & result_second
-        return float(np.sum(res)/len(mag))
+    if not apply_weights:
+        p5, p95 = np.percentile(mag, [5, 95])
+        med     = np.median(mag)
     else:
-        x_reduced = mag[n:-n]
-        res = None
-        for i in range(1, n + 1):
-            result_first = x_reduced > np.roll(mag, i)[n:-n]
-            if res is None:
-                res = result_first
-            else:
-                res &= result_first
-            res &= x_reduced > np.roll(mag, -i)[n:-n]
-        return float(np.sum(res)/len(mag))
+        idx = np.argsort(mag)
+        w   = helper_features._safe_weights(magerr)[idx]
+        p5, p95, med = helper_features._weighted_percentiles(mag[idx], w, [0.05, 0.95, 0.50])
 
-def ratio_recurring_points(time, mag, magerr, apply_weights=True):
+    return (p95 - p5) / med if med != 0 else np.inf
+
+
+def permutation_entropy(time, mag, magerr, apply_weights=True, tau=1, dimension=3):
     """
-    Calculates the ratio of unique values, that are present in the time 
-    series more than once, normalized to the number of data points. 
-    
-    If apply weights is set to True, the photometric errors will be 
-    used by looping over the unique values and checking if the number of values 
-    that are close to it (using the np.isclose function) is greater than 1. If so, 
-    the value is counted as a recurring point.
+    Permutation entropy of the light curve.
 
-    Parameters:
+    This non-parametric measure captures the complexity or randomness in the 
+    ordering of values over time by evaluating the distribution of ordinal patterns 
+    in embedded vectors. A high value indicates a more disordered or complex signal, 
+    while a low value indicates more regular behavior. No option to account for errors included. 
+
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (flux or magnitude).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Not used in the calculation, but included for API consistency.
+    tau : int, optional (default=1)
+        Time delay between elements in each embedded vector.
+    dimension : int, optional (default=3)
+        Embedding dimension (length of ordinal patterns).
 
-    Returns:
-    ------- 
-    float    
-        The number of unique measurements normalized according to the size of the lightcurve.
+    Returns
+    -------
+    float
+        Permutation entropy value (non-negative).
+        Returns NaN if the light curve is too short to compute the statistic.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    unique, counts = np.unique(mag, return_counts=True)
+    x = np.asarray(mag, float)
+    n = x.size
 
-    if counts.shape[0] == 0:
-        return 0
-    
-    if apply_weights:
-        recurring_count = 0
-        for i in range(len(unique)):
-            if np.sum(np.isclose(mag, unique[i], atol=magerr)) > 1:
-                recurring_count += 1
-        return recurring_count / float(counts.shape[0])
-    else:
-        return np.sum(counts > 1) / float(counts.shape[0])
+    if n < (dimension - 1) * tau + 1:
+        return np.nan
 
-def sample_entropy(time, mag, magerr, apply_weights=True):
-    """
-    Calculates sample entropy: http://en.wikipedia.org/wiki/Sample_Entropy
-    
-    One approach to incorporate error is to modify the distance metric used in the algorithm 
-    to account for measurement error. "Modified Sample Entropy Method in the Presence of Noise" by Zhang et al. 
-    proposes a modified version of sample entropy that uses a weighted distance metric based on both the difference 
-    in magnitudes and the difference in measurement errors between pairs of data points, but
-    MicroLIA does not support this as the noise level may alter the value range significantly. 
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The sample entropy of the lightcurve.
-    """
-
-    m = 2  # common value for m, according to wikipedia...
-    tolerance = 0.2 * np.std(mag)  # 0.2 is a common value for r, according to wikipedia...
-    every_n = 1
-
-    num_shifts = (len(mag) - m) // every_n + 1
-    shift_starts = every_n * np.arange(num_shifts)
-    indices = np.arange(m)
-    indexer = np.expand_dims(indices, axis=0) + np.expand_dims(shift_starts, axis=1)
-
-    xm = np.asarray(mag)[indexer]
-    B = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= tolerance) - 1 for xmi in xm])
-
-    m += 1
-    num_shifts = (len(mag) - m) // every_n + 1
-    shift_starts = every_n * np.arange(num_shifts)
-    indices = np.arange(m)
-    indexer = np.expand_dims(indices, axis=0) + np.expand_dims(shift_starts, axis=1)
-
-    xmp1 = np.asarray(mag)[indexer]
-    A = np.sum([np.sum(np.abs(xmi - xmp1).max(axis=1) <= tolerance) - 1 for xmi in xmp1])
-
-    SampEn = -np.log(A / B)
-
-    return SampEn
-
-def sum_values(time, mag, magerr, apply_weights=True):
-    """
-    Sums over all mag values.
-    
-    If apply_weights=True, the formula for weighted mean is used to calculate the sum of the magnitudes. 
-    The weights are given by the inverse square of the magnitudes' errors.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The sum of all the measurements, normalized to the size of the lightcurve.
-    """
-
-    if apply_weights:
-        return np.sum(mag/magerr**2)/np.sum(1/magerr**2)
-    else:
-        return np.sum(mag)/len(mag)
-
-def time_reversal_asymmetry(time, mag, magerr, lag=1, apply_weights=True):
-    """
-    Derives the time reversal asymmetric statistic introduced by Fulcher.
-
-    See: (Fulcher, B.D., Jones, N.S. (2014). Highly comparative feature-based time-series classification. Knowledge and Data Engineering, IEEE Transactions on 26, 3026–3037.)
-    
-    We incorporate errors by dividing each term by the square of its corresponding magerr, 
-    which effectively gives more weight to terms with smaller errors. Note that this modification 
-    assumes that the errors are Gaussian and uncorrelated, which may not always be true in practice.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        lag : int
-            The lag to apply. Defaults to 1.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The time reversal symmetry statistic.
-    """
-
-    n = len(mag)
-
-    if 2 * lag >= n:
-        return 0
-    else:
-        one_lag = np.roll(mag, -lag)
-        two_lag = np.roll(mag, 2 * -lag)
-        if apply_weights:
-            weights = 1.0 / (magerr ** 2)
-            weighted_mean = np.sum(mag * weights) / np.sum(weights ** 2)
-            result = ((two_lag * two_lag * one_lag - one_lag * mag * mag) / (magerr * magerr)) / weights
-            return np.mean(result[:n - 2 * lag])
-        else:
-            result = (two_lag * two_lag * one_lag - one_lag * mag * mag)
-            return np.mean(result[:n - 2 * lag])
-
-def variance(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the variance, or the weighted variance of the light curve if apply_weights=True.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The variance of the lightcurve measurements.
-    """
-
-    if apply_weights:
-        return np.sum((mag - np.mean(mag))**2 / magerr**2) / np.sum(1/magerr**2)
-    else:
-        return np.var(mag)
-
-def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=True):
-    """
-    This feature denotes if the variance of x is greater than its standard deviation. 
-    Is equal to variance of x being larger than 1. 1 is True, 0 is False. 
-
-    If apply_weights=True a weighting factor to the magnitude values when computing the variance and standard deviation will be used. 
-    This factor gives more weight to the more precise measurements and less weight to the less precise measurements.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    int    
-        Whether or not the lightcurve's variance is greater than the standard deviation, 1 for True, 0 for False.
-    """
-
-    if apply_weights:
-        weight = 1.0 / (magerr * magerr)
-        weighted_mean = np.sum(mag * weight) / np.sum(weight)
-        weighted_var = np.sum(weight * (mag - weighted_mean) ** 2) / np.sum(weight)
-        weighted_std = np.sqrt(weighted_var)
-        if weighted_var > weighted_std:
-            return 1
-        else:
-            return 0
-    else:
-        var = np.var(mag)
-        if var > np.sqrt(var):
-            return 1
-        else:
-            return 0
-
-def variation_coefficient(time, mag, magerr, apply_weights=True):
-    """
-    Calculates the variation coefficient (standard error / mean, gives the relative value of variation around mean) of x.
-    
-    We incorporate errors by using the weighted standard deviation and weighted mean.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The lightcurve standard deviation over the mean.
-    """
-
-    if apply_weights:
-        weighted_mean = np.sum(mag / magerr**2) / np.sum(1 / magerr**2)
-        weighted_std = np.sqrt(np.sum((mag - weighted_mean)**2 / magerr**2) / np.sum(1 / magerr**2))
-        if weighted_mean != 0:
-            return weighted_std / weighted_mean
-        else:
-            return np.nan
-    else:
-        mean = np.mean(mag)
-        if mean != 0:
-            return np.std(mag) / mean
-        else:
-            return np.nan
-
-def large_standard_deviation(time, mag, magerr, r=.3, apply_weights=True):
-    """
-    Does time series have "large" standard deviation?
-
-    Boolean variable denoting if the standard dev of x is higher than 'r' times the range = difference between max and
-    min of x. To incorporate errors we use the weighted standard deviation instead of the regular standard deviation.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        r : float
-            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.3.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    int    
-        Whether or not the lightcurve has a large standard deviation, 1 for True, 0 for False.
-    """
-
-    if apply_weights:   
-        weights = 1/magerr**2  # calculate weights from magerr
-        weighted_std = np.sqrt(np.sum(weights * (mag - np.average(mag, weights=weights))**2) / np.sum(weights))
-        if weighted_std > (r * (np.max(mag) - np.min(mag))):
-            return 1
-        else:
-            return 0
-    else:
-        if np.std(mag) > (r * (np.max(mag) - np.min(mag))):
-            return 1
-        else:
-            return 0
-
-def symmetry_looking(time, mag, magerr, r=0.5, apply_weights=True):
-    """
-    Check to see if the distribution of the mag "looks symmetric". This is the case if:
-
-    | mean(X)-median(X)| < r * (max(X)-min(X))
-
-    where r is the percentage of the range to compare with.
-    
-    If apply_weights=True, the weighted mean and the weighted median are used instead of the regular mean and median.
-    
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        r : float
-            The percentage of the range to compare with. Must be between 0 and 1. Deaults to 0.5.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    int    
-        Whether or not the lightcurve appears symmetric, 1 for True, 0 for False.
-    """
-
-    if apply_weights:
-        weights = 1 / magerr ** 2
-        w_mean = np.sum(mag * weights) / np.sum(weights)
-        sorted_indices = np.argsort(mag)
-        cum_weights = np.cumsum(weights[sorted_indices])
-        median_index = np.searchsorted(cum_weights, 0.5 * np.sum(weights))
-        w_median = mag[sorted_indices[median_index]]
-        max_min_difference = np.max(mag) - np.min(mag)
-        if np.abs(w_mean - w_median) < (r * max_min_difference):
-            return 1
-        else:
-            return 0
-    else:
-        mean_median_difference = np.abs(np.mean(mag) - np.median(mag))
-        max_min_difference = np.max(mag) - np.min(mag)
-        if mean_median_difference < ( r * max_min_difference):
-            return 1
-        else:
-            return 0
-  
-def index_mass_quantile(time, mag, magerr, r=0.5, apply_weights=True):
-    """
-    Calculates the relative index i of time series x where r% of the mass of x lies left of i.
-    For example for r = 50% this feature will return the mass center of the time series.
-    
-    Errors are incorporated into this function by weighing the contributions of each data point with its inverse variance.
-    
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        r : float 
-            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.5.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The relative index of the lightcurve measurement that is to the right of the 50% of the cumulative sum.
-    """
-
-    if apply_weights:
-        abs_mag = np.abs(mag)
-        inv_var = 1.0 / (magerr ** 2)
-        weighted_abs_mag = np.sum(abs_mag * inv_var)
-        #Calculate the cumulative sum of the weighted absolute values of mag
-        cum_weighted_abs_mag = np.cumsum(abs_mag * inv_var) / weighted_abs_mag
-        #Find the index i where r% of the mass of x lies left of i
-        i = np.argmax(cum_weighted_abs_mag >= r) + 1
-        #Return the relative index 
-        return i / len(mag)
-    else:
-        abs_x = np.abs(mag)
-        s = np.sum(abs_x)
-        mass_centralized = np.cumsum(abs_x) / s
-        return (np.argmax(mass_centralized >= r) + 1) / len(mag)
-
-def number_cwt_peaks(time, mag, magerr, n=30, apply_weights=True):
-    """
-    Number of different peaks in the magnitude array.
-
-    To estimate the numbers of peaks, x is smoothed by a ricker wavelet for widths ranging from 1 to n. This feature
-    calculator returns the number of peaks that occur at enough width scales and with sufficiently high
-    Signal-to-Noise-Ratio (SNR). Weights are not meant to be applied in this case.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        n : int 
-            The maximum time width to consider. Defaults to 30.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The number of peaks in the lightcurve after smoothing with a wavelet transformation.
-    """
-
-    val = len(ssignal.find_peaks_cwt(vector=mag, widths=np.array(list(range(1, n + 1))), wavelet=ssignal.ricker))
-    return val / len(mag)
-
-def permutation_entropy(time, mag, magerr, tau=1, dimension=3, apply_weights=True):
-    """
-    Calculate the permutation entropy.
-
-    Ref: https://www.aptech.com/blog/permutation-entropy/
-         Bandt, Christoph and Bernd Pompe.
-         “Permutation entropy: a natural complexity measure for time series.”
-         Physical review letters 88 17 (2002): 174102 
-    
-    In this modified version, if apply_weights=True, we compute the weights as the reciprocal of the magnitude errors 
-    and divide each count by the corresponding weight. Then we compute the weighted average probabilities and return
-    the negative sum of the probabilities times their logarithms.
-
-    Parameters:
-    ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        tau : int
-            The embedded time delay that determines the time separation between the measurements.
-            Defaults to 1.
-        dimension : int
-            The embedding dimension to use. Defaults to 3.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
-
-    Returns:
-    ------- 
-    float    
-        The permutation entropy of the lightcurve.
-    """
-
-    num_shifts = (len(mag) - dimension) // tau + 1
-    shift_starts = tau * np.arange(num_shifts)
-    indices = np.arange(dimension)
-    indexer = np.expand_dims(indices, axis=0) + np.expand_dims(shift_starts, axis=1)
-
-    X = np.asarray(mag)[indexer]
-    permutations = np.argsort(np.argsort(X))
-    counts = np.unique(permutations, axis=0, return_counts=True)[1]
-
-    if apply_weights:
-        weights = 1 / np.asarray(magerr)[indexer]
-        weighted_counts = counts / np.expand_dims(weights.reshape(-1), axis=1)
-        probs = np.sum(weighted_counts, axis=1) / np.sum(weighted_counts)
-    else:
-        probs = counts / len(permutations)
+    idx = np.arange(0, n - (dimension - 1) * tau)
+    patterns = np.array([np.argsort(x[i:i + dimension * tau:tau]) for i in idx])
+    _, counts = np.unique(patterns, axis=0, return_counts=True)
+    probs = counts / counts.sum()
 
     return -np.sum(probs * np.log(probs))
 
-def quantile(time, mag, magerr, r=0.75, apply_weights=True):
+
+def prominence_peaks(time, mag, magerr, apply_weights=True, thres=0.3, min_dist=25, thres_abs=False):
     """
-    Calculates the r quantile of the mag. This is the value of mag greater than r% of the ordered values.
+    Detects prominent peaks in a light curve using slope changes and thresholding.
 
-    Errors are not incorporated in this function. 
+    This function identifies local maxima by detecting sign changes in the first derivative 
+    of the light curve. Optionally, it weights the signal by inverse variance and applies 
+    a threshold on the (weighted) amplitude to reject low-significance peaks. When multiple 
+    peaks are too close (within `min_dist`), only the most prominent one is retained.
 
-    Parameters:
+    Parameters
     ----------
-        time : array
-            The timestamps of the corresponding mag and magerr measurements. Must be an array.
-        mag : array
-            The time-varying intensity of the lightcurve. Must be an array.
-        magerr : array
-            Photometric error for the intensity. Must be an array.
-        r : float
-            The percentage of the range to compare with. Must be between 0 and 1. Defaults to 0.75.
-        apply_weights : bool, optional
-            Whether to apply weights based on the magnitude errors. Defaults to True.
+    time : array-like
+        Time values of the light curve. Not directly used in peak detection.
+    mag : 1-D array-like
+        Light curve values (e.g., normalized fluxes or fluxes).
+    magerr : 1-D array-like
+        Photometric uncertainties corresponding to each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, signal values are weighted by inverse variance when computing the amplitude used for thresholding.
+    thres : float, optional (default=0.3)
+        Threshold level for accepting peaks. If `thres_abs=False`, this is relative:
+        a value between 0 and 1 indicating how far between the min and max amplitude 
+        a peak must lie. If `thres_abs=True`, it is an absolute threshold in the same units as `mag`.
+    min_dist : int, optional (default=25)
+        Minimum separation (in samples) required between two retained peaks. If multiple 
+        peaks fall within `min_dist`, only the most prominent (weighted) one is kept.
+    thres_abs : bool, optional (default=False)
+        If True, `thres` is interpreted as an absolute threshold. If False, `thres` is relative.
 
-    Returns:
-    ------- 
-    float    
-        The 75th quantile of the ordered lightcurve measurements.
+    Returns
+    -------
+    float
+        Fraction of light curve points identified as significant peaks.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Code adapted from the peakutils Python package (MIT license).
     """
 
-    return np.quantile(mag, r)
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.ndim != 1:
+        raise ValueError("`y` must be a 1-D array")
+
+    # Amplitude array used for thresholding / ranking
+    if apply_weights:
+        w = helper_features._safe_weights(np.asarray(magerr, float))
+        amp = mag * w # weighted amplitude
+        if w.sum() == 0: # fall back if all weights zero
+            amp = mag.copy()
+    else:
+        amp = mag.copy()
+
+    # Threshold level
+    if not thres_abs:
+        level = thres * (amp.max() - amp.min()) + amp.min()
+    else:
+        level = thres
+
+    min_dist = int(min_dist)
+
+    # First-order difference & plateau handling
+    dy = np.diff(mag)
+    zeros = np.flatnonzero(dy == 0)
+
+    # completely flat signal
+    if zeros.size == dy.size:
+        return 0
+
+    if zeros.size:
+        zdiff = np.diff(zeros)
+        breaks = np.flatnonzero(zdiff != 1) + 1
+        plates = np.split(zeros, breaks)
+
+        # left edge
+        if plates and plates[0][0] == 0:
+            dy[plates[0]] = dy[plates[0][-1] + 1]
+            plates.pop(0)
+        # right edge
+        if plates and plates[-1][-1] == dy.size - 1:
+            dy[plates[-1]] = dy[plates[-1][0] - 1]
+            plates.pop()
+
+        for p in plates: # internal plateaus
+            mid = int(np.median(p))
+            dy[p[p < mid]]  = dy[p[0] - 1]
+            dy[p[p >= mid]] = dy[p[-1] + 1]
+
+    # Raw peaks: +slope --> −slope and amp > threshold
+    peaks = np.where(
+        (np.hstack([dy, 0.0]) < 0) &
+        (np.hstack([0.0, dy]) > 0) &
+        (amp > level)
+    )[0]
+
+    # Enforce minimum separation
+    if peaks.size > 1 and min_dist > 1:
+        order = peaks[np.argsort(amp[peaks])][::-1] # highest-(weighted) first
+        mask = np.ones(mag.size, dtype=bool)
+        mask[peaks] = False
+
+        for p in order:
+            if not mask[p]:
+                lo = max(0, p - min_dist)
+                hi = p + min_dist + 1
+                mask[lo:hi] = True
+                mask[p] = False
+
+        peaks = np.nonzero(~mask)[0]
+
+    return len(peaks.astype(int)) / len(mag)
+
+
+def quantile_5(time, mag, magerr, apply_weights=True):
+    """
+    5th percentile value of the light curve. This is useful for describing the brightness distribution 
+    without being sensitive to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+
+    Returns
+    -------
+    float
+        The 5th percentile value of the light curve.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    """
+
+    return np.quantile(np.asarray(mag, float), 0.05)
+
+
+def quantile_25(time, mag, magerr, apply_weights=True):
+    """
+    25th percentile value of the light curve. This is useful for describing the brightness distribution 
+    without being sensitive to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+
+    Returns
+    -------
+    float
+        The 25th percentile value of the light curve.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    """
+
+    return np.quantile(np.asarray(mag, float), 0.25)
+
+
+def quantile_50(time, mag, magerr, apply_weights=True):
+    """
+    Median (50th percentile) value of the light curve. This is useful for describing the brightness distribution 
+    without being sensitive to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+    Returns
+    -------
+    float
+        The median value of the light curve.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    """
+
+    return np.quantile(np.asarray(mag, float), 0.50)
+
+
+def quantile_75(time, mag, magerr, apply_weights=True):
+    """
+    75th percentile value of the light curve. This is useful for describing the brightness distribution 
+    without being sensitive to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+
+    Returns
+    -------
+    float
+        The 75th percentile value of the light curve.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    """
+
+    return np.quantile(np.asarray(mag, float), 0.75)
+
+
+def quantile_95(time, mag, magerr, apply_weights=True):
+    """
+    95th percentile value of the light curve. This is useful for describing the brightness distribution 
+    without being sensitive to outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+
+    Returns
+    -------
+    float
+        The 95th percentile value of the light curve.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    """
+
+    return np.quantile(np.asarray(mag, float), 0.95)
+
+
+def ratio_recurring_points(time, mag, magerr, apply_weights=True):
+    """
+    Ratio of recurring values in the light curve.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, default True
+        If True, recurrence is counted using per-point tolerance from `magerr`.
+
+    Returns
+    -------
+    float
+        Fraction of unique values that appear more than once.
+        Uses exact matching unless `apply_weights=True`, in which case
+        values are matched within ±1σ.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return 0.0
+
+    uniq, idx, counts = np.unique(mag, return_inverse=True, return_counts=True)
+
+    if not apply_weights:
+        return np.sum(counts > 1) / uniq.size
+
+    # Weighted version: use point-by-point uncertainty
+    recurring = 0
+    for u in uniq:
+        mask = np.isclose(mag, u, atol=magerr)
+        if np.sum(mask) > 1:
+            recurring += 1
+
+    return recurring / uniq.size if uniq.size > 0 else 0.0
+
+
+def root_mean_squared(time, mag, magerr, apply_weights=True):
+    """
+    Root-mean-square (RMS) deviation of the light curve magnitudes.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, default True
+        If True, compute weighted RMS using inverse-variance weights.
+
+    Returns
+    -------
+    float
+        RMS deviation of the light curve values. Returns NaN if input is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return np.sqrt(np.mean((mag - np.mean(mag)) ** 2))
+
+    w = helper_features._safe_weights(magerr)
+    if np.sum(w) == 0:
+        return np.sqrt(np.mean((mag - np.mean(mag)) ** 2))
+
+    mean = np.sum(w * mag) / np.sum(w)
+    rms = np.sqrt(np.sum(w * (mag - mean) ** 2) / np.sum(w))
+    return rms
+
+
+def sample_entropy(time, mag, magerr, apply_weights=True):
+    """
+    Sample entropy of the light curve.
+
+    Measures the negative log-likelihood that sequences of `m` consecutive points
+    that are similar (within `r`) remain similar when extended to `m+1` points.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, default True
+        Currently unused; included for interface consistency.
+
+    Returns
+    -------
+    float
+        Sample entropy value, or NaN if undefined.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    x = np.asarray(mag, float)
+    n = x.size
+
+    if n < 4:
+        return np.nan
+
+    m = 2
+    r = 0.2 * np.std(x, ddof=0)
+
+    def _phi(m):
+        try:
+            templates = np.lib.stride_tricks.sliding_window_view(x, m)
+        except ValueError:
+            return 0
+        D = np.abs(templates[:, None, :] - templates[None, :, :]).max(axis=2)
+        return np.sum(D <= r) - len(templates)  # remove self-matches
+
+    B = _phi(m)
+    A = _phi(m + 1)
+
+    return -np.log(A / B) if A > 0 and B > 0 else np.nan
+
+
+def shannon_entropy(time, mag, magerr, apply_weights=True, eps=1e-12):
+    """
+    Shannon–type entropy of a light curve.
+
+    This metric estimates the total information content of a light curve by 
+    computing entropy contributions based on the Gaussian and inverse-Gaussian 
+    cumulative distribution functions (CDFs) around each point, integrated over 
+    a symmetric interval defined by the photometric uncertainty.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Must be in a consistent time unit (e.g., days).
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties corresponding to `mag`.
+    apply_weights : bool, default=True
+        If True, entropy contributions are weighted by inverse variance.
+    eps : float, default=1e-12
+        Small constant added to probabilities inside log terms to ensure numerical stability.
+
+    Returns
+    -------
+    float
+        Total Shannon entropy of the light curve, combining Gaussian and 
+        inverse-Gaussian contributions. Returns NaN if the input is too small 
+        or unstable (e.g., zero mean).
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    time = np.asarray(time, dtype=float)
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if not (time.size == mag.size == magerr.size):
+        raise ValueError("`time`, `mag`, and `magerr` must be the same length.")
+    if mag.ndim != 1:
+        raise ValueError("Inputs must be 1-D arrays.")
+
+    mu = np.median(mag) # robust mean estimate
+    sigma = root_mean_squared(time, mag, magerr, apply_weights=apply_weights) if apply_weights else np.sqrt(np.mean((mag - mu) ** 2))  # RMS scatter
+
+    # Gaussian CDFs for upper & lower error bounds 
+    z_hi = (mag + magerr - mu) / (sigma * np.sqrt(2.0))
+    z_lo = (mag - magerr - mu) / (sigma * np.sqrt(2.0))
+    p_hi = 0.5 * (1.0 + erf(z_hi))
+    p_lo = 0.5 * (1.0 + erf(z_lo))
+
+    # Inverse-Gaussian CDFs
+    # scipy’s parameterisation: X ~ InvGauss(μ, λ) --> shape = λ/μ
+    lam = sigma**2
+    shape_param = lam / mu
+    p_inv_hi = invgauss.cdf((mag + magerr) / mu, shape_param)
+    p_inv_lo = invgauss.cdf((mag - magerr) / mu, shape_param)
+
+    # differential element Δm_i
+    delta = 2.0 * magerr
+
+    # weights
+    w = np.ones_like(mag) if not apply_weights else 1.0 / (magerr**2 + eps)
+
+    # entropy contributions
+    ent_gauss = -np.sum(w * delta * (np.log2(p_hi + eps) + np.log2(p_lo + eps)))
+    ent_inv = -np.sum(w * delta * (np.log2(p_inv_hi + eps) + np.log2(p_inv_lo + eps)))
+
+    return ent_gauss + ent_inv
+
+
+def shapiro_wilk(time, mag, magerr, apply_weights=True):
+    """
+    Shapiro–Wilk normality test statistic for light-curve data.
+
+    This function returns the Shapiro–Wilk statistic, which tests the null hypothesis
+    that the input data are drawn from a normal distribution. Values close to 1 indicate
+    consistency with normality. No error propagation is included, as the underlying 
+    `scipy.stats.shapiro` implementation does not support weighting or uncertainties.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, default True
+        Not used in the calculation but included for API consistency.
+
+    Returns
+    -------
+    float
+        The Shapiro–Wilk W statistic. Values closer to 1 suggest normality.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    return sstats.shapiro(np.asarray(mag, float))[0]
+
+
+def skewness(time, mag, magerr, apply_weights=True):
+    """
+    Weighted or unweighted skewness of the light-curve distribution.
+
+    Computes the third standardized moment (skewness) of the light-curve values,
+    which quantifies the asymmetry of the distribution. If `apply_weights=True`,
+    inverse-variance weights (1/σ²) are used to compute a weighted, unbiased estimator.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted skewness.
+
+    Returns
+    -------
+    float
+        The skewness of the light-curve distribution. A value of 0 indicates
+        a symmetric distribution. Returns NaN for insufficient data (fewer than 3 points).
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size < 3:
+        return np.nan
+
+    if not apply_weights:
+        return sstats.skew(mag, bias=False)
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        return np.nan
+
+    mean = np.sum(w * mag) / w.sum()
+    var = np.sum(w * (mag - mean) ** 2) / w.sum()
+
+    if var == 0:
+        return 0.0
+
+    std  = np.sqrt(var)
+    third = np.sum(w * (mag - mean) ** 3) / w.sum()
+
+    return third / std**3
+
+
+def std_over_mean(time, mag, magerr, apply_weights=True):
+    """
+    Coefficient of variation (σ / μ) of the light-curve values.
+
+    Computes the ratio of the standard deviation to the mean of the light-curve values,
+    which quantifies relative variability. If `apply_weights=True`, inverse-variance weights (1/σ²)
+    are used for a weighted estimator of the mean and variance.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+    Returns
+    -------
+    float
+        The coefficient of variation (standard deviation divided by mean).
+        Returns NaN if input is empty, and Inf if the mean is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        mean = np.mean(mag)
+        std = np.std(mag, ddof=0)
+        return std / mean if mean != 0 else np.inf
+
+    w = helper_features._safe_weights(magerr)
+    if w.sum() == 0:
+        mean = np.mean(mag)
+        std = np.std(mag, ddof=0)
+        return std / mean if mean != 0 else np.inf
+
+    mean = np.sum(w * mag) / w.sum()
+    var = np.sum(w * (mag - mean) ** 2) / w.sum()
+
+    return np.sqrt(var) / mean if mean != 0 else np.inf
+
+
+def stetsonJ(time, mag, magerr, apply_weights=True):
+    """
+    Stetson's J variability index.
+
+    Measures the degree of correlated variability in a time series. For a light curve,
+    it is sensitive to the persistence of bright or faint measurements over time.
+    High values indicate consecutive measurements that deviate similarly from the mean.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        Ignored in this implementation, weights are always used.
+
+    Returns
+    -------
+    float
+        Stetson J index. Higher values indicate stronger correlated variability.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    if mag.size < 2:
+        return np.nan
+
+    d = helper_features._delta(np.asarray(mag, float), np.asarray(magerr, float))
+    Pk = d[:-1] * d[1:]
+
+    return np.sum(np.sign(Pk) * np.sqrt(np.abs(Pk))) / len(Pk) # mag.size
+
+
+def stetsonK(time, mag, magerr, apply_weights=True):
+    """
+    Stetson's K variability index.
+
+    Measures the kurtosis-like behavior of the normalized residuals in a light curve.
+    A Gaussian distribution yields K ≈ 0.798, while larger values indicate variability.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        Ignored in this implementation, weights are always used.
+
+    Returns
+    -------
+    float
+        Stetson K index. Higher values suggest stronger variability or outliers.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    d = helper_features._delta(np.asarray(mag, float), np.asarray(magerr, float))
+    n = d.size
+
+    if n == 0:
+        return np.nan
+
+    return (np.sum(np.abs(d)) / n) / np.sqrt(np.sum(d ** 2) / n)
+
+
+def stetsonL(time, mag, magerr, apply_weights=True):
+    """
+    Stetson's L variability index.
+
+    Combines the Stetson J and K indices to give an overall measure of variability,
+    normalized such that L ≈ 1 for Gaussian noise. Designed to detect both correlated
+    deviations and excess kurtosis in photometric data.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        Ignored in this implementation, weights are always used.
+
+    Returns
+    -------
+    float
+        Stetson L index. Values significantly above 1 suggest variability.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    J = stetsonJ(time, mag, magerr, apply_weights)
+    K = stetsonK(time, mag, magerr, apply_weights)
+
+    return J * K / 0.798 if np.isfinite(J) and np.isfinite(K) else np.nan
+
+
+def sum_values(time, mag, magerr, apply_weights=True):
+    """
+    Mean value of the light curve (weighted or unweighted).
+
+    Computes the average of the light-curve values, either as a simple arithmetic
+    mean or as an inverse-variance weighted mean depending on `apply_weights`.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+    Returns
+    -------
+    float
+        Weighted or unweighted mean of the input values.
+        Returns NaN if input array is empty.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float) 
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return mag.sum() / mag.size
+
+    w = helper_features._safe_weights(magerr)
+
+    return (w * mag).sum() / w.sum() if w.sum() else mag.mean()
+
+
+def symmetry_looking(time, mag, magerr, apply_weights=True, r=0.5):
+    """
+    Symmetry indicator based on mean–median agreement.
+
+    Returns 1 if the absolute difference between the (weighted) mean and 
+    (weighted) median is less than `r` times the full range of the values; 
+    otherwise returns 0. This is a simple heuristic for assessing the 
+    symmetry of a light-curve distribution.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting for mean and medium calculations. Otherwise, use unweighted statistics.
+    r : float, optional (default=0.5)
+        Tolerance factor for deciding whether the distribution is symmetric.
+        The threshold is defined as `r × (max − min)`.
+
+    Returns
+    -------
+    int
+        1 if the distribution is considered symmetric under the specified criterion, 0 otherwise.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    rng = mag.max() - mag.min()
+    if rng == 0:
+        return 1
+
+    if not apply_weights:
+        return int(np.abs(mag.mean() - np.median(mag)) < r * rng)
+
+    w = helper_features._safe_weights(magerr)
+    mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
+    med = helper_features._weighted_median(mag, w) if w.sum() else np.median(mag)
+
+    return int(np.abs(mu - med) < r * rng)
+
+
+def time_reversal_asymmetry(time, mag, magerr, apply_weights=True, lag=1):
+    """
+    Time-reversal asymmetry statistic with τ-lag.
+
+    Computes: ⟨(x_{t+2τ} − x_t) (x_{t+τ} − x_t)⟩
+
+    which measures nonlinear time asymmetry in the light curve. A value of zero suggests time-reversibility.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+    lag : int, optional (default=1)
+        The lag τ to use when evaluating the statistic.
+    
+    Returns
+    -------
+    float
+        Time-reversal asymmetry statistic, or NaN if input too short.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    n = mag.size
+    if n < 2 * lag + 1:
+        return np.nan
+
+    x0, x1, x2 = mag[:-2*lag], mag[lag:-lag], mag[2*lag:]
+    stat = (x2 - x0) * (x1 - x0)
+
+    if not apply_weights:
+        return stat.mean()
+
+    w = 1.0 / (magerr[:-2*lag]**2 + magerr[lag:-lag]**2 + magerr[2*lag:]**2)
+
+    return (w * stat).sum() / w.sum() if w.sum() else stat.mean()
+
+
+def time_reversal_asymmetry_normalized(time, mag, magerr, apply_weights=False, tau=3):
+    """
+    Normalized time-reversal asymmetry (TREV) statistic.
+
+    Computes: trev(τ) = ⟨(x_{t+τ} − x_t)^3⟩ / ⟨(x_{t+τ} − x_t)^2⟩^{3/2}
+
+    which is a skewness-like measure of time irreversibility.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=False)
+        If True, applies inverse-variance weights derived from error propagation. Otherwise, use unweighted statistics.
+    tau : int, optional (default=3)
+        The lag τ to use when computing the difference terms.
+    
+    Returns
+    -------
+    float
+        Normalized time-reversal asymmetry statistic. Returns NaN if too few data points.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+
+    if mag.size < tau + 1:
+        return np.nan
+
+    diff = mag[tau:] - mag[:-tau]
+
+    if not apply_weights:
+        num = np.mean(diff**3)
+        denom = np.mean(diff**2)**1.5
+        return num / denom if denom > 0 else 0.0
+
+    # Weighted version
+    magerr = np.asarray(magerr, float)
+    if magerr.size < tau + 1:
+        return np.nan
+
+    # Combine errors in quadrature for the difference
+    err = np.sqrt(magerr[tau:]**2 + magerr[:-tau]**2)
+    w = helper_features._safe_weights(err)
+
+    num = np.sum(w * diff**3) / np.sum(w)
+    denom = (np.sum(w * diff**2) / np.sum(w))**1.5
+
+    return num / denom if denom > 0 else 0.0
+
+
+def variance(time, mag, magerr, apply_weights=True):
+    """
+    Weighted/unweighted variance of the light curve.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, default=True
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+    Returns
+    -------
+    float
+        Estimated variance.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        return np.var(mag, ddof=0)
+
+    w = helper_features._safe_weights(magerr)
+    mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
+
+    return (w * (mag - mu) ** 2).sum() / w.sum() if w.sum() else np.var(mag, ddof=0)
+
+
+def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=True):
+    """
+    Binary test: is variance greater than standard deviation?
+
+    Compares variance to its square root and returns 1 if true, 0 otherwise.
+    
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+
+    Returns
+    -------
+    int or float
+        1 if var > sqrt(var), 0 if not, np.nan if invalid.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    var = variance(time, mag, magerr, apply_weights)
+
+    return int(var > np.sqrt(var)) if np.isfinite(var) else np.nan
+
+
+def variation_coefficient(time, mag, magerr, apply_weights=True):
+    """
+    Coefficient of variation (σ / μ).
+
+    Measures relative dispersion by dividing the standard deviation
+    by the mean. Useful for comparing variability across magnitudes.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+    Returns
+    -------
+    float
+        Variation coefficient. Returns NaN if mean is zero.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size == 0:
+        return np.nan
+
+    if not apply_weights:
+        mu = mag.mean()
+        return np.std(mag, ddof=0) / mu if mu else np.nan
+
+    w = helper_features._safe_weights(magerr)
+    mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
+    sigma = np.sqrt((w * (mag - mu) ** 2).sum() / w.sum()) if w.sum() else np.std(mag)
+
+    return sigma / mu if mu else np.nan
+
+
+def vonNeumannRatio(time, mag, magerr, apply_weights=True):
+    """
+    Von Neumann's η statistic: ratio of successive differences to variance.
+
+    A low value suggests smoothness; high value suggests jumps or outliers.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    apply_weights : bool, optional (default=True)
+        If True, apply inverse-variance weighting. Otherwise, use unweighted statistics.
+
+    Returns
+    -------
+    float
+        Von Neumann ratio. Returns np.nan if lightcurve has fewer than 2 points.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
+    """
+
+    mag = np.asarray(mag, dtype=float)
+    magerr = np.asarray(magerr, dtype=float)
+
+    n = mag.size
+    if n < 2:
+        return np.nan
+
+    diff2 = np.diff(mag) ** 2
+
+    if not apply_weights:
+        return diff2.mean() / np.var(mag, ddof=0)
+
+    w  = helper_features._safe_weights(magerr)
+    wp = np.sqrt(w[1:] * w[:-1]) # weight for each difference
+    if wp.sum() == 0:
+        return diff2.mean() / np.var(mag, ddof=0)
+
+    delta = np.sum(wp * diff2) / wp.sum()
+
+    mean = np.sum(w * mag) / w.sum()
+    var = np.sum(w * (mag - mean) ** 2) / w.sum()
+
+    return delta / var if var > 0 else np.inf
+
+
+def windowed_peak_fraction(time, mag, magerr, apply_weights=True, n=7):
+    """
+    Normalized number of local peaks in the light curve.
+
+    A point is considered a peak if it is greater than `n` neighbors on each side.
+    When `apply_weights` is True, a point is a peak only if it exceeds its neighbors
+    by more than the combined error budget.
+
+    Parameters
+    ----------
+    time : array-like
+        Time values of the light curve. Not used in the calculation but included for API consistency.
+    mag : array-like
+        Light curve values (magnitudes, fluxes, or normalized fluxes).
+    magerr : array-like
+        Photometric uncertainties associated with each `mag` value.
+    n : int, optional (default=7)
+        Number of neighbors to compare on each side of the point. The light curve must have at least `2n+1` points.
+    apply_weights : bool, optional (default=True)
+        If True, requires the peak to be significantly above neighbors based on the combined uncertainty.
+
+    Returns
+    -------
+    float
+        Fraction of peaks relative to the total number of data points.
+        Returns 0.0 if there are fewer than `2n+1` data points.
+
+    Notes
+    -----
+    - Suitable for **unevenly sampled** light curves; time is not used.
+    - Most effective with **normalized flux**, and is designed for **flux space**.
+    - Works best for high-cadence light curves with visible local maxima.
+    """
+
+    mag = np.asarray(mag, float)
+    magerr = np.asarray(magerr, float)
+
+    if mag.size < 2 * n + 1:
+        return 0.0
+
+    core = mag[n:-n]
+    if not apply_weights:
+        res = np.ones_like(core, dtype=bool)
+        for i in range(1, n + 1):
+            res &= core > np.roll(mag, i)[n:-n]
+            res &= core > np.roll(mag, -i)[n:-n]
+
+        return res.sum() / mag.size
+
+    res = np.ones_like(core, dtype=bool)
+    for i in range(1, n + 1):
+        dl = core - np.roll(mag, i)[n:-n]
+        dr = core - np.roll(mag, -i)[n:-n]
+        el = np.sqrt(magerr[n:-n]**2 + np.roll(magerr, i)[n:-n]**2)
+        er = np.sqrt(magerr[n:-n]**2 + np.roll(magerr, -i)[n:-n]**2)
+        res &= (dl > el) & (dr > er)
+
+    return res.sum() / mag.size
 
