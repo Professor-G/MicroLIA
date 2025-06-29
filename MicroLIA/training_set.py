@@ -448,7 +448,8 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
 
             stats, feature_names = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=convert, zp=zp, return_names=True)
             stats = [i for i in stats]
-            stats = [dir_name] + [k] + stats
+            #stats = [dir_name] + [k] + stats
+            stats = [filenames[j]] + [dir_name] + [k] + stats
             stats_list.append(stats) 
             progess_bar.next()  
         progess_bar.finish()
@@ -475,7 +476,8 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         _file_ = path+'all_features_'+filename+'.txt' if filename is not None else path+'all_features.txt'
 
         with open(path+'__temporary_feats__.txt', 'r') as infile, open(_file_, 'w') as outfile:    
-            outfile.write('# CLASS, ID, ' + ', '.join(feature_names) + '\n')
+            #outfile.write('# CLASS, ID, ' + ', '.join(feature_names) + '\n')
+            outfile.write('# FILENAME, CLASS, ID, ' + ', '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
             data = data.replace(",", "")
@@ -484,13 +486,21 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
             outfile.write(data)
         os.remove(path+'__temporary_feats__.txt')
 
+    #data = np.array(stats_list)
+    #data_x, data_y = data[:,2:].astype('float'), data[:,0].astype(str)
     data = np.array(stats_list)
-    data_x, data_y = data[:,2:].astype('float'), data[:,0].astype(str)
+    data_x = data[:, 3:].astype('float')  # features start from index 3
+    data_y = data[:, 1].astype(str)       # class is at index 1
 
     if save_file:
-        df = DataFrame(data_x, columns=feature_names)
-        df['label'] = data_y
-
+        #df = DataFrame(data_x, columns=feature_names)
+        #df['label'] = data_y
+        #
+        df = DataFrame(data[:, 3:].astype('float'), columns=feature_names)
+        df.insert(0, 'filename', data[:, 0])
+        df.insert(1, 'label', data[:, 1])
+        df.insert(2, 'id', data[:, 2].astype(int))
+        #
         if filename is None:
             df.to_csv(path+'MicroLIA_Training_Set.csv', index=False)
         else:
