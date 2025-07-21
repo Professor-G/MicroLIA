@@ -20,6 +20,9 @@ import numpy as np
 import os
 import sys
 
+from numpy.typing import ArrayLike
+from typing import Optional, Tuple
+
 def microlensing(
     timestamps: ArrayLike,
     baseline: float,
