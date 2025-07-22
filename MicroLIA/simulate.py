@@ -20,13 +20,16 @@ import numpy as np
 import os
 import sys
 
+from numpy.typing import ArrayLike
+from typing import Optional, Tuple
+
 def microlensing(
     timestamps: ArrayLike,
     baseline: float,
-    t0_dist: Tuple[float, float] | None = None,
-    u0_dist: Tuple[float, float] | None = None,
-    tE_dist: Tuple[float, float] | None = None,
-) -> Tuple[np.ndarray, float, float, float, float]:
+    t0_dist: Optional[Tuple[float, float]] = None,
+    u0_dist: Optional[Tuple[float, float]] = None,
+    tE_dist: Optional[Tuple[float, float]] = None,
+) -> Optional[Tuple[np.ndarray, float, float, float, float]]:
     """
     Simulate a single-lens, point-source microlensing event with blending.
 
