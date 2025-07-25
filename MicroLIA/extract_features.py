@@ -79,6 +79,12 @@ def extract_all(
     mask = np.where(np.isfinite(time) & np.isfinite(mag) & np.isfinite(magerr))[0]
     time, mag, magerr = time[mask], mag[mask], magerr[mask]
 
+    #Ensure lightcurve is sorted by timestamps
+    if len(time) > 1 and not np.all(np.diff(time) > 0):
+        print("WARNING: time array is not sorted! Sorting automatically...")
+        sort_idx = np.argsort(time)
+        time, mag, magerr = time[sort_idx], mag[sort_idx], magerr[sort_idx]
+
     if convert is True:
         flux = 10**(-(mag - zp) / 2.5)
         flux_err = (magerr * flux) / (2.5) * np.log(10)
