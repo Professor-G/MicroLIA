@@ -63,7 +63,6 @@ class Classifier:
             ('mean'): Fill missing values with the mean of the non-missing values in the same column.
             ('median'): Fill missing values with the median of the non-missing values in the same column.
             ('mode'): Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
-            ('constant'): Fill missing values with a constant value provided by the user.
         n_iter (int): The maximum number of iterations to perform during the hyperparameter search. 
             Defaults to 25. Can be set to 0 to avoid this optimization routine.
         boruta_trials (int): The number of trials to run when running Boruta for feature selection. 
@@ -712,7 +711,7 @@ class Classifier:
 
         return
 
-    def plot_hyper_opt(self, baseline=None, xlim=None, ylim=None, xlog=True, ylog=False, savefig=False):
+    def plot_hyper_opt(self, baseline=None, xlim=None, ylim=None, xlog=True, ylog=False, ylabel=None, savefig=False):
         """
         Plots the hyperparameter optimization history.
 
@@ -728,6 +727,7 @@ class Classifier:
             ylim (tuple): Limits for the y-axis. e.g. ylim = (0.9, 0.94)
             xlog (bool): If True the x-axis will be log-scaled. Defaults to True.
             ylog (bool): If True the y-axis will be log-scaled. Defaults to False.
+            ylabel (str): The ylabel of the plot, optional.
             savefig (bool): If True the figure will not disply but will be saved instead.
                 Defaults to False. 
 
@@ -768,10 +768,13 @@ class Classifier:
         plt.scatter(range(len(trials)), trial_values, c='b', marker='+', s=35, alpha=0.45, label='Trial')
         plt.xlabel('Trial #', alpha=1, color='k')
 
-        if self.opt_cv > 0:
-            plt.ylabel(str(self.opt_cv)+'-Fold CV Accuracy', alpha=1, color='k')
+        if ylabel is None:
+            if self.opt_cv > 0:
+                plt.ylabel(str(self.opt_cv)+'-Fold CV Performance', alpha=1, color='k')
+            else:
+                plt.ylabel('Performance', alpha=1, color='k')
         else:
-            plt.ylabel('Accuracy', alpha=1, color='k')
+            plt.ylabel(ylabel)
         
         if self.clf == 'xgb':
             plt.title('XGBoost Hyperparameter Optimization')
@@ -842,7 +845,7 @@ class Classifier:
         """
 
         if feat_names is None and self.training_data is not None:
-            feat_names = self.training_data.columns[:-1]
+            feat_names = [feature for feature in self.training_data.columns if feature not in ('filename', 'label', 'id')]
 
         if feat_names is not None:
             if str(feat_names) == 'default':
