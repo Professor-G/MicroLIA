@@ -13,25 +13,23 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors 
-from matplotlib.ticker import ScalarFormatter,AutoMinorLocator
+from matplotlib.ticker import ScalarFormatter, AutoMinorLocator
 from cycler import cycler
 from warnings import warn
 from pathlib import Path
 from collections import Counter  
 
 from sklearn import decomposition
-from xgboost import XGBClassifier
-from sklearn.svm import OneClassSVM
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, auc, RocCurveDisplay
-from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
-from scikitplot.metrics import plot_roc
+from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.manifold import TSNE
 
+from xgboost import XGBClassifier
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
-from MicroLIA.optimization import hyper_opt, borutashap_opt, impute_missing_values
+
+from MicroLIA.optimization import hyper_opt, borutashap_opt, impute_missing_values, standardize_data
 from MicroLIA import extract_features
 
 class Classifier:
@@ -53,15 +51,10 @@ class Classifier:
             will be assessed according to the 3-fold cross validation accuracy. Defaults to 10. If set
             to None then it will default to 5-fold CV. Cannot be disabled, therefore must be greater than 1. 
             NOTE: The higher this value, the longer the optimization will take.
+        scoring_metric (str): Evaluation metric used during optimization. Options are: ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']. Default is 'f1'.
         limit_search (bool): If False, the search space for the parameters will be expanded,
             as there are some hyperparameters that can range from 0 to inf. Defaults to True to
             limit the search and speed up the optimization routine.
-        min_gamma (float): Controls the optimization of the gamma Tree Booster hyperparameter. Only applicable if
-            clf='xgb', and optimize=True. The gamma parameter is the lowest loss reduction needed on a tree leaf node 
-            in order to partition again. The algorithm's level of conservatism increases with gamma, therefore it acts 
-            as a regularizer. By default, during the optimization routine will consider a miminum value of 0 when tuning the gamma 
-            parameter, unless this min_gamma input is set. This parameter determines the lowest gamma value the optimizer should consider. 
-            Must be less than 5. Defaults to 0. Consider increasing this value to ~1 if the optimized models are overfitting.
         impute (bool): If True data imputation will be performed to replace NaN values. Defaults to False.
             If set to True, the imputer attribute will be saved for future transformations. 
         imp_method (str, optional): Imputation strategy to use if impute is set to True.
@@ -85,19 +78,34 @@ class Classifier:
         training_data (DataFrame, optional): A dataframe that represents the output from generating the training set. This can be
             input in lieu of the data_x and data_y arguments. Note that the dataframe must have a "label" column,
             and is intended to be used after executing the MicroLIA.training_set routine.
+        SEED_NO (int): The random seed to initialize all processes.
     """
 
-    def __init__(self, data_x=None, data_y=None, clf='rf', optimize=False, opt_cv=10, 
-        limit_search=True, min_gamma=0, impute=False, imp_method='knn', n_iter=25, 
-        boruta_trials=50, boruta_model='rf', balance=True, training_data=None):
+    def __init__(self, 
+        data_x=None, 
+        data_y=None, 
+        clf='rf', 
+        optimize=False, 
+        opt_cv=10, 
+        scoring_metric='f1',
+        limit_search=True, 
+        impute=False, 
+        imp_method='knn', 
+        n_iter=25, 
+        boruta_trials=50, 
+        boruta_model='rf', 
+        balance=True, 
+        training_data=None,
+        SEED_NO=1909
+        ):
 
         self.data_x = data_x
         self.data_y = data_y
         self.clf = clf
         self.optimize = optimize 
         self.opt_cv = opt_cv 
+        self.scoring_metric = scoring_metric
         self.limit_search = limit_search
-        self.min_gamma = min_gamma
         self.impute = impute
         self.imp_method = imp_method
         self.n_iter = n_iter
@@ -105,6 +113,7 @@ class Classifier:
         self.boruta_model = boruta_model 
         self.balance = balance 
         self.training_data = training_data
+        self.SEED_NO = SEED_NO
 
         self.model = None
         self.imputer = None
@@ -115,9 +124,15 @@ class Classifier:
         self.best_params = None 
 
         if self.training_data is not None:
-            self.data_x = np.array(training_data[training_data.columns[:-1]])
+            feature_names = [feature for feature in training_data.columns if feature not in ('filename', 'label', 'id')]
+            self.data_x = np.array(training_data[feature_names])
             self.data_y = training_data.label
-            print('Successfully loaded the data_x and data_y arrays from the input training data!')
+            print('Successfully loaded the `data_x` and `data_y` arrays from the input training data!')
+            try:
+                self.data_x_filenames = np.array(training_data.filename)
+                print('Successfully loaded the training data file names (`data_x_filenames`), these correspond with the feature matrix (`data_x`).')
+            except:
+                pass
         else:
             if self.data_x is None or self.data_y is None:
                 print('NOTE: data_x and data_y parameters are required to output visualizations.')
@@ -158,11 +173,12 @@ class Classifier:
                         print('Unbalanced dataset detected, to apply weights set optimize=True.')
 
         if self.clf == 'rf':
-            model = RandomForestClassifier(random_state=1909)
+            model = RandomForestClassifier(random_state=self.SEED_NO)
         elif self.clf == 'nn':
-            model = MLPClassifier(random_state=1909)
+            print('NOTE: Neural networks require data standardization! Use `MicroLIA.optimization.standardize_data` first.')
+            model = MLPClassifier(random_state=self.SEED_NO)
         elif self.clf == 'xgb':
-            model = XGBClassifier(random_state=1909)
+            model = XGBClassifier(random_state=self.SEED_NO)
             if all(isinstance(val, (int, str)) for val in self.data_y):
                 print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
                 print('________________________________')
@@ -173,22 +189,22 @@ class Classifier:
                     y[index] = i
                 self.data_y = y 
                 print('________________________________')
-        elif self.clf == 'ocsvm':
-            if self.data_y is not None:
-                if len(np.unique(self.data_y)) != 1:
-                    raise ValueError('The clf parameter has been set to "ocsvm" but OneClassSVM requires that only the positive class be input!')
-            model = OneClassSVM()
         else:
-            raise ValueError('clf argument must either be "rf", "nn", "ocsvm", or "xgb".')
+            raise ValueError('clf argument must either be "rf", "nn", or "xgb".')
         
         self.data_x[np.isinf(self.data_x)] = np.nan
 
         if self.impute is False and self.optimize is False:
+
+            # Set the float limits
             data = copy.deepcopy(self.data_x)
-            data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+            data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
+            
             if np.any(np.isfinite(self.data_x)==False):
                 raise ValueError('data_x array contains nan values but impute is set to False! Set impute=True and run again.')
+            
             print("Returning base {} model...".format(self.clf))
+
             model.fit(data, self.data_y)
             self.model = model
             self.data_x = data if overwrite_training else self.data_x
@@ -196,10 +212,12 @@ class Classifier:
             return
 
         if self.impute:
-            data, self.imputer = impute_missing_values(self.data_x, strategy=self.imp_method)
-            data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+            
+            data, self.imputer = impute_missing_values(self.data_x, imputer=None, strategy=self.imp_method)
+            data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
+            
             if self.optimize is False:
-                print("Returning base {} model...".format(self.clf))
+                print(f"Returning base {self.clf} model...")
                 model.fit(data, self.data_y)
                 self.model = model 
                 self.data_x = data if overwrite_training else self.data_x
@@ -207,10 +225,12 @@ class Classifier:
                 return
         else:
             data = copy.deepcopy(self.data_x)
-            data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+            data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
 
         if self.feats_to_use is None:
-            self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model)
+
+            self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model, SEED_NO=self.SEED_NO)
+            
             if len(self.feats_to_use) == 0:
                 print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
                 self.feats_to_use = np.arange(data.shape[1])
@@ -219,17 +239,27 @@ class Classifier:
 
         #Re-construct the imputer with the selected features as new predictions will only compute these metrics, so need to fit again!
         if self.impute:
-            data_x, self.imputer = impute_missing_values(self.data_x[:,self.feats_to_use], strategy=self.imp_method)
+            data_x, self.imputer = impute_missing_values(self.data_x[:,self.feats_to_use], imputer=None, strategy=self.imp_method)
         else:
             data_x, self.imputer = self.data_x[:,self.feats_to_use], None
 
         if self.n_iter > 0:
-            self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, 
-                return_study=True, limit_search=self.limit_search, min_gamma=self.min_gamma, opt_cv=self.opt_cv)
+            self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, opt_cv=self.opt_cv, 
+                scoring_metric=self.scoring_metric, balance=self.balance, limit_search=self.limit_search, return_study=True, SEED_NO=self.SEED_NO)
         else:
             print("Fitting and returning final model...")
-            self.model = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, balance=self.balance, return_study=True, limit_search=self.limit_search, 
-                min_gamma=self.min_gamma, opt_cv=self.opt_cv)
+            self.model = hyper_opt(
+                data_x, 
+                self.data_y, 
+                clf=self.clf, 
+                n_iter=self.n_iter,
+                opt_cv=self.opt_cv,
+                scoring_metric=self.scoring_metric,
+                balance=self.balance, 
+                limit_search=self.limit_search,
+                return_study=True,
+                SEED_NO=self.SEED_NO
+                )
 
         self.model.fit(data_x, self.data_y)
         self.data_x = data_x if overwrite_training else self.data_x
@@ -382,7 +412,6 @@ class Classifier:
         if len(mag) < 30:
             warn('The number of data points is low -- results may be unstable!')
 
-        #classes = ['CONSTANT', 'CV', 'LPV', 'ML', 'VARIABLE']
         classes = self.model.classes_
         stat_array=[]
         
@@ -398,7 +427,7 @@ class Classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, data_y=None, special_class=None, norm=True, pca=False, return_data=False,
+    def plot_tsne(self, data_y=None, special_class=None, norm=True, norm_method='min-max', pca=False, return_data=False,
         xlim=None, ylim=None, legend_loc='upper center', title='Feature Parameter Space', savefig=False):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
@@ -418,6 +447,7 @@ class Classifier:
                 for these points in the plot.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to True.
+            norm_method (bool): Normalization method, if `norm` is True. Options are: 'min-max' (default), 'robust', or 'standard'.
             pca (bool): If True the data will be fit to a Principal Component
                 Analysis and all of the corresponding principal components will 
                 be used to generate the t-SNE plot. Defaults to False.
@@ -438,13 +468,12 @@ class Classifier:
         if np.any(np.isnan(data)):
             data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
             
-        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+        data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
         
         method = 'barnes_hut' if len(data) > 5e3 else 'exact' #bh Scales with O(N), exact scales with O(N^2)
         
         if norm:
-            scaler = MinMaxScaler()
-            data = scaler.fit_transform(data)
+            data = standardize_data(data, method=norm_method, return_scaler=False) # scaler.fit_transform(data)
 
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
@@ -524,7 +553,7 @@ class Classifier:
         else:
             return
 
-    def plot_conf_matrix(self, data_y=None, norm=False, pca=False, k_fold=10, normalize=True, 
+    def plot_conf_matrix(self, data_y=None, norm=False, norm_method='min-max', pca=False, k_fold=10, normalize=True, 
         title='Confusion Matrix', savefig=False):
         """
         Returns a confusion matrix with k-fold validation.
@@ -536,6 +565,7 @@ class Classifier:
                 this parameter. Defaults to None, which uses the data_y attribute.
             norm (bool): If True the data will be min-max normalized. Defaults
                 to False. NOTE: Set this to True if pca=True.
+            norm_method (bool): Normalization method, if `norm` is True. Options are: 'min-max' (default), 'robust', or 'standard'.
             pca (bool): If True the data will be fit to a Principal Component
                 Analysis and all of the corresponding principal components will 
                 be used to evaluate the classifier and construct the matrix. 
@@ -582,11 +612,10 @@ class Classifier:
         if np.any(np.isnan(data)):
             data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
           
-        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+        data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
 
         if norm:
-            scaler = MinMaxScaler()
-            scaler.fit_transform(data)
+            data = standardize_data(data, method=norm_method, return_scaler=False) # scaler.fit_transform(data)
 
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
@@ -629,7 +658,7 @@ class Classifier:
         if np.any(np.isnan(data)):
             data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
           
-        data[data>1e7], data[(data<1e-7)&(data>0)], data[data<-1e7] = 1e7, 1e-7, -1e7
+        data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
 
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
@@ -642,21 +671,10 @@ class Classifier:
         _set_style_() if savefig else plt.style.use('default')
 
         if len(np.unique(self.data_y)) != 2:
-            test_size = 1. / k_fold
-            X_train, X_test, y_train, y_test = train_test_split(data, self.data_y, test_size=test_size, random_state=0)
-            model0.fit(X_train, y_train)
-            y_probas = model0.predict_proba(X_test)
-            plot_roc(y_test, y_probas, text_fontsize='large', title='ROC Curve', cmap='nipy_spectral', plot_macro=False, plot_micro=False)
-            
-            if savefig:
-                plt.savefig('Ensemble_ROC_Curve.png', bbox_inches='tight', dpi=300)
-                plt.clf(); plt.style.use('default')
-            else:
-                plt.show()
-
+            print ('ROC Curve for multi-class classification problems not currently supported.')
             return 
             
-        cv = StratifiedKFold(n_splits=k_fold)
+        cv = StratifiedKFold(n_splits=k_fold, shuffle=True, random_state=self.SEED_NO)
         
         tprs, aucs = [], []
         mean_fpr = np.linspace(0, 1, 100)
@@ -759,8 +777,6 @@ class Classifier:
             plt.title('XGBoost Hyperparameter Optimization')
         elif self.clf == 'rf':
             plt.title('RF Hyperparameter Optimization')
-        elif self.clf == 'ocsvm':
-            plt.title('OneClass SVM Hyperparameter Optimization')
         elif self.clf == 'nn':
             plt.title('Neural Network Hyperparameter Optimization')
 
@@ -830,26 +846,11 @@ class Classifier:
 
         if feat_names is not None:
             if str(feat_names) == 'default':
-                feat_names = ['Anderson-Darling', 'FluxPctRatioMid20', 'FluxPctRatioMid35', 'FluxPctRatioMid50', 'FluxPctRatioMid65', 'FluxPctRatioMid80', 
-                    'Median-Based Skew', 'Linear Trend', 'Max Slope', 'Pair Slope Trend', 'Percent Amp.', 'Percent DiffFluxPct', 'Above 1', 'Above 3', 
-                    'Above 5', 'Abs. Energy', 'Abs. Sum Changes', 'Amplitude', 'Autocorrelation', 'Below 1', 'Below 3', 'Below 5', 'Benford Correlation', 
-                    'C3 Non-Linearity', 'Dup. Val. Check', 'Max Val. Dup. Check', 'Min. Val. Dup. Check', 'Max. Last Loc. Check', 'Min. Last Loc. Check', 
-                    'Complexity', 'Consec. Cluster Count', 'No. of Points Above', 'No. of Points Below', 'Cumulative Sum', 'First Loc. Max', 'First Loc. Min', 
-                    'Half Mag. Amp. Ratio', 'Mass Quant. Index', 'Integration', 'Kurtosis', 'Large Std. Dev.', 'Longest Strike Above', 'Longest Strike Below', 
-                    'Mean Magnitude', 'Mean Abs. Change', 'Mean Change', 'Mean of Abs. Maxima', 'Mean Second Deriv.', 'Median Abs. Dev.', 'Median Buffer Range', 
-                    'Median Distance', 'No. of CWT Peaks', 'No. of Crossings', 'No. of Peaks', 'Peaks Detection', 'Permutation Entropy', 'Quantile', 'Recurring Pts. Ratio', 
-                    'Root Mean Squared', 'Sample Entropy', 'Shannon Entropy', 'Shapiro-Wilk', 'Skewness', 'Std. Dev. over Mean', 'Stetson J', 'Stetson K', 'Stetson L', 
-                    'Sum of Vals.', 'Symmetry Looking', 'Time Reversal Asym.', 'Variance', 'Var. Exceeds Std. Dev.', 'Variation Coeff.', 'vonNeumannRatio', 
-                    'Deriv-Anderson-Darling', 'Deriv-FluxPctRatioMid20', 'Deriv-FluxPctRatioMid35', 'Deriv-FluxPctRatioMid50', 'Deriv-FluxPctRatioMid65', 'Deriv-FluxPctRatioMid80', 
-                    'Deriv-Median-Based Skew', 'Deriv-Linear Trend', 'Deriv-Max Slope', 'Deriv-Pair Slope Trend', 'Deriv-Percent Amp.', 'Deriv-Percent DiffFluxPct', 'Deriv-Above 1', 'Deriv-Above 3', 
-                    'Deriv-Above 5', 'Deriv-Abs. Energy', 'Deriv-Abs. Sum Changes', 'Deriv-Amplitude', 'Deriv-Autocorrelation', 'Deriv-Below 1', 'Deriv-Below 3', 'Deriv-Below 5', 'Deriv-Benford Correlation', 
-                    'Deriv-C3 Non-Linearity', 'Deriv-Dup. Val. Check', 'Deriv-Max Val. Dup. Check', 'Deriv-Min. Val. Dup. Check', 'Deriv-Max. Last Loc. Check', 'Deriv-Min. Last Loc. Check', 
-                    'Deriv-Complexity', 'Deriv-Consec. Cluster Count', 'Deriv-No. of Points Above', 'Deriv-No. of Points Below', 'Deriv-Cumulative Sum', 'Deriv-First Loc. Max', 'Deriv-First Loc. Min', 
-                    'Deriv-Half Mag. Amp. Ratio', 'Deriv-Mass Quant. Index', 'Deriv-Integration', 'Deriv-Kurtosis', 'Deriv-Large Std. Dev.', 'Deriv-Longest Strike Above', 'Deriv-Longest Strike Below', 
-                    'Deriv-Mean Magnitude', 'Deriv-Mean Abs. Change', 'Deriv-Mean Change', 'Deriv-Mean of Abs. Maxima', 'Deriv-Mean Second Deriv.', 'Deriv-Median Abs. Dev.', 'Deriv-Median Buffer Range', 
-                    'Deriv-Median Distance', 'Deriv-No. of CWT Peaks', 'Deriv-No. of Crossings', 'Deriv-No. of Peaks', 'Deriv-Peaks Detection', 'Deriv-Permutation Entropy', 'Deriv-Quantile', 'Deriv-Recurring Pts. Ratio', 
-                    'Deriv-Root Mean Squared', 'Deriv-Sample Entropy', 'Deriv-Shannon Entropy', 'Deriv-Shapiro-Wilk', 'Deriv-Skewness', 'Deriv-Std. Dev. over Mean', 'Deriv-Stetson J', 'Deriv-Stetson K', 'Deriv-Stetson L', 
-                    'Deriv-Sum of Vals.', 'Deriv-Symmetry Looking', 'Deriv-Time Reversal Asym.', 'Deriv-Variance', 'Deriv-Var. Exceeds Std. Dev.', 'Deriv-Variation Coeff.', 'Deriv-vonNeumannRatio']
+                # Use all the features in the features module
+                from MicroLIA import features
+                from inspect import getmembers, isfunction
+                all_features_functions = getmembers(features, isfunction)
+                feat_names = [feat[0] for feat in all_features_functions] + ['Deriv-'+feat[0] for feat in all_features_functions]
 
         fname = str(Path.home()) + '/__borutaimportances__' #Temporary file
 

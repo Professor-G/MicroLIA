@@ -5,395 +5,418 @@ Created on Sat Feb  25 10:39:23 2023
 
 @author: daniel
 """
-import os, sys
-os.environ['PYTHONHASHSEED'], os.environ["TF_DETERMINISTIC_OPS"] = '0', '1'
-
-import joblib   
-from pandas import DataFrame
-from warnings import filterwarnings
-filterwarnings("ignore", category=FutureWarning)
-from collections import Counter 
+#import os, sys
+#os.environ['PYTHONHASHSEED'], os.environ["TF_DETERMINISTIC_OPS"] = '0', '1'
 import numpy as np
-import random as python_random
-np.random.seed(1909), python_random.seed(1909)
+#import random as python_random
+#np.random.seed(1909), python_random.seed(1909)
+#import joblib   
+from pandas import DataFrame
+from collections import Counter 
+#import sklearn.neighbors._base
+#sys.modules['sklearn.neighbors.base'] = sklearn.neighbors._base
 
-import sklearn.neighbors._base
-sys.modules['sklearn.neighbors.base'] = sklearn.neighbors._base
 from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.model_selection import cross_validate, StratifiedKFold
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+
+from xgboost import XGBClassifier
+from MicroLIA import feature_selection 
 
 import optuna
-from boruta import BorutaPy
-from BorutaShap import BorutaShap
-from skopt import BayesSearchCV
-from xgboost import XGBClassifier, DMatrix, train
 optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+from warnings import filterwarnings
+filterwarnings("ignore", category=FutureWarning)
 
 
 class objective_xgb(object):
     """
-    Optimization objective function for the tree-based XGBoost classifier. 
-    The Optuna software for hyperparameter optimization was published in 
-    2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
-    
-    Note:
-        If opt_cv is between 0 and 1, a pruning procedure will be initiliazed (a procedure incompatible with cross-validation),
-        so as to speed up the XGB optimization. A random validation data will be generated according to this ratio,
-        which will replace the cross-validation method used by default. It will prune according
-        to the f1-score of the validation data, which would be 10% of the training data if opt_cv=0.1, for example. 
-        Need more testing to make this more cross-validation routine more robust. Recommend to set opt_cv > 1. 
-        
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels. 
-        limit_search (bool): If True, the search space for the parameters will be expanded,
-            as there are some hyperparameters that can range from 0 to inf. Defaults to False.
-        opt_cv (int): Cross-validations to perform when assesing the performance at each
-            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
-            will be assessed according to the 3-fold cross validation accuracy. If this is
-            between 0 and 1, this value would be used as the ratio of the validation to training data.
-            Defaults to 3. Can be set to None in which case 5-fold cross-validation is employed. Cannot be 1. 
-        eval_metric (str): The evaluation metric when evaluating the validation data, used when
-            opt_cv is less than 1. Defaults to "f1". For all options see eval_metric from: https://xgboost.readthedocs.io/en/latest/parameter.html#metrics
-        min_gamma (float): Controls the optimization of the gamma Tree Booster hyperparameter. The gamma parameter is the 
-            lowest loss reduction needed on a tree leaf node in order to partition again. The algorithm's level of conservatism 
-            increases with gamma, therefore it acts as a regularizer. By default, during the optimization routine will consider a miminum value 
-            of 0 when tuning the gamma parameter, unless this min_gamma input is set. This parameter determines the lowest gamma value the 
-            optimizer should consider. Must be less than 5. Defaults to 0. Consider increasing this to ~1 if the optimized models
-            are overfitting.
+    Optuna objective class for optimizing an XGBoost classifier using cross-validation.
 
-    Returns:
-        The cross-validation accuracy (if opt_cv is greater than 1, 1 would be single instance accuracy)
-        or, if opt_cv is between 0 and 1, the validation accuracy according to the corresponding test size.
+    This class defines the optimization logic for tuning XGBoost hyperparameters using
+    the Optuna framework. It supports limited or broad search spaces depending on
+    the `limit_search` flag, and returns the cross-validated performance metric for 
+    each trial.
+
+    Parameters
+    ----------
+    data_x : ndarray
+        Feature matrix of shape (n_samples, n_features).
+    data_y : ndarray or array-like
+        Corresponding class labels of shape (n_samples,).
+    limit_search : bool, optional
+        If True, restricts the hyperparameter search space to a narrower range.
+        Defaults to False (broad search).
+    opt_cv : int, optional
+        Number of cross-validation folds. Must be >= 2. Default is 3.
+    scoring_metric : str, optional
+        Evaluation metric used during optimization. Options are:
+        ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']. Default is 'f1'.
+    SEED_NO : int, optional
+        Random seed for reproducibility. Default is 1909.
+
+    Returns
+    -------
+    float
+        Cross-validated score (mean across folds) for the given trial configuration.
     """
-
-    def __init__(self, data_x, data_y, limit_search=False, opt_cv=3, eval_metric="f1", min_gamma=0):
+    def __init__(self, data_x, data_y, limit_search=False, opt_cv=3, scoring_metric="f1", SEED_NO=1909):
         self.data_x = data_x
         self.data_y = data_y
         self.limit_search = limit_search
-        self.opt_cv = opt_cv 
-        self.eval_metric = eval_metric 
-        self.min_gamma = min_gamma
+        self.opt_cv = opt_cv
+        self.SEED_NO = SEED_NO
 
-        if self.min_gamma >= 5:
-            raise ValueError('The min_gamma parameter must be less than 5!')
+        if opt_cv < 2:
+            raise ValueError("opt_cv must be >= 2 for StratifiedKFold.")
 
-        if self.opt_cv is None:
-            self.opt_cv = 5 # This is the default behavior of cross_validate, setting here to avoid NoneType errors
+        # Determine number of classes
+        self.n_classes = np.unique(data_y).size
+
+        # Upgrade scorer if multiclass
+        if self.n_classes > 2:
+            if scoring_metric in ("f1", "precision", "recall"):
+                self.scoring_metric = f"{scoring_metric}_macro"
+            elif scoring_metric == "roc_auc":
+                self.scoring_metric = "roc_auc_ovr"
+            else:
+                self.scoring_metric = scoring_metric
+        else:
+            self.scoring_metric = scoring_metric
 
     def __call__(self, trial):
+        """
+        Run a single optimization trial by training the XGBoost model on cross-validation folds
+        and returning the mean performance metric.
 
-        params = {"objective": "binary:logistic", "eval_metric": self.eval_metric} 
-    
-        if self.opt_cv < 1:
-            train_x, valid_x, train_y, valid_y = train_test_split(self.data_x, self.data_y, test_size=self.opt_cv, random_state=190977)#np.random.randint(1, 1e9))
-            dtrain, dvalid = DMatrix(train_x, label=train_y), DMatrix(valid_x, label=valid_y)
-            #print('Initializing XGBoost Pruner...')
-            pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-" + self.eval_metric)
+        Parameters
+        ----------
+        trial : optuna.Trial
+            A trial object provided by Optuna to suggest hyperparameters.
 
+        Returns
+        -------
+        float
+            Mean cross-validated score for the trial.
+        """
         if self.limit_search:
-            params['n_estimators'] = trial.suggest_int('n_estimators', 100, 500)
-            params['booster'] = trial.suggest_categorical('booster', ['gbtree', 'dart'])
-            params['reg_lambda'] = trial.suggest_float('reg_lambda', 0.0, 2.0)
-            params['reg_alpha'] = trial.suggest_float('reg_alpha', 0.0, 2.0)
-            params['max_depth'] = trial.suggest_int('max_depth', 3, 10)
-            params['eta'] = trial.suggest_float('eta', 0.01, 0.3)
-            params['gamma'] = trial.suggest_float('gamma', float(self.min_gamma), 5.0)
-            params['grow_policy'] = trial.suggest_categorical('grow_policy', ['depthwise', 'lossguide'])
+            # The hyperparam search space
+            n_estimators = trial.suggest_int('n_estimators', 100, 300)
+            max_depth = trial.suggest_int('max_depth', 3, 10)
+            eta = trial.suggest_float('eta', 1e-3, 0.3, log=True)
+            reg_lambda = trial.suggest_float('reg_lambda', 1e-3, 2.0, log=True)
+            reg_alpha = trial.suggest_float('reg_alpha', 1e-3, 2.0, log=True)
+            gamma = trial.suggest_float('gamma', 0.0, 10.0)
+            subsample = trial.suggest_float('subsample', 0.5, 1.0)
 
-            if params['booster'] == "dart":
-                params['sample_type'] = trial.suggest_categorical('sample_type', ['uniform', 'weighted'])
-                params['normalize_type'] = trial.suggest_categorical('normalize_type', ['tree', 'forest'])
-                params['rate_drop'] = trial.suggest_float('rate_drop', 0.1, 0.5)
-                params['skip_drop'] = trial.suggest_float('skip_drop', 0.1, 0.5)
-                if self.opt_cv >= 1:
-                    clf = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
-                        reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                        grow_policy=params['grow_policy'], sample_type=params['sample_type'], normalize_type=params['normalize_type'],
-                        rate_drop=params['rate_drop'], skip_drop=params['skip_drop'], random_state=190977)#, tree_method='hist')
-            
-            elif params['booster'] == 'gbtree':
-                params['subsample'] = trial.suggest_loguniform('subsample', 1e-6, 1.0)
-                if self.opt_cv >= 1:
-                    clf = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
-                        reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                        grow_policy=params['grow_policy'], subsample=params['subsample'], random_state=190977)#, tree_method='hist')
-
-            if self.opt_cv < 1:
-                bst = train(params, dtrain, evals=[(dvalid, "validation")], callbacks=[pruning_callback])
-                preds = bst.predict(dvalid)
-                pred_labels = np.rint(preds)
-                accuracy = accuracy_score(valid_y, pred_labels)
-            else:
-                #FROM SKLEARN DOCUMENTATION: For int/None inputs, if the estimator is a classifier and y is either binary or multiclass, StratifiedKFold is used. In all other cases, Fold is used.
-                cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv) 
-                accuracy = np.mean(cv['test_score'])
-
-            return accuracy
-
-        params['booster'] = trial.suggest_categorical('booster', ['gbtree', 'dart'])
-        params['n_estimators'] = trial.suggest_int('n_estimators', 100, 500)
-        params['reg_lambda'] = trial.suggest_float('reg_lambda', 0.0, 2.0)
-        params['reg_alpha'] = trial.suggest_float('reg_alpha', 0.0, 2.0)
-        params['max_depth'] = trial.suggest_int('max_depth', 3, 10)
-        params['eta'] = trial.suggest_float('eta', 0.01, 0.3)
-        params['gamma'] = trial.suggest_float('gamma', float(self.min_gamma), 5.0)
-        params['grow_policy'] = trial.suggest_categorical('grow_policy', ['depthwise', 'lossguide'])
-        params['min_child_weight'] = trial.suggest_int('min_child_weight', 1, 10)
-        params['max_delta_step'] = trial.suggest_int('max_delta_step', 1, 10)
-        params['subsample'] = trial.suggest_float('subsample', 0.5, 1.0)
-        params['colsample_bytree'] = trial.suggest_float('colsample_bytree', 0.5, 1.0)
-
-        if params['booster'] == "dart":
-            params['sample_type'] = trial.suggest_categorical('sample_type', ['uniform', 'weighted'])
-            params['normalize_type'] = trial.suggest_categorical('normalize_type', ['tree', 'forest'])
-            params['rate_drop'] = trial.suggest_float('rate_drop', 0.1, 0.5)
-            params['skip_drop'] = trial.suggest_float('skip_drop', 0.1, 0.5)
-            if self.opt_cv >= 1:
-                clf = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'], 
-                    reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], 
-                    gamma=params['gamma'], grow_policy=params['grow_policy'], min_child_weight=params['min_child_weight'], 
-                    max_delta_step=params['max_delta_step'], subsample=params['subsample'], sample_type=params['sample_type'], 
-                    normalize_type=params['normalize_type'], rate_drop=params['rate_drop'], skip_drop=params['skip_drop'], random_state=190977)#, tree_method='hist')
-        elif params['booster'] == 'gbtree':
-            if self.opt_cv >= 1:
-                clf = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'],  reg_lambda=params['reg_lambda'], 
-                    reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], grow_policy=params['grow_policy'], 
-                    min_child_weight=params['min_child_weight'], max_delta_step=params['max_delta_step'], subsample=params['subsample'], random_state=190977)#, tree_method='hist')
-            
-        if self.opt_cv < 1:
-            bst = train(params, dtrain, evals=[(dvalid, "validation")], callbacks=[pruning_callback])
-            preds = bst.predict(dvalid)
-            pred_labels = np.rint(preds)
-            accuracy = accuracy_score(valid_y, pred_labels)
+            clf = XGBClassifier(
+                booster='gbtree',
+                n_estimators=n_estimators,
+                reg_lambda=reg_lambda,
+                reg_alpha=reg_alpha,
+                max_depth=max_depth,
+                eta=eta,
+                gamma=gamma,
+                subsample=subsample,
+                random_state=self.SEED_NO
+            )
         else:
-            cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
-            accuracy = np.mean(cv['test_score'])
-        
-        return accuracy
+            n_estimators = trial.suggest_int('n_estimators', 50, 2000)
+            max_depth = trial.suggest_int('max_depth', 3, 10)
+            eta = trial.suggest_float('eta', 1e-3, 0.3, log=True)
+            reg_lambda = trial.suggest_float('reg_lambda', 1e-3, 10.0, log=True)
+            reg_alpha = trial.suggest_float('reg_alpha', 1e-3, 10.0, log=True)
+            gamma = trial.suggest_float('gamma', 0.0, 10.0)
+            min_child_weight = trial.suggest_float('min_child_weight', 1e-3, 50.0, log=True)
+            subsample = trial.suggest_float('subsample', 0.5, 1.0)
+            colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 1.0)
+
+            clf = XGBClassifier(
+                booster='gbtree',
+                n_estimators=n_estimators,
+                colsample_bytree=colsample_bytree,
+                reg_lambda=reg_lambda,
+                reg_alpha=reg_alpha,
+                max_depth=max_depth,
+                eta=eta,
+                gamma=gamma,
+                min_child_weight=min_child_weight,
+                subsample=subsample,
+                random_state=self.SEED_NO
+            )
+
+        # Set objective based on class count
+        if self.n_classes > 2:
+            clf.set_params(objective='multi:softprob', num_class=self.n_classes)
+        else:
+            clf.set_params(objective='binary:logistic')
+
+        cv_splitter = StratifiedKFold(n_splits=self.opt_cv, shuffle=True, random_state=self.SEED_NO)
+        cross_val = cross_validate(clf, self.data_x, self.data_y, cv=cv_splitter, scoring=self.scoring_metric)
+        trial_performance = np.mean(cross_val['test_score'])
+
+        return trial_performance
 
 class objective_nn(object):
     """
-    Optimization objective function for the scikit-learn implementatin of the
-    MLP classifier. The Optuna software for hyperparameter optimization
-    was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902.
+    Optuna objective class for optimizing an MLP classifier using cross-validation.
 
-    The total number of hidden layers to test is limited to 10, with 10-100 possible 
-    number of neurons in each.
+    This class defines the optimization logic for tuning XGBoost hyperparameters using
+    the Optuna framework. It supports limited or broad search spaces depending on
+    the `limit_search` flag, and returns the cross-validated performance metric for 
+    each trial.
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels. 
-        opt_cv (int): Cross-validations to perform when assesing the performance at each
-            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
-            will be assessed according to the 3-fold cross validation accuracy. 
+    Parameters
+    ----------
+    data_x : ndarray
+        Feature matrix of shape (n_samples, n_features).
+    data_y : ndarray or array-like
+        Corresponding class labels of shape (n_samples,).
+    limit_search : bool, optional
+        If True, restricts the hyperparameter search space to a narrower range.
+        Defaults to False (broad search).
+    opt_cv : int, optional
+        Number of cross-validation folds. Must be >= 2. Default is 3.
+    scoring_metric : str, optional
+        Evaluation metric used during optimization. Options are:
+        ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']. Default is 'f1'.
+    SEED_NO : int, optional
+        Random seed for reproducibility. Default is 1909.
 
-    Returns:
-        The performance metric, determined using the cross-fold validation method.
+    Returns
+    -------
+    float
+        Cross-validated score (mean across folds) for the given trial configuration.
     """
-
-    def __init__(self, data_x, data_y, opt_cv):
+    def __init__(self, data_x, data_y, opt_cv, scoring_metric="f1", SEED_NO=1909):
         self.data_x = data_x
         self.data_y = data_y
         self.opt_cv = opt_cv
+        self.SEED_NO = SEED_NO
+
+        if opt_cv < 2:
+            raise ValueError("opt_cv must be >= 2 for StratifiedKFold.")
+
+        n_classes = np.unique(data_y).size
+        if n_classes > 2:
+            if scoring_metric in ("f1", "precision", "recall"):
+                self.scoring_metric = f"{scoring_metric}_macro"
+            elif scoring_metric == "roc_auc":
+                self.scoring_metric = "roc_auc_ovr"
+            else:
+                self.scoring_metric = scoring_metric
+        else:
+            self.scoring_metric = scoring_metric
 
     def __call__(self, trial):
+        """
+        Run a single optimization trial by training the XGBoost model on cross-validation folds
+        and returning the mean performance metric.
 
-        learning_rate_init = trial.suggest_float('learning_rate_init', 1e-5, 0.3, step=1e-3)
-        solver = trial.suggest_categorical("solver", ["sgd", "adam"]) #"lbfgs"
+        Parameters
+        ----------
+        trial : optuna.Trial
+            A trial object provided by Optuna to suggest hyperparameters.
+
+        Returns
+        -------
+        float
+            Mean cross-validated score for the trial.
+        """
+        learning_rate_init = trial.suggest_float('learning_rate_init', 1e-5, 3e-1, log=True)
+        solver = trial.suggest_categorical("solver", ["sgd", "adam"])
         activation = trial.suggest_categorical("activation", ["logistic", "tanh", "relu"])
         learning_rate = trial.suggest_categorical("learning_rate", ["constant", "invscaling", "adaptive"])
-        alpha = trial.suggest_float("alpha", 1e-7, 1, step=1e-3)
+        alpha = trial.suggest_float("alpha", 1e-7, 1e0, log=True)
         n_layers = trial.suggest_int('hidden_layer_sizes', 1, 10)
-        #batch_size = trial.suggest_int('batch_size', 1, 1000)
 
-        layers = []
-        for i in range(n_layers):
-            layers.append(trial.suggest_int(f'n_units_{i}', 10, 100))
+        layers = tuple(trial.suggest_int(f'n_units_{i}', 10, 200) for i in range(n_layers))
 
-        try:
-            clf = MLPClassifier(hidden_layer_sizes=tuple(layers),learning_rate_init=learning_rate_init, 
-                solver=solver, activation=activation, alpha=alpha, batch_size='auto', max_iter=200, random_state=1909)
-        except:
-            print("Invalid hyperparameter combination, skipping trial")
-            return 0.0
+        clf = MLPClassifier(
+            hidden_layer_sizes=layers,
+            learning_rate_init=learning_rate_init,
+            learning_rate=learning_rate,
+            solver=solver,
+            activation=activation,
+            alpha=alpha,
+            batch_size='auto',
+            max_iter=500,
+            early_stopping=True,
+            n_iter_no_change=20,
+            random_state=self.SEED_NO
+        )
 
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
-        final_score = np.mean(cv['test_score'])
+        cv = StratifiedKFold(n_splits=self.opt_cv, shuffle=True, random_state=self.SEED_NO)
+        cross_val = cross_validate(clf, self.data_x, self.data_y, cv=cv, scoring=self.scoring_metric)
+        trial_performance = np.mean(cross_val['test_score'])
 
-        return final_score
+        return trial_performance
 
 class objective_rf(object):
     """
-    Optimization objective function for the scikit-learn implementatin of the
-    Random Forest classifier. The Optuna software for hyperparameter optimization
-    was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
+    Optuna objective class for optimizing a RF classifier using cross-validation.
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels. 
-        opt_cv (int): Cross-validations to perform when assesing the performance at each
-            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
-            will be assessed according to the 3-fold cross validation accuracy. 
+    This class defines the optimization logic for tuning XGBoost hyperparameters using
+    the Optuna framework. It supports limited or broad search spaces depending on
+    the `limit_search` flag, and returns the cross-validated performance metric for 
+    each trial.
 
-    Returns:
-        The performance metric, determined using the cross-fold validation method.
+    Parameters
+    ----------
+    data_x : ndarray
+        Feature matrix of shape (n_samples, n_features).
+    data_y : ndarray or array-like
+        Corresponding class labels of shape (n_samples,).
+    limit_search : bool, optional
+        If True, restricts the hyperparameter search space to a narrower range.
+        Defaults to False (broad search).
+    opt_cv : int, optional
+        Number of cross-validation folds. Must be >= 2. Default is 3.
+    scoring_metric : str, optional
+        Evaluation metric used during optimization. Options are:
+        ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']. Default is 'f1'.
+    SEED_NO : int, optional
+        Random seed for reproducibility. Default is 1909.
+
+    Returns
+    -------
+    float
+        Cross-validated score (mean across folds) for the given trial configuration.
     """
-    
-    def __init__(self, data_x, data_y, opt_cv):
-
+    def __init__(self, data_x, data_y, opt_cv, scoring_metric='f1', SEED_NO=1909):
         self.data_x = data_x
         self.data_y = data_y
         self.opt_cv = opt_cv
+        self.SEED_NO = SEED_NO
+
+        if opt_cv < 2:
+            raise ValueError("opt_cv must be >= 2 for StratifiedKFold.")
+
+        n_classes = np.unique(data_y).size
+        if n_classes > 2:
+            if scoring_metric in ("f1", "precision", "recall"):
+                self.scoring_metric = f"{scoring_metric}_macro"
+            elif scoring_metric == "roc_auc":
+                self.scoring_metric = "roc_auc_ovr"
+            else:
+                self.scoring_metric = scoring_metric
+        else:
+            self.scoring_metric = scoring_metric
 
     def __call__(self, trial):
+        """
+        Run a single optimization trial by training the XGBoost model on cross-validation folds
+        and returning the mean performance metric.
 
-        n_estimators = trial.suggest_int('n_estimators', 100, 500)
-        criterion = trial.suggest_categorical('criterion', ['gini', 'entropy'])
-        max_depth = trial.suggest_int('max_depth', 2, 25)
-        min_samples_split = trial.suggest_int('min_samples_split', 2, 25)
-        min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 15)
-        max_features = trial.suggest_int('max_features', 1, self.data_x.shape[1])
+        Parameters
+        ----------
+        trial : optuna.Trial
+            A trial object provided by Optuna to suggest hyperparameters.
+
+        Returns
+        -------
+        float
+            Mean cross-validated score for the trial.
+        """
+        n_estimators = trial.suggest_int('n_estimators', 100, 1000)
+        criterion = trial.suggest_categorical('criterion', ['gini', 'entropy', 'log_loss'])
+        max_depth = trial.suggest_int('max_depth', 2, 50)
+        min_samples_split = trial.suggest_int('min_samples_split', 2, 50)
+        min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 30)
+        max_features = trial.suggest_categorical('max_features', ['sqrt', 'log2', None, 'auto'])
         bootstrap = trial.suggest_categorical('bootstrap', [True, False])
-        
-        try:
-            clf = RandomForestClassifier(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth,
-                min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
-                max_features=max_features, bootstrap=bootstrap, random_state=1909)
-        except:
-            print("Invalid hyperparameter combination, skipping trial")
-            return 0.0
+        class_weight = trial.suggest_categorical('class_weight', [None, 'balanced', 'balanced_subsample'])
 
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
-        final_score = np.mean(cv['test_score'])
+        max_samples = None
+        if bootstrap:
+            max_samples = trial.suggest_float('max_samples', 0.3, 1.0)
 
-        return final_score
+        clf = RandomForestClassifier(
+            n_estimators=n_estimators,
+            criterion=criterion,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            max_features=max_features,
+            bootstrap=bootstrap,
+            max_samples=max_samples,
+            class_weight=class_weight,
+            random_state=self.SEED_NO,
+        )
 
-class ObjectiveOneClassSVM(object):
+        cv = StratifiedKFold(n_splits=self.opt_cv, shuffle=True, random_state=self.SEED_NO)
+        cross_val = cross_validate(clf, self.data_x, self.data_y, cv=cv, scoring=self.scoring_metric)
+        trial_performance = np.mean(cross_val['test_score'])
+
+        return trial_performance
+
+def hyper_opt(
+    data_x=None, 
+    data_y=None, 
+    clf='rf', 
+    n_iter=25, 
+    opt_cv=3, 
+    scoring_metric='f1', 
+    balance=True, 
+    limit_search=True, 
+    return_study=True, 
+    SEED_NO=1909
+    ): 
     """
-    Optimization objective function for the scikit-learn implementation of the
-    One-Class SVM. The Optuna software for hyperparameter optimization
-    was published in 2019 by Akiba et al. Paper: https://arxiv.org/abs/1907.10902
+    Optimizes hyperparameters using a k-fold cross-validation splitting strategy.
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the number of samples,
-            and m is the number of features.
-        data_y (ndarray, str): 1D array containing the corresponding labels.
-        opt_cv (int): Cross-validations to perform when assessing the performance at each
-            hyperparameter optimization trial. For example, if cv=3, then each optimization trial
-            will be assessed according to the 3-fold cross-validation accuracy.
+    This function constructs a classification engine based on the input classifier (`clf`)
+    and tunes its hyperparameters using Optuna. If `return_study=True`, the Optuna Study
+    object will be returned for further analysis or visualization.
 
-    Returns:
-        The performance metric, determined using the cross-fold validation method.
-    """
+    Parameters
+    ----------
+    data_x : ndarray, optional
+        Feature matrix of shape (n_samples, n_features).
+    data_y : ndarray or list of str, optional
+        Corresponding class labels of shape (n_samples,).
+    clf : str, optional
+        Classifier to optimize. Options are:
+        'rf' (Random Forest), 'nn' (Neural Network), 'xgb' (XGBoost).
+        Default is 'rf'.
+    n_iter : int, optional
+        Maximum number of optimization iterations (trials). Default is 25.
+    opt_cv : int, optional
+        Number of cross-validation folds used per trial. Must be >= 2. Default is 3.
+    scoring_metric : str, optional
+        Evaluation metric used during optimization. Options are:
+        ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']. Default is 'f1'.
+    balance : bool, optional
+        If True, class weights will be computed and applied to help address class imbalance.
+        Only applies to binary classification. Default is True.
+    limit_search : bool, optional
+        If True, restricts the hyperparameter search space for quicker optimization.
+        Default is True.
+    return_study : bool, optional
+        If True, also returns the Optuna Study object used during optimization.
+        Default is True.
+    SEED_NO : int, optional
+        Random seed for reproducibility. Default is 1909.
 
-    def __init__(self, data_x, data_y, opt_cv):
-        self.data_x = data_x
-        self.data_y = data_y
-        self.opt_cv = opt_cv
-
-    def __call__(self, trial):
-        """
-        Define the optimization objective function for the One-Class SVM.
-
-        Args:
-            trial (optuna.trial.Trial): A Trial object containing the current state of the optimization.
-
-        Returns:
-            float: The performance metric, determined using cross-validation.
-        """
-
-        kernel = trial.suggest_categorical('kernel', ['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'])
-        degree = trial.suggest_int('degree', 0, 10)
-        gamma = trial.suggest_categorical('gamma', ['scale', 'auto'])
-        coef0 = trial.suggest_float('coef0', 0.0, 1.0)
-        tol = trial.suggest_float('tol', 1e-6, 1e-2, log=True)
-        nu = trial.suggest_float('nu', 0.1, 1.0)
-        shrinking = trial.suggest_categorical('shrinking', [True, False])
-        cache_size = trial.suggest_float('cache_size', 100, 1000)
-
-        try:
-            clf = OneClassSVM(kernel=kernel, degree=degree, gamma=gamma, coef0=coef0, tol=tol,
-                nu=nu, shrinking=shrinking, cache_size=cache_size)
-        except:
-            print("Invalid hyperparameter combination, skipping trial")
-            return 0.0
-
-        cv = cross_validate(clf, self.data_x, self.data_y, cv=self.opt_cv)
-        final_score = np.mean(cv['test_score'])
-
-        return final_score
-
-
-def hyper_opt(data_x=None, data_y=None, clf='rf', n_iter=25, opt_cv=None, balance=True, limit_search=True, min_gamma=0, return_study=True): 
-    """
-    Optimizes hyperparameters using a k-fold cross validation splitting strategy.
-    If save_study=True, the Optuna study object will be the third output. This
-    object can be used for various analysis, including optimization visualizations.
-    See: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.study.Study.html
-
-    Example:
-        The function will create the classification engine and optimize the hyperparameters
-        using an iterative approach:
-
-        >>> model, params = hyper_opt(data_x, data_y, clf='rf') 
-        
-        The first output is our optimal classifier, and will be used to make predictions:
-        
-        >>> prediction = model.predict(new_data)
-        
-        The second output of the optimize function is the dictionary containing
-        the hyperparameter combination that yielded the highest mean accuracy.
-
-        If save_study = True, the Optuna study object will also be returned as the third output.
-        This can be used to plot the optimization results, see: https://optuna.readthedocs.io/en/latest/tutorial/10_key_features/005_visualization.html#sphx-glr-tutorial-10-key-features-005-visualization-py
-
-        >>> from optuna.visualization.matplotlib import plot_contour
-        >>> 
-        >>> model, params, study = hyper_opt(data_x, data_y, clf='rf', save_study=True) 
-        >>> plot_contour(study)
-        
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the number of samples, and m the number of features. 
-        data_y (ndarray, str): 1D array containing the corresponing labels. 
-        clf (str): The machine learning classifier to optimize. Can either be 'rf' for Random Forest, 'nn' for Neural Network, 
-            or 'xgb' for eXtreme Gradient Boosting.
-        n_iter (int, optional): The maximum number of iterations to perform during the hyperparameter search. Defaults to 25.
-        opt_cv (int): Cross-validations to perform when assesing the performance at each hyperparameter optimization trial. 
-            For example, if cv=3, then each optimization trial will be assessed according to the 3-fold cross validation accuracy. 
-            If clf='xgb' and this value is set between 0 and 1, this sets the size of the validation data, which will be chosen 
-            randomly each trial. This is used to enable an early stopping callback which is not possible with the cross-validation method. 
-            Defaults to 10. 
-        balance (bool, optional): If True, a weights array will be calculated and used when fitting the classifier. This can improve 
-            classification when classes are imbalanced. This is only applied if the classification is a binary task. Defaults to True. 
-        limit_search (bool): If True the optimization search spaces will be limited, for quicker computation. Defaults to True.
-        min_gamma (float): Controls the optimization of the gamma Tree Booster hyperparameter, applicable if clf='xgb'. The gamma parameter is the 
-            lowest loss reduction needed on a tree leaf node in order to partition again. The algorithm's level of conservatism 
-            increases with gamma, therefore it acts as a regularizer. By default, during the optimization routine will consider a miminum value 
-            of 0 when tuning the gamma parameter, unless this min_gamma input is set. This parameter determines the lowest gamma value the 
-            optimizer should consider. Must be less than 5. Defaults to 0. Consider increasing this to ~1 if the optimized models
-            are overfitting.
-        return_study (bool, optional): If True the Optuna study object will be returned. This can be used to review the method attributes, 
-            such as optimization plots. Defaults to True.
-        
-    Returns:
-        The first output is the classifier with the optimal hyperparameters.
-        Second output is a dictionary containing the optimal hyperparameters.
-        If save_study=True, the Optuna study object will be the third output.
+    Returns
+    -------
+    model : BaseEstimator
+        Trained classifier with optimal hyperparameters.
+    params : dict
+        Dictionary of the best hyperparameter combination found during optimization.
+    study : optuna.study.Study, optional
+        Only returned if `return_study=True`. The Optuna study object used for optimization.
     """
 
     if clf == 'rf':
-        model_0 = RandomForestClassifier(random_state=1909)
+        model_0 = RandomForestClassifier(random_state=SEED_NO)
     elif clf == 'nn':
-        model_0 = MLPClassifier(random_state=1909)
+        model_0 = MLPClassifier(random_state=SEED_NO)
     elif clf == 'xgb':
-        model_0 = XGBClassifier(random_state=1909)
+        model_0 = XGBClassifier(random_state=SEED_NO)
         if all(isinstance(val, (int, str)) for val in data_y):
             print('XGBoost classifier requires numerical class labels! Converting class labels as follows:')
             print('____________________________________')
@@ -408,17 +431,20 @@ def hyper_opt(data_x=None, data_y=None, clf='rf', n_iter=25, opt_cv=None, balanc
         raise ValueError('clf argument must either be "rf", "xgb", or "nn".')
 
     if n_iter == 0:
-        if clf == 'rf' or clf == 'xgb' or clf == 'nn':
-            print('No optimization trials configured (n_iter=0), returning base {} model...'.format(clf))
-            return model_0 
-        else:
-            raise ValueError('No optimization trials configured, set n_iter > 0!')
+        print(f'No optimization trials configured (n_iter=0), returning base {clf} model...')
+        return model_0 
+    
+    # Beginning optimization, but first define a baseline model (defaul hyperparams)
+    n_classes = np.unique(data_y).size
+    if n_classes > 2:
+        scoring_map = {"f1": "f1_macro", "precision": "precision_macro", "recall": "recall_macro", "roc_auc": "roc_auc_ovr"}
+        scoring_metric = scoring_map.get(scoring_metric, scoring_metric)
 
-    if clf == 'rf' or clf == 'xgb' or clf == 'nn':
-        cv = cross_validate(model_0, data_x, data_y, cv=opt_cv)
-        initial_score = np.mean(cv['test_score'])
+    cv = StratifiedKFold(n_splits=opt_cv, shuffle=True, random_state=SEED_NO)
+    cross_val = cross_validate(model_0, data_x, data_y, cv=cv, scoring=scoring_metric)
+    initial_score = np.mean(cross_val['test_score'])
 
-    sampler = optuna.samplers.TPESampler(seed=1909)
+    sampler = optuna.samplers.TPESampler(seed=SEED_NO)
     study = optuna.create_study(direction='maximize', sampler=sampler)#, pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10))
     print('Starting hyperparameter optimization, this will take a while...')
 
@@ -447,136 +473,144 @@ def hyper_opt(data_x=None, data_y=None, clf='rf', n_iter=25, opt_cv=None, balanc
         sample_weight = None
 
     if clf == 'rf':
-        try:
-            objective = objective_rf(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
-            params = study.best_trial.params
-            model = RandomForestClassifier(n_estimators=params['n_estimators'], criterion=params['criterion'], 
-                max_depth=params['max_depth'], min_samples_split=params['min_samples_split'], 
-                min_samples_leaf=params['min_samples_leaf'], max_features=params['max_features'], 
-                bootstrap=params['bootstrap'], class_weight=sample_weight, random_state=1909)
-        except:
-            print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
-            params = {
-                'criterion': ["gini", "entropy"],
-                'n_estimators': [int(x) for x in np.linspace(50,1000, num=20)], 
-                'max_features': [data_x.shape[1], "sqrt", "log2"],
-                'max_depth': [int(x) for x in np.linspace(5,50,num=5)],
-                'min_samples_split': [3,4,6,7,8,9,10],
-                'min_samples_leaf': [1,3,5,7,9,10],
-                'max_leaf_nodes': [int(x) for x in np.linspace(2,200)],
-                'bootstrap': [True,False]   
-            }
-            gs = BayesSearchCV(n_iter=n_iter, estimator=model_0, search_spaces=params, 
-                optimizer_kwargs={'base_estimator': 'RF'}, cv=opt_cv)
-            gs.fit(data_x, data_y)
-            best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
-            print('Highest mean accuracy: {}'.format(best_score))
-            return gs.best_estimator_, gs.best_params_
-
-    elif clf == 'nn':
-        try:
-            objective = objective_nn(data_x, data_y, opt_cv=opt_cv)
-            study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
-            params = study.best_trial.params
-            layers = [param for param in params if 'n_units_' in param]
-            layers = tuple(params[layer] for layer in layers)
-            model = MLPClassifier(hidden_layer_sizes=tuple(layers), learning_rate_init=params['learning_rate_init'], 
-                activation=params['activation'], learning_rate=params['learning_rate'], alpha=params['alpha'], 
-                batch_size='auto', solver=params['solver'], max_iter=200, random_state=1909)
-        except:
-            print('Failed to optimize with Optuna, switching over to BayesSearchCV...')
-            params = {
-                'hidden_layer_sizes': [(100,),(50,100,50),(75,50,20),(150,100,50),(120,80,40),(100,50,30)],
-                'learning_rate': ['constant', 'invscaling', 'adaptive'],
-                'alpha': [0.00001, 0.5], 
-                'activation': ['tanh', 'logistic', 'relu'],
-                'solver': ['sgd', 'adam'],
-                'max_iter': [100, 150, 200] 
-            }
-            gs = BayesSearchCV(n_iter=n_iter, estimator=model_0, search_spaces=params, cv=opt_cv)
-            gs.fit(data_x, data_y)
-            best_est, best_score = gs.best_estimator_, np.round(gs.best_score_, 4)
-            print('Highest mean accuracy: {}'.format(best_score))
-            return gs.best_estimator_, gs.best_params_
-          
-    elif clf == 'xgb':
-        objective = objective_xgb(data_x, data_y, limit_search=limit_search, opt_cv=opt_cv, min_gamma=min_gamma)
-        if limit_search:
-            print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
+        objective = objective_rf(data_x, data_y, opt_cv=opt_cv, scoring_metric=scoring_metric, SEED_NO=SEED_NO)
         study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
         params = study.best_trial.params
+        model = RandomForestClassifier(
+            n_estimators=params['n_estimators'], 
+            criterion=params['criterion'], 
+            max_depth=params['max_depth'], 
+            min_samples_split=params['min_samples_split'], 
+            min_samples_leaf=params['min_samples_leaf'], 
+            max_features=params['max_features'], 
+            bootstrap=params['bootstrap'], 
+            class_weight=sample_weight, 
+            random_state=SEED_NO
+            )
+        
+    elif clf == 'nn':
+        objective = objective_nn(
+            data_x, 
+            data_y, 
+            opt_cv=opt_cv, 
+            scoring_metric=scoring_metric, 
+            SEED_NO=SEED_NO
+            )
+
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
+        params = study.best_trial.params
+        layers = [param for param in params if 'n_units_' in param]
+        layers = tuple(params[layer] for layer in layers)
+
+        model = MLPClassifier(
+            hidden_layer_sizes=tuple(layers), 
+            learning_rate_init=params['learning_rate_init'], 
+            activation=params['activation'], 
+            learning_rate=params['learning_rate'], 
+            alpha=params['alpha'], 
+            solver=params['solver'], 
+            max_iter=2500, 
+            random_state=SEED_NO
+            )
+
+          
+    elif clf == 'xgb':
+        objective = objective_xgb(
+            data_x, 
+            data_y, 
+            limit_search=limit_search, 
+            opt_cv=opt_cv, 
+            scoring_metric=scoring_metric, 
+            SEED_NO=SEED_NO
+            )
+
         if limit_search:
-            if params['booster'] == 'dart':
-                model = XGBClassifier(booster=params['booster'],  n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
-                    reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                    grow_policy=params['grow_policy'], sample_type=params['sample_type'], normalize_type=params['normalize_type'],
-                    rate_drop=params['rate_drop'], skip_drop=params['skip_drop'], scale_pos_weight=sample_weight, random_state=1909)
-            elif params['booster'] == 'gbtree':
-                model = XGBClassifier(booster=params['booster'],  n_estimators=params['n_estimators'], reg_lambda=params['reg_lambda'], 
-                    reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                    grow_policy=params['grow_policy'], subsample=params['subsample'], scale_pos_weight=sample_weight, random_state=1909)
+            print('NOTE: To expand hyperparameter search space, set limit_search=False, although this will increase the optimization time significantly.')
+        
+        study.optimize(objective, n_trials=n_iter, show_progress_bar=True)#, gc_after_trial=True)
+        params = study.best_trial.params
+
+        if limit_search:
+            model = XGBClassifier(
+                booster='gbtree',  
+                n_estimators=params['n_estimators'], 
+                reg_lambda=params['reg_lambda'], 
+                reg_alpha=params['reg_alpha'], 
+                max_depth=params['max_depth'], 
+                eta=params['eta'], 
+                gamma=params['gamma'], 
+                subsample=params['subsample'], 
+                scale_pos_weight=sample_weight, 
+                random_state=SEED_NO
+                )
         else:
-            if params['booster'] == 'dart':
-                model = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'], 
-                    reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                    grow_policy=params['grow_policy'], sample_type=params['sample_type'], normalize_type=params['normalize_type'],rate_drop=params['rate_drop'], 
-                    skip_drop=params['skip_drop'], min_child_weight=params['min_child_weight'], max_delta_step=params['max_delta_step'], subsample=params['subsample'],
-                    scale_pos_weight=sample_weight, random_state=1909)
-            elif params['booster'] == 'gbtree':
-                model = XGBClassifier(booster=params['booster'], n_estimators=params['n_estimators'], colsample_bytree=params['colsample_bytree'], 
-                    reg_lambda=params['reg_lambda'], reg_alpha=params['reg_alpha'], max_depth=params['max_depth'], eta=params['eta'], gamma=params['gamma'], 
-                    grow_policy=params['grow_policy'], subsample=params['subsample'], min_child_weight=params['min_child_weight'], max_delta_step=params['max_delta_step'],
-                    scale_pos_weight=sample_weight, random_state=1909)
+            model = XGBClassifier(
+                booster='gbtree', 
+                n_estimators=params['n_estimators'], 
+                colsample_bytree=params['colsample_bytree'], 
+                reg_lambda=params['reg_lambda'], 
+                reg_alpha=params['reg_alpha'], 
+                max_depth=params['max_depth'], 
+                eta=params['eta'], 
+                gamma=params['gamma'], 
+                subsample=params['subsample'], 
+                min_child_weight=params['min_child_weight'], 
+                scale_pos_weight=sample_weight, 
+                random_state=SEED_NO
+                )
 
     final_score = study.best_value
 
-    if clf == 'rf' or clf == 'xgb' or clf == 'nn':
-
-        if initial_score > final_score:
-            print('Hyperparameter optimization complete! Optimal performance of {} is LOWER than the base performance of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 8), np.round(initial_score, 8)))
-        else:
-            print('Hyperparameter optimization complete! Optimal performance of {} is HIGHER than the base performance of {}.'.format(np.round(final_score, 8), np.round(initial_score, 8)))
-        
-        if return_study:
-            return model, params, study
-        return model, params
-
+    if initial_score > final_score:
+        print('Hyperparameter optimization complete! Optimal performance of {} is LOWER than the base performance of {}, try increasing the value of n_iter and run again.'.format(np.round(final_score, 8), np.round(initial_score, 8)))
     else:
+        print('Hyperparameter optimization complete! Optimal performance of {} is HIGHER than the base performance of {}.'.format(np.round(final_score, 8), np.round(initial_score, 8)))
+    
+    if return_study:
+        return model, params, study
+    return model, params
 
-        print('Hyperparameter optimization complete! Optimal performance: {}'.format(np.round(final_score, 8)))
-        
-        if return_study:
-            return params, study
-        return params
 
-def borutashap_opt(data_x, data_y, boruta_trials=50, model='rf', importance_type='gain'):
+def borutashap_opt(
+    data_x, 
+    data_y, 
+    boruta_trials=50, 
+    model='rf', 
+    importance_type='gain', 
+    SEED_NO=1909
+    ):
     """
-    Applies a combination of the Boruta algorithm and
-    Shapley values, a method developed by Eoghan Keany (2020).
+    Applies a combination of the Boruta algorithm and SHAP values for feature selection.
+
+    This method was developed by Eoghan Keany (2020) and integrates model-based
+    feature selection with Shapley values to yield a stable, interpretable set of features.
 
     See: https://doi.org/10.5281/zenodo.4247618
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-        boruta_trials (int): The number of trials to run. A larger number is
-            better as the distribution will be more robust to random fluctuations. 
-            Defaults to 50.
-        model (str): The ensemble method to use when fitting and calculating
-            the feature importance metric. Only two options are currently
-            supported, 'rf' for Random Forest and 'xgb' for Extreme Gradient Boosting.
-            Defaults to 'rf'.
-        importance_type (str): The feature importance type to use, only applicable
-            when using clf='xgb'. The options include “gain”, “weight”, “cover”,
-            “total_gain” or “total_cover”. Defaults to 'gain'.
+    Parameters
+    ----------
+    data_x : ndarray
+        Feature matrix of shape (n_samples, n_features).
+    data_y : ndarray or list of str
+        Corresponding class labels of shape (n_samples,).
+    boruta_trials : int, optional
+        Number of trials to run. A higher value increases the robustness of feature selection.
+        Defaults to 50.
+    model : str, optional
+        Model to use for computing feature importance. Options are:
+        'rf' (Random Forest) or 'xgb' (XGBoost). Defaults to 'rf'.
+    importance_type : str, optional
+        XGBoost-specific feature importance metric. Options are:
+        ['gain', 'weight', 'cover', 'total_gain', 'total_cover']. Default is 'gain'.
+    SEED_NO : int, optional
+        Random seed for reproducibility. Default is 1909.
 
-    Returns:
-        First output is a 1D array containing the indices of the selected features. 
-        These indices can then be used to select the columns in the data_x array.
-        Second output is the feature selection object, which contains feature selection
-        history information and visualization options.
+    Returns
+    -------
+    selected_indices : ndarray
+        1D array of indices corresponding to selected features.
+    feat_selector : BorutaSHAP
+        The feature selection object, containing selection history and plotting methods.
     """
     
     if boruta_trials == 0: #This is the flag that the ensemble_model.Classifier class uses to disable feature selection
@@ -589,111 +623,129 @@ def borutashap_opt(data_x, data_y, boruta_trials=50, model='rf', importance_type
         data_x = Strawman_imputation(data_x)
 
     if model == 'rf':
-        classifier = RandomForestClassifier(random_state=1909)
+        classifier = RandomForestClassifier(random_state=SEED_NO)
     elif model == 'xgb':
-        classifier = XGBClassifier(random_state=1909)#tree_method='exact', max_depth=20, importance_type=importance_type)
+        classifier = XGBClassifier(random_state=SEED_NO)#tree_method='exact', max_depth=20, importance_type=importance_type)
     else:
         raise ValueError('Model argument must either be "rf" or "xgb".')
     
-    try:
-        #BorutaShap program requires input to have the columns attribute
-        #Converting to Pandas dataframe
-        cols = [str(i) for i in np.arange(data_x.shape[1])]
-        X = DataFrame(data_x, columns=cols)
-        y = np.zeros(len(data_y))
+    #BorutaShap program requires input to have the columns attribute
+    #Converting to Pandas dataframe
+    cols = [str(i) for i in np.arange(data_x.shape[1])]
+    X = DataFrame(data_x, columns=cols)
+    y = np.zeros(len(data_y))
 
-        #Below is to convert categorical labels to numerical, as per BorutaShap requirements
-        for i, label in enumerate(np.unique(data_y)):
-            mask = np.where(data_y == label)[0]
-            y[mask] = i
+    #Below is to convert categorical labels to numerical, as per BorutaShap requirements
+    for i, label in enumerate(np.unique(data_y)):
+        mask = np.where(data_y == label)[0]
+        y[mask] = i
 
-        feat_selector = BorutaShap(model=classifier, importance_measure='shap', classification=True)
-        print('Running feature selection...')
-        feat_selector.fit(X=X, y=y, n_trials=boruta_trials, verbose=False, random_state=1909)
+    feat_selector = feature_selection.BorutaSHAP(model=classifier, importance_measure='shap', classification=True)
+    print('Running feature selection...')
+    feat_selector.fit(X=X, y=y, n_trials=boruta_trials, verbose=False, random_state=SEED_NO)
 
-        index = np.array([int(feat) for feat in feat_selector.accepted])
-        index.sort()
-        print('Feature selection complete, {} selected out of {}!'.format(len(index), data_x.shape[1]))
-    except:
-        print('Boruta with Shapley values failed, switching to original Boruta...')
-        index = boruta_opt(data_x, data_y)
+    index = np.array([int(feat) for feat in feat_selector.accepted])
+    index.sort()
+    print('Feature selection complete, {} selected out of {}!'.format(len(index), data_x.shape[1]))
 
     return index, feat_selector
 
-def boruta_opt(data_x, data_y):
+def standardize_data(
+    data_x, 
+    method='min-max', 
+    return_scaler=True
+    ):
     """
-    Applies the Boruta algorithm (Kursa & Rudnicki 2011) to identify features
-    that perform worse than random.
+    Normalizes the data using the specified method.
 
-    See: https://arxiv.org/pdf/1106.5112.pdf
+    Tree-based ensembles do not require standardized inputs, but methods such as 
+    neural networks or PCA (which are sensitive to feature ranges) benefit from standardization.
 
-    Args:
-        data_x (ndarray): 2D array of size (n x m), where n is the
-            number of samples, and m the number of features.
-        data_y (ndarray, str): 1D array containing the corresponing labels.
-            
-    Returns:
-        1D array containing the indices of the selected features. This can then
-        be used to index the columns in the data_x array.
+    Parameters
+    ----------
+    data_x : ndarray
+        Training data feature matrix of shape (n_samples, n_features).
+    method : str, optional
+        Normalization method. Options are:
+        'min-max' (default), 'robust', or 'standard'.
+    return_scaler : bool, optional
+        If True, returns both the normalized data and the fitted scaler.
+        If False, returns only the normalized data. Default is True.
+
+    Returns
+    -------
+    norm_data_x : ndarray
+        Normalized feature matrix.
+    scaler : MinMaxScaler or RobustScaler or StandardScaler, optional
+        The fitted scaler object. Only returned if `return_scaler` is True.
+
+    Raises
+    ------
+    ValueError
+        If an unknown method is specified.
     """
 
-    classifier = RandomForestClassifier(random_state=1909)
+    if method == 'min-max':
+        scaler = MinMaxScaler()
+    elif method == 'robust':
+        scaler = RobustScaler()
+    elif method == 'standard':
+        scaler = StandardScaler()
 
-    feat_selector = BorutaPy(classifier, n_estimators='auto', random_state=1909)
-    print('Running feature selection...')
-    feat_selector.fit(data_x, data_y)
+    scaler.fit(data_x)
 
-    feats = np.array([str(feat) for feat in feat_selector.support_])
-    index = np.where(feats == 'True')[0]
+    norm_data_x = scaler.transform(data_x)
 
-    print('Feature selection complete, {} selected out of {}!'.format(len(index),len(feat_selector.support_)))
-
-    return index
+    if return_scaler:
+        return norm_data_x, scaler
+    else:
+        return norm_data_x
 
 def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_value=0, nan_threshold=0.5):
     """
     Impute missing values in the input data array using various imputation strategies.
-    By default the imputer will be created and returned, unless
-    the imputer argument is set, in which case only the transformed
-    data is output. 
 
-    The function first identifies the columns with mostly missing values based on the nan_threshold parameter. 
-    It replaces the values in those columns with zeros before performing the imputation step using the selected 
-    imputation strategy. This way, the ignored columns will have zeros and won't be taken into account during imputation. 
-    The resulting imputed_data will have all columns preserved, with missing values filled according to the chosen imputation strategy.
-    This is required because the imputation techniques employed remove columns that have too many nans!
-    
-    Note:
-        As the KNN imputation method bundles neighbors according to their eucledian distance,
-        it is sensitive to outliers. Furthermore, it can also yield weak predictions if the
-        training features are heaviliy correlated. Tang & Ishwaran 2017 reported that if there is 
-        low to medium correlation in the dataset, Random Forest imputation algorithms perform 
-        better than KNN imputation
+    This function identifies columns with a high fraction of NaNs (as defined by
+    `nan_threshold`) and replaces them with zeros before applying imputation. This avoids
+    issues where imputation algorithms would otherwise remove those columns.
 
-    Args:
-        data (ndarray): Input data array with missing values.
-        imputer (optional): A KNNImputer class instance, configured using sklearn.impute.KNNImputer.
-            Defaults to None, in which case the transformation is created using
-            the data itself. 
-        strategy (str, optional): Imputation strategy to use. Defaults to 'knn'.
-            - 'mean': Fill missing values with the mean of the non-missing values in the same column.
-            - 'median': Fill missing values with the median of the non-missing values in the same column.
-            - 'mode': Fill missing values with the mode (most frequent value) of the non-missing values in the same column.
-            - 'constant': Fill missing values with a constant value provided by the user.
-            - 'knn': Fill missing values using k-Nearest Neighbor imputation.
-        k (int, optional): Number of nearest neighbors to consider for k-Nearest Neighbor imputation.
-            Only applicable if the imputation strategy is set to 'knn'. Defaults to 3.
-        constant_value (float or int, optional): Constant value to use for constant imputation.
-            Only applicable if the imputation strategy is set to 'constant'. Defaults to 0.
-        nan_threshold (float): Columns with nan values greater than this ratio will be zeroed out before the imputation.
-            Defualts to 0.5.
+    Notes
+    -----
+    - KNN imputation is sensitive to outliers and performs worse when features are highly correlated.
+      Tang & Ishwaran (2017) report that in such cases, Random Forest-based methods may be superior.
 
-    Returns:
-        The first output is the data array with with the missing values filled in. 
-        The second output is the KNN Imputer that should be used to transform
-        new data, prior to predictions. 
+    Parameters
+    ----------
+    data : ndarray
+        Input data array with missing values. Shape (n_samples, n_features).
+    imputer : SimpleImputer or KNNImputer, optional
+        A pre-configured imputer object. If provided, only transformation is applied.
+        If None, a new imputer is created and returned. Default is None.
+    strategy : str, optional
+        Strategy to use for imputation. Options are:
+        'mean', 'median', 'mode', 'constant', or 'knn'. Default is 'knn'.
+    k : int, optional
+        Number of neighbors for k-Nearest Neighbor imputation. Only used if `strategy='knn'`.
+        Default is 3.
+    constant_value : float or int, optional
+        Value to use if `strategy='constant'`. Default is 0.
+    nan_threshold : float, optional
+        Columns with NaN ratios above this threshold will be filled with zeros before imputation.
+        Default is 0.9.
+
+    Returns
+    -------
+    imputed_data : ndarray
+        Data with missing values filled in.
+    imputer : SimpleImputer or KNNImputer
+        The fitted imputer used for the transformation.
+        Only returned if `imputer` was None at input.
+
+    Raises
+    ------
+    ValueError
+        If an invalid strategy is given or required parameters are missing.
     """
-
     if imputer is None:
 
         column_missing_ratios = np.mean(np.isnan(data), axis=0)
@@ -719,32 +771,40 @@ def impute_missing_values(data, imputer=None, strategy='knn', k=3, constant_valu
 
         imputer.fit(data)
         imputed_data = imputer.transform(data)
+
         return imputed_data, imputer
 
     return imputer.transform(data) 
 
 def Strawman_imputation(data):
     """
-    Perform Strawman imputation, a time-efficient algorithm
-    in which missing data values are replaced with the median
-    value of the entire, non-NaN sample. If the data is a hot-encoded
-    boolean (as the RF does not allow True or False), then the 
-    instance that is used the most will be computed as the median. 
+    Perform Strawman imputation, a time-efficient algorithm in which missing data values
+    are replaced with the median value of the entire non-NaN sample.
 
-    This is the baseline algorithm used by (Tang & Ishwaran 2017).
-    See: https://arxiv.org/pdf/1701.05305.pdf
+    If the data is one-hot encoded boolean (e.g., 0/1), the median will correspond to
+    the most frequent value, which is sufficient for random forests that do not accept
+    True/False input.
 
-    Note:
-        This function assumes each row corresponds to one sample, and 
-        that missing values are masked as either NaN or inf. 
+    This is the baseline imputation algorithm used in:
+    Tang & Ishwaran (2017), https://arxiv.org/pdf/1701.05305.pdf
 
-    Args:
-        data (ndarray): 1D array if single parameter is input. If
-            data is 2-dimensional, the medians will be calculated
-            using the non-missing values in each corresponding column.
+    Notes
+    -----
+    - This function assumes each row corresponds to a sample and missing values
+      are encoded as either `np.nan` or `np.inf`.
+    - For 1D arrays, the overall median of finite values is used.
+    - For 2D arrays, the median is computed independently for each column.
 
-    Returns:
-        The data array with the missing values filled in. 
+    Parameters
+    ----------
+    data : ndarray or list
+        Input array of shape (n,) or (n_samples, n_features) with missing values
+        encoded as NaN or Inf.
+
+    Returns
+    -------
+    imputed_data : ndarray
+        The input data with missing values replaced using median-based imputation.
     """
 
     if np.all(np.isfinite(data)):

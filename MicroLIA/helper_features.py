@@ -1,6 +1,16 @@
-import numpy as np
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jun 14 10:05:51 2023
 
-def _safe_weights(magerr):
+@author: daniel
+"""
+import numpy as np
+from numpy.typing import ArrayLike
+from typing import Union, Sequence
+
+
+def _safe_weights(magerr: ArrayLike) -> np.ndarray:
     """
     Inverse-variance weights that are finite and positive.
 
@@ -21,8 +31,7 @@ def _safe_weights(magerr):
 
     return w
 
-
-def _weighted_percentiles(x, w, q):
+def _weighted_percentiles(x: ArrayLike, w: ArrayLike, q: Union[float, Sequence[float], np.ndarray]) -> np.ndarray:
     """
     Weighted *value* percentiles.
 
@@ -46,8 +55,7 @@ def _weighted_percentiles(x, w, q):
     cdf = np.cumsum(w) / w.sum()
     return np.interp(q, cdf, x)
 
-
-def _frac_sigma(mag, magerr, apply_weights=True, sign=1):
+def _frac_sigma(mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, sign: int = 1) -> float:
     """
     Fraction of points more than 1σ above (sign=+1) or below (sign=−1) the median.
 
@@ -83,8 +91,7 @@ def _frac_sigma(mag, magerr, apply_weights=True, sign=1):
 
     return np.sum(w[sel]) / w.sum() if w.sum() > 0 else sel.mean()
 
-
-def _weighted_percentile(data, weights, percentile):
+def _weighted_percentile(data: ArrayLike, weights: ArrayLike, percentile: float) -> float:
     """
     Compute the weighted percentile of a 1D array.
 
@@ -115,8 +122,7 @@ def _weighted_percentile(data, weights, percentile):
 
     return data[np.searchsorted(cumsum, cutoff)]
 
-
-def _first_sig_digit(arr):
+def _first_sig_digit(arr: ArrayLike) -> np.ndarray:
     """
     First significant digit (1–9) of absolute values.
 
@@ -143,8 +149,7 @@ def _first_sig_digit(arr):
 
     return out
 
-
-def _dup_with_tol(values, errs, tol_factor=2.0):
+def _dup_with_tol(values: ArrayLike, errs: ArrayLike, tol_factor: float = 2.0) -> int:
     """
     Detect duplicate values within a tolerance defined by errors.
 
@@ -173,8 +178,7 @@ def _dup_with_tol(values, errs, tol_factor=2.0):
 
     return 0
 
-
-def _weighted_median(x, w):
+def _weighted_median(x: ArrayLike, w: ArrayLike) -> float:
     """
     Weighted median of data `x` with weights `w`.
 
@@ -195,8 +199,7 @@ def _weighted_median(x, w):
 
     return _weighted_percentiles(x[idx], w[idx], 0.5)[0]
 
-
-def _flux_percentile_ratio(mag, magerr, p_lo, p_hi, apply_weights=True):
+def _flux_percentile_ratio(mag: ArrayLike, magerr: ArrayLike, p_lo: float, p_hi: float, apply_weights: bool = True) -> float:
     """
     (p_hi − p_lo) / (95th − 5th) percentile flux ratio, with optional weighting.
 
@@ -236,8 +239,7 @@ def _flux_percentile_ratio(mag, magerr, p_lo, p_hi, apply_weights=True):
 
     return num / den if den != 0 else np.nan
 
-
-def _longest_true_run(mask):
+def _longest_true_run(mask: np.ndarray) -> int:
     """
     Length of the longest consecutive True subsequence.
 
@@ -260,8 +262,7 @@ def _longest_true_run(mask):
     
     return lengths.max()
 
-
-def _delta(mag, magerr):
+def _delta(mag: ArrayLike, magerr: ArrayLike) -> np.ndarray:
     """
     Stetson normalized residuals (single-band).
 

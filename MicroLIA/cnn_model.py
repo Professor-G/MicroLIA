@@ -1,3 +1,7 @@
+"""
+# DEEP LEARNING CLASSIFIER FOR DISTINGUISHING DIFFERENT LENSING GEOMETRIES
+# WORK IN PROGRESS #
+
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -11,8 +15,8 @@ import os
 
 class CNNClassifier:
     """
-    Time-step based 1D-CNN classifier for multi-channel light curves.
-    NOTE: This model is memory-intensive and intended for clusters with significant RAM.
+    #Time-step based 1D-CNN classifier for multi-channel light curves.
+    #NOTE: This model is memory-intensive and intended for clusters with significant RAM.
     """
     def __init__(self, sequence_length=1500, num_channels=6, confidence_threshold=0.8):
         self.sequence_length = sequence_length; self.num_channels = num_channels
@@ -84,3 +88,5 @@ class CNNClassifier:
             for j in range(cm.shape[1]):
                 ax.text(j, i, format(cm[i, j], 'd'), ha="center", va="center", color="white" if cm[i, j] > thresh else "black")
         fig.tight_layout(); plt.show()
+
+"""

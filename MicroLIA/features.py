@@ -1,11 +1,19 @@
+# -*- coding: utf-8 -*-
+"""
+    Created on Thu Jan 12 14:30:12 2017
+    
+    @author: danielgodinez
+"""
 import numpy as np
 from scipy.special import erf         
 from scipy.stats import invgauss    
 from scipy import signal as ssignal
-from MicroLIA import helper_features
 import scipy.stats as sstats
+from numpy.typing import ArrayLike
 
-def abs_energy(time, mag, magerr, apply_weights=True):
+from MicroLIA import helper_features
+
+def abs_energy(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Compute the absolute energy of a light curve.
 
@@ -45,8 +53,7 @@ def abs_energy(time, mag, magerr, apply_weights=True):
 
     return np.sum(w * mag**2)
 
-
-def abs_sum_changes(time, mag, magerr, apply_weights=True):
+def abs_sum_changes(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Compute the absolute sum of changes in a light curve.
 
@@ -94,8 +101,7 @@ def abs_sum_changes(time, mag, magerr, apply_weights=True):
 
     return np.sum(dmag[valid] / derr[valid])
 
-
-def above1(time, mag, magerr, apply_weights=True):
+def above1(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 1σ above the median.
 
@@ -126,11 +132,9 @@ def above1(time, mag, magerr, apply_weights=True):
     - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=+1)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=+1)
 
-
-def above3(time, mag, magerr, apply_weights=True):
+def above3(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 3σ above the median.
 
@@ -161,11 +165,9 @@ def above3(time, mag, magerr, apply_weights=True):
     - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=+3)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=+3)
 
-
-def above5(time, mag, magerr, apply_weights=True):
+def above5(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 5σ above the median.
 
@@ -196,11 +198,9 @@ def above5(time, mag, magerr, apply_weights=True):
     - Sensitive to outliers and skewed distributions; robust normalization is recommended if noise is high.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=+5)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=+5)
 
-
-def amplitude(time, mag, magerr, apply_weights=True, pct_clip=1.0):
+def amplitude(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, pct_clip: float = 1.0) -> float:
     """
     Estimate the amplitude of a light curve using clipped percentiles.
 
@@ -256,8 +256,7 @@ def amplitude(time, mag, magerr, apply_weights=True, pct_clip=1.0):
 
     return hi - lo
 
-
-def AndersonDarling(time, mag, magerr, apply_weights=True):
+def AndersonDarling(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Compute the Anderson–Darling statistic as a measure of normality.
 
@@ -312,8 +311,7 @@ def AndersonDarling(time, mag, magerr, apply_weights=True):
 
     return 1.0 / (1.0 + np.exp(-10.0 * (a2 - 0.3)))
 
-
-def auto_corr(time, mag, magerr, apply_weights=True):
+def auto_corr(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Compute the lag-1 autocorrelation of a light curve.
 
@@ -367,8 +365,7 @@ def auto_corr(time, mag, magerr, apply_weights=True):
 
     return num / den if den > 0 else np.nan
 
-
-def below1(time, mag, magerr, apply_weights=True):
+def below1(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 1σ below the median.
 
@@ -398,11 +395,9 @@ def below1(time, mag, magerr, apply_weights=True):
     - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=-1)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=-1)
 
-
-def below3(time, mag, magerr, apply_weights=True):
+def below3(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 3σ below the median.
 
@@ -432,11 +427,9 @@ def below3(time, mag, magerr, apply_weights=True):
     - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=-3)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=-3)
 
-
-def below5(time, mag, magerr, apply_weights=True):
+def below5(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of points more than 5σ below the median.
 
@@ -466,11 +459,9 @@ def below5(time, mag, magerr, apply_weights=True):
     - Most effective with **normalized flux**, but compatible with magnitudes or fluxes.
     """
 
-    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float),
-                       apply_weights=apply_weights, sign=-5)
+    return helper_features._frac_sigma(np.asarray(mag, float), np.asarray(magerr, float), apply_weights=apply_weights, sign=-5)
 
-
-def benford_correlation(time, mag, magerr, apply_weights=True):
+def benford_correlation(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Correlation with Benford's Law based on first significant digit frequencies.
 
@@ -532,8 +523,7 @@ def benford_correlation(time, mag, magerr, apply_weights=True):
 
     return np.corrcoef(benford, data_freq)[0, 1]
 
-
-def c3(time, mag, magerr, apply_weights=True, lag=1):
+def c3(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, lag: int = 1) -> float:
     """
     Third-order autocorrelation statistic (C₃) of a light curve.
 
@@ -549,10 +539,10 @@ def c3(time, mag, magerr, apply_weights=True, lag=1):
         Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
     magerr : array-like
         Measurement uncertainties associated with each `mag` value.
-    lag : int, optional (default=1)
-        Time step (in array index units) between elements in the triplet. The function evaluates the product of values at positions (i, i+lag, i+2*lag).
     apply_weights : bool, optional (default=True)
         If True, each triplet is weighted by the inverse variance of the combined uncertainty.
+    lag : int, optional (default=1)
+        Time step (in array index units) between elements in the triplet. The function evaluates the product of values at positions (i, i+lag, i+2*lag).
 
     Returns
     -------
@@ -590,8 +580,7 @@ def c3(time, mag, magerr, apply_weights=True, lag=1):
 
     return np.sum(w * triple) / w.sum()
 
-
-def check_for_duplicate(time, mag, magerr, apply_weights=True):
+def check_for_duplicate(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Check for duplicate or nearly duplicate light curve values.
 
@@ -624,10 +613,9 @@ def check_for_duplicate(time, mag, magerr, apply_weights=True):
     mag = np.asarray(mag, float)
     magerr = np.asarray(magerr, float)
 
-    return helper_features._dup_with_tol(mag, magerr) if apply_weights else int(mag.size != np.unique(mag).size)
+    return float(helper_features._dup_with_tol(mag, magerr)) if apply_weights else float(mag.size != np.unique(mag).size)
 
-
-def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
+def check_for_max_duplicate(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Check for duplicate maximum values in a light curve.
 
@@ -662,14 +650,11 @@ def check_for_max_duplicate(time, mag, magerr, apply_weights=True):
     magerr = np.asarray(magerr, float)
 
     max_val = np.max(mag)
-    idx = np.where(np.isclose(mag, max_val,
-                              atol=(3 * magerr if apply_weights else 0),
-                              rtol=0))[0]
+    idx = np.where(np.isclose(mag, max_val, atol=(3 * magerr if apply_weights else 0), rtol=0))[0]
 
-    return int(idx.size > 1)
+    return float(idx.size > 1)
 
-
-def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
+def check_for_min_duplicate(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Check for duplicate minimum values in a light curve.
 
@@ -704,14 +689,11 @@ def check_for_min_duplicate(time, mag, magerr, apply_weights=True):
     magerr = np.asarray(magerr, float)
 
     min_val = np.min(mag)
-    idx = np.where(np.isclose(mag, min_val,
-                              atol=(3 * magerr if apply_weights else 0),
-                              rtol=0))[0]
+    idx = np.where(np.isclose(mag, min_val, atol=(3 * magerr if apply_weights else 0), rtol=0))[0]
 
-    return int(idx.size > 1)
+    return float(idx.size > 1)
 
-
-def check_max_last_loc(time, mag, magerr, apply_weights=True):
+def check_max_last_loc(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Relative position of the last occurrence of the maximum value in a light curve.
 
@@ -757,8 +739,7 @@ def check_max_last_loc(time, mag, magerr, apply_weights=True):
 
     return 1.0 - idx[-1] / mag.size if idx.size else np.nan
 
-
-def check_min_last_loc(time, mag, magerr, apply_weights=True):
+def check_min_last_loc(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Relative position of the last occurrence of the minimum value in a light curve.
 
@@ -805,8 +786,7 @@ def check_min_last_loc(time, mag, magerr, apply_weights=True):
 
     return 1.0 - idx[-1] / mag.size if idx.size else np.nan
 
-
-def complexity(time, mag, magerr, apply_weights=True):
+def complexity(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Estimate the local complexity of a light curve using root-mean-square of differences.
 
@@ -856,8 +836,7 @@ def complexity(time, mag, magerr, apply_weights=True):
 
     return np.sqrt(np.sum(w * diff**2) / w.sum())
 
-
-def con_above1(time, mag, magerr, apply_weights=True):
+def con_above1(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly bright points.
 
@@ -915,8 +894,7 @@ def con_above1(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def con_above3(time, mag, magerr, apply_weights=True):
+def con_above3(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly bright points.
 
@@ -974,8 +952,7 @@ def con_above3(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def con_above5(time, mag, magerr, apply_weights=True):
+def con_above5(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly bright points.
 
@@ -1033,8 +1010,7 @@ def con_above5(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def con_below1(time, mag, magerr, apply_weights=True):
+def con_below1(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly dim points.
 
@@ -1091,8 +1067,7 @@ def con_below1(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def con_below3(time, mag, magerr, apply_weights=True):
+def con_below3(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly dim points.
 
@@ -1150,8 +1125,7 @@ def con_below3(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def con_below5(time, mag, magerr, apply_weights=True):
+def con_below5(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of clusters of ≥3 consecutive significantly dim points.
 
@@ -1209,8 +1183,7 @@ def con_below5(time, mag, magerr, apply_weights=True):
 
     return clusters / mag.size
 
-
-def count_above(time, mag, magerr, apply_weights=True):
+def count_above(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of light curve points above the median.
 
@@ -1256,8 +1229,7 @@ def count_above(time, mag, magerr, apply_weights=True):
 
     return w[mag > med].sum() / w.sum()
 
-
-def count_below(time, mag, magerr, apply_weights=True):
+def count_below(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of light curve points below the median.
 
@@ -1303,8 +1275,7 @@ def count_below(time, mag, magerr, apply_weights=True):
 
     return w[mag < med].sum() / w.sum()
 
-
-def cusum(time, mag, magerr, apply_weights=True):
+def cusum(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Cumulative sum (CUSUM) variability index.
 
@@ -1358,8 +1329,7 @@ def cusum(time, mag, magerr, apply_weights=True):
 
     return np.max(c) - np.min(c)
 
-
-def first_loc_max(time, mag, magerr, apply_weights=True):
+def first_loc_max(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Normalized location of the first occurrence of the maximum value.
 
@@ -1405,8 +1375,7 @@ def first_loc_max(time, mag, magerr, apply_weights=True):
 
     return idx / mag.size
 
-
-def first_loc_min(time, mag, magerr, apply_weights=True):
+def first_loc_min(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Normalized location of the first occurrence of the minimum value.
 
@@ -1454,8 +1423,7 @@ def first_loc_min(time, mag, magerr, apply_weights=True):
 
     return idx / mag.size
 
-
-def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
+def FluxPercentileRatioMid20(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Flux percentile ratio for the middle 20% of the light curve.
 
@@ -1488,8 +1456,7 @@ def FluxPercentileRatioMid20(time, mag, magerr, apply_weights=True):
 
     return helper_features._flux_percentile_ratio(mag, magerr, 0.40, 0.60, apply_weights)
 
-
-def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
+def FluxPercentileRatioMid35(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Flux percentile ratio for the middle 35% of the light curve.
 
@@ -1522,8 +1489,7 @@ def FluxPercentileRatioMid35(time, mag, magerr, apply_weights=True):
 
     return helper_features._flux_percentile_ratio(mag, magerr, 0.325, 0.675, apply_weights)
 
-
-def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
+def FluxPercentileRatioMid50(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Flux percentile ratio for the middle 50% of the light curve.
 
@@ -1556,8 +1522,7 @@ def FluxPercentileRatioMid50(time, mag, magerr, apply_weights=True):
 
     return helper_features._flux_percentile_ratio(mag, magerr, 0.25, 0.75, apply_weights)
 
-
-def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
+def FluxPercentileRatioMid65(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Flux percentile ratio for the middle 65% of the light curve.
 
@@ -1590,8 +1555,7 @@ def FluxPercentileRatioMid65(time, mag, magerr, apply_weights=True):
 
     return helper_features._flux_percentile_ratio(mag, magerr, 0.175, 0.825, apply_weights)
 
-
-def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
+def FluxPercentileRatioMid80(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Flux percentile ratio for the middle 80% of the light curve.
 
@@ -1624,8 +1588,7 @@ def FluxPercentileRatioMid80(time, mag, magerr, apply_weights=True):
 
     return helper_features._flux_percentile_ratio(mag, magerr, 0.10, 0.90, apply_weights)
 
-
-def Gskew(time, mag, magerr, apply_weights=True):
+def Gskew(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Robust skewness estimator using extreme quantiles (G-skew).
 
@@ -1678,8 +1641,7 @@ def Gskew(time, mag, magerr, apply_weights=True):
 
     return mq3 + mq97 - 2 * med
 
-
-def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
+def half_mag_amplitude_ratio(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Ratio of variability amplitude above vs. below the median.
 
@@ -1736,8 +1698,7 @@ def half_mag_amplitude_ratio(time, mag, magerr, apply_weights=True):
 
     return np.sqrt(var_low / var_high) if (var_low > 0 and var_high > 0) else np.nan
 
-
-def index_mass_quantile(time, mag, magerr, apply_weights=True, r=0.5):
+def index_mass_quantile(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, r: float = 0.5) -> float:
     """
     Index at which a given fraction of the absolute cumulative flux is reached.
 
@@ -1754,10 +1715,10 @@ def index_mass_quantile(time, mag, magerr, apply_weights=True, r=0.5):
         Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
     magerr : array-like
         Photometric uncertainties associated with each `mag` value.
-    r : float, optional (default=0.5)
-        The cumulative mass quantile to evaluate (must be in (0, 1)).
     apply_weights : bool, optional (default=True)
         If True, uses inverse-variance weighting (1 / magerr²) when computing cumulative mass.
+    r : float, optional (default=0.5)
+        The cumulative mass quantile to evaluate (must be in (0, 1)).
 
     Returns
     -------
@@ -1790,8 +1751,7 @@ def index_mass_quantile(time, mag, magerr, apply_weights=True, r=0.5):
 
     return (idx + 1) / mag.size
 
-
-def integrate(time, mag, magerr, apply_weights=True):
+def integrate(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Numerical integration of the light curve using the trapezoidal rule.
 
@@ -1822,13 +1782,11 @@ def integrate(time, mag, magerr, apply_weights=True):
     - Works for **unevenly sampled** data.
     """
 
-    #integrated_mag = np.trapezoid(mag, time)
-    integrated_mag = np.trapz(mag, time)
+    integrated_mag = np.trapezoid(mag, time)
     
     return integrated_mag
 
-
-def kurtosis(time, mag, magerr, apply_weights=True, fisher=True):
+def kurtosis(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, fisher: bool = True) -> float:
     """
     Weighted or unweighted kurtosis of the light curve.
 
@@ -1886,8 +1844,7 @@ def kurtosis(time, mag, magerr, apply_weights=True, fisher=True):
 
     return g2 - 3.0 if fisher else g2
 
-
-def large_standard_deviation(time, mag, magerr, apply_weights=True, r=0.3):
+def large_standard_deviation(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, r: float = 0.3) -> float:
     """
     Binary indicator for large standard deviation relative to dynamic range.
 
@@ -1903,10 +1860,10 @@ def large_standard_deviation(time, mag, magerr, apply_weights=True, r=0.3):
         Light curve values. Can be magnitudes, fluxes, or normalized fluxes.
     magerr : array-like
         Photometric uncertainties associated with each `mag` value.
-    r : float, optional (default=0.3)
-        Threshold ratio. Returns 1 if std > `r × (max - min)`; otherwise 0.
     apply_weights : bool, optional (default=True)
         If True, computes a weighted standard deviation using inverse-variance weights.
+    r : float, optional (default=0.3)
+        Threshold ratio. Returns 1 if std > `r × (max - min)`; otherwise 0.
 
     Returns
     -------
@@ -1925,19 +1882,18 @@ def large_standard_deviation(time, mag, magerr, apply_weights=True, r=0.3):
     rng = mag.max() - mag.min()
 
     if rng == 0:
-        return 0
+        return 0.0
 
     if not apply_weights:
-        return int(np.std(mag, ddof=0) > r * rng)
+        return float(np.std(mag, ddof=0) > r * rng)
 
     w = helper_features._safe_weights(magerr)
     mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
     sigma = np.sqrt((w * (mag - mu) ** 2).sum() / w.sum()) if w.sum() else np.std(mag)
     
-    return int(sigma > r * rng)
+    return float(sigma > r * rng)
 
-
-def LinearTrend(time, mag, magerr, apply_weights=True):
+def LinearTrend(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Slope of the best-fit linear trend in the light curve.
 
@@ -1990,8 +1946,7 @@ def LinearTrend(time, mag, magerr, apply_weights=True):
 
     return cov / var if var > 0 else np.nan
 
-
-def longest_strike_above(time, mag, magerr, apply_weights=True):
+def longest_strike_above(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Longest consecutive run of points significantly above the median.
 
@@ -2034,8 +1989,7 @@ def longest_strike_above(time, mag, magerr, apply_weights=True):
 
     return helper_features._longest_true_run(mask) / mag.size
 
-
-def longest_strike_below(time, mag, magerr, apply_weights=True):
+def longest_strike_below(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Longest consecutive run of points significantly below the median.
 
@@ -2078,8 +2032,7 @@ def longest_strike_below(time, mag, magerr, apply_weights=True):
 
     return helper_features._longest_true_run(mask) / mag.size
 
-
-def MaxSlope(time, mag, magerr, apply_weights=True):
+def MaxSlope(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Maximum or weighted average absolute slope between consecutive light curve points.
 
@@ -2134,8 +2087,7 @@ def MaxSlope(time, mag, magerr, apply_weights=True):
 
     return np.sum(w * s) / w.sum()
 
-
-def mean_abs_change(time, mag, magerr, apply_weights=True):
+def mean_abs_change(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Mean or weighted mean of absolute changes between consecutive light curve points.
 
@@ -2182,8 +2134,7 @@ def mean_abs_change(time, mag, magerr, apply_weights=True):
 
     return np.sum(w * diffs) / w.sum() if w.sum() else diffs.mean()
 
-
-def mean_change(time, mag, magerr, apply_weights=True):
+def mean_change(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Mean or weighted mean of signed changes between consecutive light curve points.
 
@@ -2230,8 +2181,7 @@ def mean_change(time, mag, magerr, apply_weights=True):
 
     return np.sum(w * diffs) / w.sum() if w.sum() else diffs.mean()
 
-
-def meanMag(time, mag, magerr, apply_weights=True):
+def meanMag(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Mean or weighted mean of the light curve values.
 
@@ -2277,8 +2227,7 @@ def meanMag(time, mag, magerr, apply_weights=True):
 
     return np.sum(w * mag) / w.sum() if w.sum() > 0 else np.mean(mag)
 
-
-def mean_n_abs_max(time, mag, magerr, apply_weights=True, number_of_maxima=10):
+def mean_n_abs_max(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, number_of_maxima: int = 10) -> float:
     """
     Mean or weighted mean of the top-N largest absolute light curve values.
 
@@ -2295,10 +2244,10 @@ def mean_n_abs_max(time, mag, magerr, apply_weights=True, number_of_maxima=10):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties associated with each `mag` value.
-    number_of_maxima : int, optional (default=10)
-        Number of largest absolute values to include in the average.
     apply_weights : bool, optional (default=True)
         If True, uses inverse-variance weighting. Otherwise, uses unweighted mean.
+    number_of_maxima : int, optional (default=10)
+        Number of largest absolute values to include in the average.
 
     Returns
     -------
@@ -2330,8 +2279,7 @@ def mean_n_abs_max(time, mag, magerr, apply_weights=True, number_of_maxima=10):
 
     return np.sum(w * np.abs(mag[idx])) / w.sum() if w.sum() else np.abs(mag[idx]).mean()
 
-
-def mean_second_derivative(time, mag, magerr, apply_weights=True):
+def mean_second_derivative(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Mean or weighted mean of the discrete second derivative in a light curve.
 
@@ -2399,8 +2347,7 @@ def mean_second_derivative(time, mag, magerr, apply_weights=True):
 
     return np.sum(w[good_w] * d2[good_w]) / w[good_w].sum()
 
-
-def medianAbsDev(time, mag, magerr, apply_weights=True):
+def medianAbsDev(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Median Absolute Deviation (MAD) of the light curve.
 
@@ -2451,8 +2398,7 @@ def medianAbsDev(time, mag, magerr, apply_weights=True):
 
     return mad
 
-
-def median_buffer_range(time, mag, magerr, apply_weights=True):
+def median_buffer_range(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of light curve points within ±10% of the semi-amplitude around the central value.
 
@@ -2505,8 +2451,7 @@ def median_buffer_range(time, mag, magerr, apply_weights=True):
 
     return np.count_nonzero((mag > a) & (mag < b)) / float(mag.size)
 
-
-def median_distance(time, mag, magerr, apply_weights=True):
+def median_distance(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Median Euclidean distance between consecutive light curve points in time-magnitude space.
 
@@ -2557,8 +2502,7 @@ def median_distance(time, mag, magerr, apply_weights=True):
 
     return np.median(dist) if dist.size else np.nan
 
-
-def number_cwt_like_peaks(time, mag, magerr, apply_weights=True):
+def number_cwt_like_peaks(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Normalized count of CWT-like peaks in a light curve using simple prominence and width criteria.
 
@@ -2604,8 +2548,7 @@ def number_cwt_like_peaks(time, mag, magerr, apply_weights=True):
 
     return len(peaks) / mag.size
 
-
-def number_of_crossings(time, mag, magerr, apply_weights=True):
+def number_of_crossings(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Fraction of sign changes relative to the median of the light curve.
 
@@ -2653,8 +2596,7 @@ def number_of_crossings(time, mag, magerr, apply_weights=True):
 
     return (basic_cross & strong).sum() / mag.size
 
-
-def PairSlopeTrend(time, mag, magerr, apply_weights=True, n_last=30):
+def PairSlopeTrend(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, n_last: int = 30) -> float:
     """
     Trend fraction based on slopes of recent consecutive magnitude pairs.
 
@@ -2709,8 +2651,7 @@ def PairSlopeTrend(time, mag, magerr, apply_weights=True, n_last=30):
 
     return w_pos / (w_pos + w_neg) if (w_pos + w_neg) > 0 else np.nan
 
-
-def PercentAmplitude(time, mag, magerr, apply_weights=True):
+def PercentAmplitude(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Maximum percent deviation from the (weighted) median magnitude.
 
@@ -2757,8 +2698,7 @@ def PercentAmplitude(time, mag, magerr, apply_weights=True):
 
     return amp / med if med != 0 else np.inf
 
-
-def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
+def PercentDifferenceFluxPercentile(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Inter-percentile range divided by the median: (F95 − F5) / median.
 
@@ -2805,8 +2745,7 @@ def PercentDifferenceFluxPercentile(time, mag, magerr, apply_weights=True):
 
     return (p95 - p5) / med if med != 0 else np.inf
 
-
-def permutation_entropy(time, mag, magerr, apply_weights=True, tau=1, dimension=3):
+def permutation_entropy(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, tau: int = 1, dimension: int = 3) -> float:
     """
     Permutation entropy of the light curve.
 
@@ -2855,8 +2794,7 @@ def permutation_entropy(time, mag, magerr, apply_weights=True, tau=1, dimension=
 
     return -np.sum(probs * np.log(probs))
 
-
-def prominence_peaks(time, mag, magerr, apply_weights=True, thres=0.3, min_dist=25, thres_abs=False):
+def prominence_peaks(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, thres: float = 0.3, min_dist: int = 25, thres_abs: bool = False) -> float:
     """
     Detects prominent peaks in a light curve using slope changes and thresholding.
 
@@ -2971,8 +2909,7 @@ def prominence_peaks(time, mag, magerr, apply_weights=True, thres=0.3, min_dist=
 
     return len(peaks.astype(int)) / len(mag)
 
-
-def quantile_5(time, mag, magerr, apply_weights=True):
+def quantile_5(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     5th percentile value of the light curve. This is useful for describing the brightness distribution 
     without being sensitive to outliers.
@@ -2985,6 +2922,8 @@ def quantile_5(time, mag, magerr, apply_weights=True):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Currently unused; included for API consistency.
 
     Returns
     -------
@@ -2998,8 +2937,7 @@ def quantile_5(time, mag, magerr, apply_weights=True):
 
     return np.quantile(np.asarray(mag, float), 0.05)
 
-
-def quantile_25(time, mag, magerr, apply_weights=True):
+def quantile_25(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     25th percentile value of the light curve. This is useful for describing the brightness distribution 
     without being sensitive to outliers.
@@ -3012,6 +2950,8 @@ def quantile_25(time, mag, magerr, apply_weights=True):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Currently unused; included for API consistency.
 
     Returns
     -------
@@ -3025,8 +2965,7 @@ def quantile_25(time, mag, magerr, apply_weights=True):
 
     return np.quantile(np.asarray(mag, float), 0.25)
 
-
-def quantile_50(time, mag, magerr, apply_weights=True):
+def quantile_50(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Median (50th percentile) value of the light curve. This is useful for describing the brightness distribution 
     without being sensitive to outliers.
@@ -3039,6 +2978,9 @@ def quantile_50(time, mag, magerr, apply_weights=True):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Currently unused; included for API consistency.
+
     Returns
     -------
     float
@@ -3051,8 +2993,7 @@ def quantile_50(time, mag, magerr, apply_weights=True):
 
     return np.quantile(np.asarray(mag, float), 0.50)
 
-
-def quantile_75(time, mag, magerr, apply_weights=True):
+def quantile_75(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     75th percentile value of the light curve. This is useful for describing the brightness distribution 
     without being sensitive to outliers.
@@ -3065,6 +3006,8 @@ def quantile_75(time, mag, magerr, apply_weights=True):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Currently unused; included for API consistency.
 
     Returns
     -------
@@ -3078,8 +3021,7 @@ def quantile_75(time, mag, magerr, apply_weights=True):
 
     return np.quantile(np.asarray(mag, float), 0.75)
 
-
-def quantile_95(time, mag, magerr, apply_weights=True):
+def quantile_95(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     95th percentile value of the light curve. This is useful for describing the brightness distribution 
     without being sensitive to outliers.
@@ -3092,6 +3034,8 @@ def quantile_95(time, mag, magerr, apply_weights=True):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
+    apply_weights : bool, optional (default=True)
+        Currently unused; included for API consistency.
 
     Returns
     -------
@@ -3105,8 +3049,7 @@ def quantile_95(time, mag, magerr, apply_weights=True):
 
     return np.quantile(np.asarray(mag, float), 0.95)
 
-
-def ratio_recurring_points(time, mag, magerr, apply_weights=True):
+def ratio_recurring_points(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Ratio of recurring values in the light curve.
 
@@ -3154,8 +3097,7 @@ def ratio_recurring_points(time, mag, magerr, apply_weights=True):
 
     return recurring / uniq.size if uniq.size > 0 else 0.0
 
-
-def root_mean_squared(time, mag, magerr, apply_weights=True):
+def root_mean_squared(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Root-mean-square (RMS) deviation of the light curve magnitudes.
 
@@ -3196,10 +3138,10 @@ def root_mean_squared(time, mag, magerr, apply_weights=True):
 
     mean = np.sum(w * mag) / np.sum(w)
     rms = np.sqrt(np.sum(w * (mag - mean) ** 2) / np.sum(w))
+
     return rms
 
-
-def sample_entropy(time, mag, magerr, apply_weights=True):
+def sample_entropy(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Sample entropy of the light curve.
 
@@ -3215,7 +3157,7 @@ def sample_entropy(time, mag, magerr, apply_weights=True):
     magerr : array-like
         Photometric uncertainties. Not used in the calculation but included for API consistency.
     apply_weights : bool, default True
-        Currently unused; included for interface consistency.
+        Currently unused; included for API consistency.
 
     Returns
     -------
@@ -3250,8 +3192,7 @@ def sample_entropy(time, mag, magerr, apply_weights=True):
 
     return -np.log(A / B) if A > 0 and B > 0 else np.nan
 
-
-def shannon_entropy(time, mag, magerr, apply_weights=True, eps=1e-12):
+def shannon_entropy(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, eps: float = 1e-12) -> float:
     """
     Shannon–type entropy of a light curve.
 
@@ -3323,8 +3264,7 @@ def shannon_entropy(time, mag, magerr, apply_weights=True, eps=1e-12):
 
     return ent_gauss + ent_inv
 
-
-def shapiro_wilk(time, mag, magerr, apply_weights=True):
+def shapiro_wilk(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Shapiro–Wilk normality test statistic for light-curve data.
 
@@ -3357,8 +3297,7 @@ def shapiro_wilk(time, mag, magerr, apply_weights=True):
 
     return sstats.shapiro(np.asarray(mag, float))[0]
 
-
-def skewness(time, mag, magerr, apply_weights=True):
+def skewness(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Weighted or unweighted skewness of the light-curve distribution.
 
@@ -3413,8 +3352,7 @@ def skewness(time, mag, magerr, apply_weights=True):
 
     return third / std**3
 
-
-def std_over_mean(time, mag, magerr, apply_weights=True):
+def std_over_mean(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Coefficient of variation (σ / μ) of the light-curve values.
 
@@ -3467,8 +3405,7 @@ def std_over_mean(time, mag, magerr, apply_weights=True):
 
     return np.sqrt(var) / mean if mean != 0 else np.inf
 
-
-def stetsonJ(time, mag, magerr, apply_weights=True):
+def stetsonJ(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Stetson's J variability index.
 
@@ -3506,8 +3443,7 @@ def stetsonJ(time, mag, magerr, apply_weights=True):
 
     return np.sum(np.sign(Pk) * np.sqrt(np.abs(Pk))) / len(Pk) # mag.size
 
-
-def stetsonK(time, mag, magerr, apply_weights=True):
+def stetsonK(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Stetson's K variability index.
 
@@ -3544,8 +3480,7 @@ def stetsonK(time, mag, magerr, apply_weights=True):
 
     return (np.sum(np.abs(d)) / n) / np.sqrt(np.sum(d ** 2) / n)
 
-
-def stetsonL(time, mag, magerr, apply_weights=True):
+def stetsonL(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Stetson's L variability index.
 
@@ -3580,8 +3515,7 @@ def stetsonL(time, mag, magerr, apply_weights=True):
 
     return J * K / 0.798 if np.isfinite(J) and np.isfinite(K) else np.nan
 
-
-def sum_values(time, mag, magerr, apply_weights=True):
+def sum_values(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Mean value of the light curve (weighted or unweighted).
 
@@ -3624,8 +3558,7 @@ def sum_values(time, mag, magerr, apply_weights=True):
 
     return (w * mag).sum() / w.sum() if w.sum() else mag.mean()
 
-
-def symmetry_looking(time, mag, magerr, apply_weights=True, r=0.5):
+def symmetry_looking(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, r: float = 0.5) -> float:
     """
     Symmetry indicator based on mean–median agreement.
 
@@ -3664,19 +3597,18 @@ def symmetry_looking(time, mag, magerr, apply_weights=True, r=0.5):
 
     rng = mag.max() - mag.min()
     if rng == 0:
-        return 1
+        return 1.0
 
     if not apply_weights:
-        return int(np.abs(mag.mean() - np.median(mag)) < r * rng)
+        return float(np.abs(mag.mean() - np.median(mag)) < r * rng)
 
     w = helper_features._safe_weights(magerr)
     mu = (w * mag).sum() / w.sum() if w.sum() else mag.mean()
     med = helper_features._weighted_median(mag, w) if w.sum() else np.median(mag)
 
-    return int(np.abs(mu - med) < r * rng)
+    return float(np.abs(mu - med) < r * rng)
 
-
-def time_reversal_asymmetry(time, mag, magerr, apply_weights=True, lag=1):
+def time_reversal_asymmetry(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, lag: int = 1) -> float:
     """
     Time-reversal asymmetry statistic with τ-lag.
 
@@ -3725,8 +3657,7 @@ def time_reversal_asymmetry(time, mag, magerr, apply_weights=True, lag=1):
 
     return (w * stat).sum() / w.sum() if w.sum() else stat.mean()
 
-
-def time_reversal_asymmetry_normalized(time, mag, magerr, apply_weights=False, tau=3):
+def time_reversal_asymmetry_normalized(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = False, tau: int = 3) -> float:
     """
     Normalized time-reversal asymmetry (TREV) statistic.
 
@@ -3784,8 +3715,7 @@ def time_reversal_asymmetry_normalized(time, mag, magerr, apply_weights=False, t
 
     return num / denom if denom > 0 else 0.0
 
-
-def variance(time, mag, magerr, apply_weights=True):
+def variance(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Weighted/unweighted variance of the light curve.
 
@@ -3825,8 +3755,7 @@ def variance(time, mag, magerr, apply_weights=True):
 
     return (w * (mag - mu) ** 2).sum() / w.sum() if w.sum() else np.var(mag, ddof=0)
 
-
-def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=True):
+def variance_larger_than_standard_deviation(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Binary test: is variance greater than standard deviation?
 
@@ -3857,10 +3786,9 @@ def variance_larger_than_standard_deviation(time, mag, magerr, apply_weights=Tru
 
     var = variance(time, mag, magerr, apply_weights)
 
-    return int(var > np.sqrt(var)) if np.isfinite(var) else np.nan
+    return float(var > np.sqrt(var)) if np.isfinite(var) else np.nan
 
-
-def variation_coefficient(time, mag, magerr, apply_weights=True):
+def variation_coefficient(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Coefficient of variation (σ / μ).
 
@@ -3905,8 +3833,7 @@ def variation_coefficient(time, mag, magerr, apply_weights=True):
 
     return sigma / mu if mu else np.nan
 
-
-def vonNeumannRatio(time, mag, magerr, apply_weights=True):
+def vonNeumannRatio(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True) -> float:
     """
     Von Neumann's η statistic: ratio of successive differences to variance.
 
@@ -3958,8 +3885,7 @@ def vonNeumannRatio(time, mag, magerr, apply_weights=True):
 
     return delta / var if var > 0 else np.inf
 
-
-def windowed_peak_fraction(time, mag, magerr, apply_weights=True, n=7):
+def windowed_peak_fraction(time: ArrayLike, mag: ArrayLike, magerr: ArrayLike, apply_weights: bool = True, n: int = 7) -> float:
     """
     Normalized number of local peaks in the light curve.
 
@@ -3975,10 +3901,10 @@ def windowed_peak_fraction(time, mag, magerr, apply_weights=True, n=7):
         Light curve values (magnitudes, fluxes, or normalized fluxes).
     magerr : array-like
         Photometric uncertainties associated with each `mag` value.
-    n : int, optional (default=7)
-        Number of neighbors to compare on each side of the point. The light curve must have at least `2n+1` points.
     apply_weights : bool, optional (default=True)
         If True, requires the peak to be significantly above neighbors based on the combined uncertainty.
+    n : int, optional (default=7)
+        Number of neighbors to compare on each side of the point. The light curve must have at least `2n+1` points.
 
     Returns
     -------

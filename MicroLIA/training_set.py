@@ -7,17 +7,19 @@ Created on Thu Jun 28 20:30:11 2018
 import os
 import random
 from pathlib import Path
-import pkg_resources
-from warnings import warn
-from inspect import getmembers, isfunction
+import importlib.resources as resources
 
 import numpy as np
+from progress import bar
+from warnings import warn
 import matplotlib.pyplot as plt  
 from pandas import DataFrame
 from astropy.io import fits
-from progress import bar
 from astropy.io.votable import parse_single_table
-from sklearn import decomposition
+
+from numpy.typing import ArrayLike
+from typing import Optional
+from collections.abc import Callable
 
 from MicroLIA import simulate
 from MicroLIA import noise_models
@@ -25,9 +27,25 @@ from MicroLIA import quality_check
 from MicroLIA import extract_features
 from MicroLIA import features
 
-def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=None, zp=24, exptime=60, 
-    n_class=500, ml_n1=7, cv_n1=7, cv_n2=1, t0_dist=None, u0_dist=None, tE_dist=None, filename=None, 
-    apply_weights=True, save_file=True):
+def create(
+    timestamps: list[ArrayLike] | ArrayLike,
+    load_microlensing: Optional[str | list[ArrayLike]] = None,
+    min_mag: float = 14,
+    max_mag: float = 21,
+    noise: Optional[Callable[[ArrayLike], tuple[ArrayLike, ArrayLike]]] = None,
+    zp: float = 24,
+    exptime: float = 60,
+    n_class: int = 500,
+    ml_n1: int = 7,
+    cv_n1: int = 7,
+    cv_n2: int = 1,
+    t0_dist: Optional[tuple[float, float] | ArrayLike] = None,
+    u0_dist: Optional[tuple[float, float] | ArrayLike] = None,
+    tE_dist: Optional[tuple[float, float] | ArrayLike] = None,
+    filename: Optional[str] = None,
+    apply_weights: bool = True,
+    save_file: bool = True,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
@@ -35,99 +53,96 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     function, or Gaussian by default.
 
     Note:
-        To input your own microlensing lightcurves, you can set the load_microlensing parameter, which
-        takes the path to a directory containing the lightcurve text files (3 columns: time,mag,magerr).
+    To input your own microlensing lightcurves, you can set the load_microlensing parameter, which
+    takes the path to a directory containing the lightcurve text files (3 columns: time,mag,magerr).
 
-        Instead of a path, another valid input is a 3-dimensional array or list. This will be parsed one 
-        element at a time along the 0th axis. Example:
+    Instead of a path, another valid input is a 3-dimensional array or list. This will be parsed one 
+    element at a time along the 0th axis. Example:
 
-        >>> lightcurves = []
-        >>> lightcurve_1 = np.c_[time1, mag1, magerr1]
-        >>> lightcurve_2 = np.c_[time2, mag2, magerr2]
-        >>>
-        >>> lightcurves.append(lightcurve_1)
-        >>> lightcurves.append(lightcurve_2)
-        >>>
-        >>> create(timestamps, load_microlensing=lightcurves)
+    >>> lightcurves = []
+    >>> lightcurve_1 = np.c_[time1, mag1, magerr1]
+    >>> lightcurve_2 = np.c_[time2, mag2, magerr2]
+    >>>
+    >>> lightcurves.append(lightcurve_1)
+    >>> lightcurves.append(lightcurve_2)
+    >>>
+    >>> create(timestamps, load_microlensing=lightcurves)
         
     Parameters:
     ----------
-        timestamps : list
-            Times at which to simulate the different lightcurves.
-            Must be an array/list containing all possible timestamps combinations, stored as lists.
-        load_microlensing : str, list, optional
-            Either a 3-dimensional array containing the lightcurves, or the path to a folder containing
-            the lightcurve text files. Data is asummed to be in following columns: time, mag, magerr. 
-            Defaults to None, in which case the microlensing lightcurves are simulated.
-        min_mag : float, optional
-            Minimum baseline magnitude for simulating lightcurves. Defaults to 14. 
-        max_mag : float, optional 
-            Maximum baseline magnitude for simulating lightcurves. Defaults to 21.
-        noise : function, optional 
-            Noise model, must be a function of flux, can be created using the create_noise function.
-            If None it defaults to Gaussian noise. Defaults to None.
-        zp : float
-            The zero point of the observing instrument, will be used when generating
-            the noise model. Defaults to 24.
-        exptime : float
-            Exposure time in seconds, will be used to generate the noise model. Defaults to 60.
-        n_class : int, optional
-            The amount of lightcurve (per class) to simulate. Defaults to 500. 
-        ml_n1 : int, optional
-            The mininum number of measurements that should be within the microlensing 
-            signal when simulating the lightcurves. Defaults to 7.
-        cv_n1 : int, optional
-            The mininum number of measurements that should be within at least one CV outburst 
-            when simulating the lightcurves. Defaults to 7.
-        cv_n2 : int, optional
-            The mininum number of measurements that should be within the rise or drop of at least 
-            one CV outburst when simulating the lightcurves. Defaults to 1.
-        t0_dist: array, tuple, optional
-            An array or tuple containing two values, the minimum and maximum value (in that order) to 
-            consider when simulating the microlensing events (in days), as this t0 parameter will be selected
-            using a random uniform distribution according to these bounds. Defaults to None, which will 
-            compute an appropriate t0 according to the range of the input timestamps.
-        u0_dist: array, optional
-            An array or tuple containing two values, the minimum and maximum value (in that order) to 
-            consider when simulating the microlensing events, as this u0 parameter will be selected
-            using a random uniform distribution according to these bounds. Defaults to None, which will 
-            set these bounds to (0, 1).
-        te_dist: array, optional
-            An array containing the mean and standard deviation (in that order) to consider for this tE parameter
-            during the microlensing simulations, as this value will be selected from a random normal distribution
-            using the specified mean and standard deviation. Defaults to None which will apply a mean of 30 with
-            a spread of 10 days.
-        apply_weights: bool 
-            Whether to apply the photometric errors when calculating the features. Defaults
-            to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
-        save_file: bool
-            If True the lightcurve.fits and all_features.txt files will be saved to the home directory. 
-            Defaults to True.
-        filename: str, optional
-            The name to be appended to the saved files, only applicable if save_file is set to True.
-            files, only relevant if save_file=True. If no argument is input the
-            files will be saved with the default names only. Defaults to None.
+    timestamps : list
+        Times at which to simulate the different lightcurves.
+        Must be an array/list containing all possible timestamps combinations, stored as lists.
+    load_microlensing : str, list, optional
+        Either a 3-dimensional array containing the lightcurves, or the path to a folder containing
+        the lightcurve text files. Data is asummed to be in following columns: time, mag, magerr. 
+        Defaults to None, in which case the microlensing lightcurves are simulated.
+    min_mag : float, optional
+        Minimum baseline magnitude for simulating lightcurves. Defaults to 14. 
+    max_mag : float, optional 
+        Maximum baseline magnitude for simulating lightcurves. Defaults to 21.
+    noise : function, optional 
+        Noise model, must be a function of flux, can be created using the create_noise function.
+        If None it defaults to Gaussian noise. Defaults to None.
+    zp : float
+        The zero point of the observing instrument, will be used when generating
+        the noise model. Defaults to 24.
+    exptime : float
+        Exposure time in seconds, will be used to generate the noise model. Defaults to 60.
+    n_class : int, optional
+        The amount of lightcurve (per class) to simulate. Defaults to 500. 
+    ml_n1 : int, optional
+        The mininum number of measurements that should be within the microlensing 
+        signal when simulating the lightcurves. Defaults to 7.
+    cv_n1 : int, optional
+        The mininum number of measurements that should be within at least one CV outburst 
+        when simulating the lightcurves. Defaults to 7.
+    cv_n2 : int, optional
+        The mininum number of measurements that should be within the rise or drop of at least 
+        one CV outburst when simulating the lightcurves. Defaults to 1.
+    t0_dist: array, tuple, optional
+        An array or tuple containing two values, the minimum and maximum value (in that order) to 
+        consider when simulating the microlensing events (in days), as this t0 parameter will be selected
+        using a random uniform distribution according to these bounds. Defaults to None, which will 
+        compute an appropriate t0 according to the range of the input timestamps.
+    u0_dist: array, optional
+        An array or tuple containing two values, the minimum and maximum value (in that order) to 
+        consider when simulating the microlensing events, as this u0 parameter will be selected
+        using a random uniform distribution according to these bounds. Defaults to None, which will 
+        set these bounds to (0, 1).
+    te_dist: array, optional
+        An array containing the mean and standard deviation (in that order) to consider for this tE parameter
+        during the microlensing simulations, as this value will be selected from a random normal distribution
+        using the specified mean and standard deviation. Defaults to None which will apply a mean of 30 with
+        a spread of 10 days.
+    apply_weights: bool 
+        Whether to apply the photometric errors when calculating the features. Defaults
+        to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
+    save_file: bool
+        If True the lightcurve.fits and all_features.txt files will be saved to the home directory. 
+        Defaults to True.
+    filename: str, optional
+        The name to be appended to the saved files, only applicable if save_file is set to True.
+        files, only relevant if save_file=True. If no argument is input the
+        files will be saved with the default names only. Defaults to None.
 
     Returns:
     -------
-        data_x : array
-            2D array containing the statistical metrics of all simulated lightcurves.
-        data_y : array
-            1D array containing the class label of all simulated lightcurves.
-        lightcurves : FITS
-            All simulated lightcurves in a FITS file, sorted by class label and unique ID. Only
-            saved if save_file=True.
-        all_features : text file
-            A txt file containing all the features sorted by class label and unique ID. Only
-            saved if save_file=True.
-        csv : CSV file
-            A CSV file containing the training data present in the saved text file, which contains
-            the feature names and can be input directly when creating the classifier. Only
-            saved if save_file=True.
+    data_x : array
+        2D array containing the statistical metrics of all simulated lightcurves.
+    data_y : array
+        1D array containing the class label of all simulated lightcurves.
+    lightcurves : FITS
+        All simulated lightcurves in a FITS file, sorted by class label and unique ID. Only
+        saved if save_file=True.
+    all_features : text file
+        A txt file containing all the features sorted by class label and unique ID. Only
+        saved if save_file=True.
+    csv : CSV file
+        A CSV file containing the training data present in the saved text file, which contains
+        the feature names and can be input directly when creating the classifier. Only
+        saved if save_file=True.
     """
-
-    if len(getmembers(features, isfunction))*2 > n_class*5:
-        print("WARNING: The n_class argument must be at least "+str(int(1+len(getmembers(features, isfunction))*2//5))+" for principal components to be computed.")
 
     if not isinstance(timestamps, (list, np.ndarray)):
         raise ValueError("Incorrect format -- timestamps should be stored in a list or array.")
@@ -217,10 +232,10 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
     progess_bar.finish()
 
     progess_bar = bar.FillingSquaresBar('Simulating LPV............', max=n_class)  
-    resource_package = __name__
-    resource_path = '/'.join(('data', 'Miras_vo.xml'))
-    template = pkg_resources.resource_filename(resource_package, resource_path)
-    mira_table = parse_single_table(template)
+
+    with resources.files(__package__).joinpath('data/Miras_vo.xml').open('rb') as f:
+        mira_table = parse_single_table(f)
+
     primary_period = mira_table.array['col4'].data
     amplitude_pp = mira_table.array['col5'].data
     secondary_period = mira_table.array['col6'].data
@@ -373,7 +388,15 @@ def create(timestamps, load_microlensing=None, min_mag=14, max_mag=21, noise=Non
 
     return data_x, data_y
 
-def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_file=True, skiprows=0):
+def load_all(
+    path: str,
+    convert: bool = True,
+    zp: float = 24,
+    filename: Optional[str] = None,
+    apply_weights: bool = True,
+    save_file: bool = True,
+    skiprows: int = 0,
+) -> tuple[ndarray, ndarray]:
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
@@ -384,44 +407,44 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
 
     Parameters:
     ----------
-        path : str
-            Path to the root directory containing the lightcurve subdirectories
-        convert : bool
-            If True the magnitudes will be converted to flux using the input zeropoint.
-            If the lightcurves are already in flux, set convert=False. Defaults to True.
-        zp : float
-            The zero point of the observing instrument, will be used to calcualate 
-            the features. This is ignored used if convert=False. Defaults to 24.
-        filename : str, optional
-            The name to be appended to the lightcurves.fits and the all_features.txt
-            files, only relevant if save_file=True. If no argument is input the
-            files will be saved with the default names only. Defaults to None.
-        apply_weights : bool 
-            Whether to apply the photometric errors when calculating the features. Defaults
-            to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
-        save_file : bool
-            If True the lightcurve.fits and all_features.txt files will be
-            saved to the home directory. Defaults to True.
-        skiprows : int
-            Used to exclude comments which may be present at the top of the data files. Defaults to 0 which
-            skips no rows. 
+    path : str
+        Path to the root directory containing the lightcurve subdirectories
+    convert : bool
+        If True the magnitudes will be converted to flux using the input zeropoint.
+        If the lightcurves are already in flux, set convert=False. Defaults to True.
+    zp : float
+        The zero point of the observing instrument, will be used to calcualate 
+        the features. This is ignored used if convert=False. Defaults to 24.
+    filename : str, optional
+        The name to be appended to the lightcurves.fits and the all_features.txt
+        files, only relevant if save_file=True. If no argument is input the
+        files will be saved with the default names only. Defaults to None.
+    apply_weights : bool 
+        Whether to apply the photometric errors when calculating the features. Defaults
+        to True. Note that this assumes that the erros are Gaussian and uncorrelated. 
+    save_file : bool
+        If True the lightcurve.fits and all_features.txt files will be
+        saved to the home directory. Defaults to True.
+    skiprows : int
+        Used to exclude comments which may be present at the top of the data files. Defaults to 0 which
+        skips no rows. 
     
     Returns:
     -------
-        data_x : array
-            2D array containing the statistical metrics of all simulated lightcurves.
-        data_y : array
-            1D array containing the class label of all simulated lightcurves.
-        lightcurves : FITS
-            All simulated lightcurves in a FITS file, sorted by class label and unique ID. Only
-            saved if save_file=True.
-        all_features : text file
-            A txt file containing all the features sorted by class label and unique ID. Only
-            saved if save_file=True.
-        csv : CSV file
-            A CSV file containing the training data present in the saved text file, which contains
-            the feature names and can be input directly when creating the classifier. Only
-            saved if save_file=True.
+    data_x : array
+        2D array containing the statistical metrics of all simulated lightcurves.
+    data_y : array
+        1D array containing the class label of all simulated lightcurves.
+    lightcurves : FITS
+        All simulated lightcurves in a FITS file, sorted by class label and unique ID. Only
+        saved if save_file=True.
+    all_features : text file
+        A txt file containing all the features sorted by class label and unique ID. Only
+        saved if save_file=True.
+    csv : CSV file
+        A CSV file containing the training data present in the saved text file, which contains
+        the feature names and can be input directly when creating the classifier. Only
+        saved if save_file=True.
     """
 
     sub_directories = [files.path for files in os.scandir(path) if files.is_dir()]
@@ -448,7 +471,6 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
 
             stats, feature_names = extract_features.extract_all(time, mag, magerr, apply_weights=apply_weights, convert=convert, zp=zp, return_names=True)
             stats = [i for i in stats]
-            #stats = [dir_name] + [k] + stats
             stats = [filenames[j]] + [dir_name] + [k] + stats
             stats_list.append(stats) 
             progess_bar.next()  
@@ -476,7 +498,6 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
         _file_ = path+'all_features_'+filename+'.txt' if filename is not None else path+'all_features.txt'
 
         with open(path+'__temporary_feats__.txt', 'r') as infile, open(_file_, 'w') as outfile:    
-            #outfile.write('# CLASS, ID, ' + ', '.join(feature_names) + '\n')
             outfile.write('# FILENAME, CLASS, ID, ' + ', '.join(feature_names) + '\n')
             data = infile.read()
             data = data.replace("'", "")
@@ -486,17 +507,12 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
             outfile.write(data)
         os.remove(path+'__temporary_feats__.txt')
 
-    #data = np.array(stats_list)
-    #data_x, data_y = data[:,2:].astype('float'), data[:,0].astype(str)
     data = np.array(stats_list)
     data_x = data[:, 3:].astype('float')  # features start from index 3
     data_y = data[:, 1].astype(str)       # class is at index 1
 
     if save_file:
-        #df = DataFrame(data_x, columns=feature_names)
-        #df['label'] = data_y
-        #
-        df = DataFrame(data[:, 3:].astype('float'), columns=feature_names)
+        df = DataFrame(data_x, columns=feature_names)
         df.insert(0, 'filename', data[:, 0])
         df.insert(1, 'label', data[:, 1])
         df.insert(2, 'id', data[:, 2].astype(int))
@@ -510,27 +526,29 @@ def load_all(path, convert=True, zp=24, filename=None, apply_weights=True, save_
 
     return data_x, data_y
 
-def plot(hdu, ID=None, label=None, savefig=False):
+def plot(
+    hdu: fits.HDUList,
+    ID: Optional[int] = None,
+    label: Optional[str] = None,
+    savefig: bool = False
+) -> None:
     """
-    Plots simulated lightcurve, extracted from the 
-    lightcurves.fits file that is saved upon training set
-    creation.
+    Plots a simulated lightcurve from the lightcurves.fits file.
 
-    Parameters:
+    Parameters
     ----------
-        hdu (fits file) : The loaded lightcurves.fits file.
-        ID (int, optional): The ID of the lightcurve to be plotted.
-            This input is overwritten if label is also input. Defaults to None.
-        label (str, optional): The class label of the lightcuve class
-            to be plotted, the lightcurve will be chosen randomly among
-            the class sample.
-        savefig (bool): If True the figure will be saved to the
-            working directory. Defaults to False, which will plot
-            the figure instead.
+    hdu : fits.HDUList
+        The loaded lightcurves.fits file.
+    ID : int, optional
+        The ID of the lightcurve to plot. Ignored if `label` is provided.
+    label : str, optional
+        The class label of the lightcurve. A random example from this class will be plotted.
+    savefig : bool, optional
+        If True, the figure will be saved to the working directory. Otherwise it will be shown interactively.
 
-    Returns:
-    --------
-        AxesImage
+    Returns
+    -------
+    None
     """
 
     classes = np.unique(np.array(hdu[1].data['Class']))

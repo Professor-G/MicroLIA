@@ -5,10 +5,22 @@
     @author: danielgodinez
 """
 import numpy as np
-from MicroLIA import features
+from numpy.typing import ArrayLike
+from typing import Optional, Union
 from inspect import getmembers, isfunction
 
-def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, convert=True, zp=24, return_names=False):
+from MicroLIA import features
+
+def extract_all(
+    time: ArrayLike,
+    mag: ArrayLike,
+    magerr: ArrayLike,
+    apply_weights: bool = True,
+    feats_to_use: Optional[list[int]] = None,
+    convert: bool = True,
+    zp: float = 24,
+    return_names: bool = False
+) -> Union[np.ndarray, tuple[np.ndarray, list[str]]]:
     """
     This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the
@@ -18,26 +30,26 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
     
     Parameters:
     ----------
-        time : array
-            Time of observations
-        mag : array
-            Magnitude array.
-        magerr : array
-            Corresponing photometric errors.  
-        apply_weights : bool, optional
-                Whether to apply weights based on the magnitude errors. Defaults to True.
-        feats_to_use : array
-            Array containing indices of features to use. This will be used to index the columns 
-            in the data array. Defaults to None, in which case all columns in the data array are used.
-        convert : boolean, optional 
-            If False the features are computed with the input magnitudes,
-            defaults to True to convert and compute in flux. 
-        zp : float
-            Zeropoint of the instrument, only used if convert=True. Defaults to 24.
-        return_names : bool
-            If True the first output will be the stats array, and the second
-            will be the list of corresponding feature names. Defaults to False,
-            in which case only the stats array is returned.
+    time : array
+        Time of observations
+    mag : array
+        Magnitude array.
+    magerr : array
+        Corresponing photometric errors.  
+    apply_weights : bool, optional
+        Whether to apply weights based on the magnitude errors. Defaults to True.
+    feats_to_use : array
+        Array containing indices of features to use. This will be used to index the columns 
+        in the data array. Defaults to None, in which case all columns in the data array are used.
+    convert : boolean, optional 
+        If False the features are computed with the input magnitudes,
+        defaults to True to convert and compute in flux. 
+    zp : float
+        Zeropoint of the instrument, only used if convert=True. Defaults to 24.
+    return_names : bool
+        If True the first output will be the stats array, and the second
+        will be the list of corresponding feature names. Defaults to False,
+        in which case only the stats array is returned.
 
     Returns:
     -------
@@ -155,10 +167,12 @@ def extract_all(time, mag, magerr, apply_weights=True, feats_to_use=None, conver
         counter += 1
 
     stats = np.array(stats)
+
     # Ensure non-finite values are set to NaN
     stats[np.isfinite(stats) == False] = np.nan
+    
     # Float limits (models break otherwise)
-    stats[stats > 1e7], stats[(stats<1e-7) & (stats>0)], stats[stats < -1e7] = 1e7, 1e-7, -1e7
+    stats[stats > 1e10], stats[(stats<1e-10) & (stats>0)], stats[stats < -1e10] = 1e10, 1e-10, -1e10
 
     if return_names is False:
         return stats

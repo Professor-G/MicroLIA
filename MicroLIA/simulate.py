@@ -4,32 +4,16 @@ Created on Thu Jun 28 20:30:11 2018
 
 @author: danielgodinez
 """
-from __future__ import division, print_function
+import sys
+import numpy as np
 from gatspy.datasets import fetch_rrlyrae_templates
 from scipy.optimize import minimize
 from scipy.interpolate import UnivariateSpline
-
 import importlib.resources as resources
-from pathlib import Path
-
-
-
-
-import importlib.util
-import numpy as np
-import os
-import sys
-
 from numpy.typing import ArrayLike
 from typing import Optional, Tuple
 
-def microlensing(
-    timestamps: ArrayLike,
-    baseline: float,
-    t0_dist: Optional[Tuple[float, float]] = None,
-    u0_dist: Optional[Tuple[float, float]] = None,
-    tE_dist: Optional[Tuple[float, float]] = None,
-) -> Optional[Tuple[np.ndarray, float, float, float, float]]:
+def microlensing(timestamps: ArrayLike, baseline: float, t0_dist: Optional[Tuple[float, float]] = None, u0_dist: Optional[Tuple[float, float]] = None, tE_dist: Optional[Tuple[float, float]] = None) -> Tuple[np.ndarray, float, float, float, float]:
     """
     Simulate a single-lens, point-source microlensing event with blending.
 
@@ -98,7 +82,7 @@ def microlensing(
 
     return mag_obs, u0, t0, tE, blend_ratio
     
-def cv(timestamps, baseline):
+def cv(timestamps: ArrayLike, baseline: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Simulates Cataclysmic Variable event.
     The outburst can be reasonably well represented as three linear phases: a steeply 
     positive gradient in the rising phase, a flat phase at maximum brightness followed by a declining 
@@ -199,13 +183,11 @@ def constant(timestamps: ArrayLike, baseline: float) -> np.ndarray:
     np.ndarray
         Array with the same shape as `timestamps`, filled with `baseline`.
     """
-    return np.full_like(np.asarray(timestamps, dtype=float),
-                        fill_value=baseline,
-                        dtype=float)
+    return np.full_like(np.asarray(timestamps, dtype=float), fill_value=baseline, dtype=float)
 
 
 
-def rrlyr_variable(timestamps, baseline, bailey=None):
+def rrlyr_variable(timestamps: ArrayLike, baseline: float, bailey: Optional[int] = None) -> Tuple[np.ndarray, float, float]:
     """Simulates a variable source. 
     This simulation is done using the gatspy module provided by AstroML. 
     This module implements a template-based model using RR Lyrae
@@ -294,12 +276,8 @@ def get_rrlyr_data_path():
     str
         Path to the data directory.
     """
-
-    #resource_package = __name__
-    #resource_path = 'data'
-    #data_path = pkg_resources.resource_filename(resource_package, resource_path)
-    #return data_path
     return str(resources.files(__package__) / 'data')
+
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

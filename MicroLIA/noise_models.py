@@ -5,9 +5,11 @@ Created on Thu July 28 20:30:11 2018
 @author: danielgodinez
 """
 import numpy as np
+from numpy.typing import ArrayLike
+from typing import Callable, Tuple
 from scipy.interpolate import UnivariateSpline
 
-def create_noise(median, rms, degree=3):
+def create_noise(median: ArrayLike, rms: ArrayLike, degree: int = 3) -> UnivariateSpline:
     """Creates a noise model by fitting a one-dimensional smoothing 
     spline of degree k.
 
@@ -26,9 +28,9 @@ def create_noise(median, rms, degree=3):
     fn : The kth degree spline fit. 
     """
 
-    if type(median) is not np.ndarray:
+    if not isinstance(median, np.ndarray):
         median = np.array(median)
-    if type(rms) is not np.ndarray:
+    if not isinstance(rms, np.ndarray):
         rms = np.array(rms)
 
     order = np.array(median).argsort()
@@ -42,7 +44,7 @@ def create_noise(median, rms, degree=3):
 
     return fn
 
-def add_noise(mag, fn, zp=24, exptime=60):
+def add_noise(mag: ArrayLike, fn: Callable[[ArrayLike], np.ndarray], zp: float = 24, exptime: int = 60) -> Tuple[np.ndarray, np.ndarray]:
     """Adds noise to magnitudes given a noise function. 
 
     Parameters
@@ -51,9 +53,9 @@ def add_noise(mag, fn, zp=24, exptime=60):
         Magnitude to add noise to. 
     fn : function
         Spline fit, must be defined using the create_noise function. 
-    zp : Zeropoint
+    zp : float
         Zeropoint of the instrument, default is 24.
-    exptime : Exposure time
+    exptime : int
         The exposure time of the observations.
         
     Returns
@@ -78,16 +80,17 @@ def add_noise(mag, fn, zp=24, exptime=60):
         
     return np.array(mag_obs), np.array(magerr)
  
-def add_gaussian_noise(mag, zp=24, exptime=60):
+def add_gaussian_noise(mag: ArrayLike, zp: float = 24, exptime: int = 60) -> Tuple[np.ndarray, np.ndarray]:
     """Adds noise to lightcurve given the magnitudes.
 
     Parameters
     ----------
     mag : array
         Mag array to add noise to. 
-    zp : zeropoint
+    zp : float
         Zeropoint of the instrument, default is 24.
-    convert : boolean, optional 
+    exptime : int
+        The exposure time of the observations.
     
     Returns
     -------

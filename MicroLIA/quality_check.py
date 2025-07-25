@@ -4,15 +4,8 @@ Created on Thu Jun 28 20:30:11 2018
 
 @author: danielgodinez
 """
-from __future__ import division
 import numpy as np
 from MicroLIA import simulate
-from MicroLIA import training_set
-
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.metrics import classification_report
 
 def test_microlensing(timestamps, microlensing_mag, magerr, baseline, u_0, t_0, t_e, blend_ratio, n=7):
     """
