@@ -14,10 +14,8 @@ import joblib
 import os
 
 class CNNClassifier:
-    """
     #Time-step based 1D-CNN classifier for multi-channel light curves.
     #NOTE: This model is memory-intensive and intended for clusters with significant RAM.
-    """
     def __init__(self, sequence_length=1500, num_channels=6, confidence_threshold=0.8):
         self.sequence_length = sequence_length; self.num_channels = num_channels
         self.confidence_threshold = confidence_threshold
