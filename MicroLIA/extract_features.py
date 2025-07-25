@@ -6,7 +6,7 @@
 """
 import numpy as np
 from numpy.typing import ArrayLike
-from typing import Optional, Union
+from typing import Optional, Union, List, Tuple
 from inspect import getmembers, isfunction
 
 from MicroLIA import features
@@ -16,11 +16,11 @@ def extract_all(
     mag: ArrayLike,
     magerr: ArrayLike,
     apply_weights: bool = True,
-    feats_to_use: Optional[list[int]] = None,
+    feats_to_use: Optional[List[int]] = None,
     convert: bool = True,
     zp: float = 24,
     return_names: bool = False
-) -> Union[np.ndarray, tuple[np.ndarray, list[str]]]:
+) -> Union[np.ndarray, Tuple[np.ndarray, List[str]]]:
     """
     This function will compute the statistics used to train the RF.
     Amplitude dependent features are computed first, after which the

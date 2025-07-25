@@ -9,7 +9,11 @@ from numpy.typing import ArrayLike
 from typing import Callable, Tuple
 from scipy.interpolate import UnivariateSpline
 
-def create_noise(median: ArrayLike, rms: ArrayLike, degree: int = 3) -> UnivariateSpline:
+def create_noise(
+    median: ArrayLike,
+    rms: ArrayLike,
+    degree: int = 3
+) -> UnivariateSpline:
     """Creates a noise model by fitting a one-dimensional smoothing 
     spline of degree k.
 

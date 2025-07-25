@@ -18,7 +18,7 @@ from astropy.io import fits
 from astropy.io.votable import parse_single_table
 
 from numpy.typing import ArrayLike
-from typing import Optional
+from typing import Optional, Callable, Union, Tuple, List
 from collections.abc import Callable
 
 from MicroLIA import simulate
@@ -28,24 +28,24 @@ from MicroLIA import extract_features
 from MicroLIA import features
 
 def create(
-    timestamps: list[ArrayLike] | ArrayLike,
-    load_microlensing: Optional[str | list[ArrayLike]] = None,
+    timestamps: Union[List[ArrayLike], ArrayLike],
+    load_microlensing: Optional[Union[str, List[ArrayLike]]] = None,
     min_mag: float = 14,
     max_mag: float = 21,
-    noise: Optional[Callable[[ArrayLike], tuple[ArrayLike, ArrayLike]]] = None,
+    noise: Optional[Callable[[ArrayLike], Tuple[ArrayLike, ArrayLike]]] = None,
     zp: float = 24,
     exptime: float = 60,
     n_class: int = 500,
     ml_n1: int = 7,
     cv_n1: int = 7,
     cv_n2: int = 1,
-    t0_dist: Optional[tuple[float, float] | ArrayLike] = None,
-    u0_dist: Optional[tuple[float, float] | ArrayLike] = None,
-    tE_dist: Optional[tuple[float, float] | ArrayLike] = None,
+    t0_dist: Optional[Union[Tuple[float, float], ArrayLike]] = None,
+    u0_dist: Optional[Union[Tuple[float, float], ArrayLike]] = None,
+    tE_dist: Optional[Union[Tuple[float, float], ArrayLike]] = None,
     filename: Optional[str] = None,
     apply_weights: bool = True,
     save_file: bool = True,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Creates a training dataset using adaptive cadence.
     Simulates each class n_class times, adding errors from
@@ -396,7 +396,7 @@ def load_all(
     apply_weights: bool = True,
     save_file: bool = True,
     skiprows: int = 0,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
