@@ -396,7 +396,7 @@ def load_all(
     apply_weights: bool = True,
     save_file: bool = True,
     skiprows: int = 0,
-) -> tuple[ndarray, ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Function to load already simulated lightcurves. The subdirectories in the path
     must contain the lightcurve text files for each class (columns: time,mag,magerr)
