@@ -27,7 +27,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "numpy",
-        "scikit-learn==1.1.1",
+        "scikit-learn==1.5.0",
         "scikit-optimize==0.9.0",
         "astropy==5.0.4",
         "scipy==1.7.3",
