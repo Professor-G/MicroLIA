@@ -39,7 +39,7 @@ setup(
         "BorutaShap==1.0.16",
         "xgboost==1.6.1",
         "scikit-plot==0.3.7",
-        "opencv-python==4.7.0.68",
+        "opencv-python==4.8.1.78",
         "pandas==1.4.1",
         "dill",
         "gatspy==0.3",
