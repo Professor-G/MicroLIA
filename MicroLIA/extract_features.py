@@ -81,7 +81,7 @@ def extract_all(
 
     #Ensure lightcurve is sorted by timestamps
     if len(time) > 1 and not np.all(np.diff(time) > 0):
-        print("WARNING: time array is not sorted! Sorting automatically...")
+        print(); print("WARNING: time array is not sorted! Sorting automatically...")
         sort_idx = np.argsort(time)
         time, mag, magerr = time[sort_idx], mag[sort_idx], magerr[sort_idx]
 
