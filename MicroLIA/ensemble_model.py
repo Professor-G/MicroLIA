@@ -12,12 +12,16 @@ import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.lines as mlines
 import matplotlib.colors as mcolors 
 from matplotlib.ticker import ScalarFormatter, AutoMinorLocator
 from cycler import cycler
 from warnings import warn
 from pathlib import Path
 from collections import Counter  
+from progress import bar
+
 
 from sklearn import decomposition
 from sklearn.ensemble import RandomForestClassifier
@@ -122,6 +126,10 @@ class Classifier:
         self.optimization_results = None 
         self.best_params = None 
 
+        self.tsne_x = None
+        self.tsne_y = None 
+        self.loo_predictions = None 
+
         if self.training_data is not None:
             feature_names = [feature for feature in training_data.columns if feature not in ('filename', 'label', 'id')]
             self.data_x = np.array(training_data[feature_names])
@@ -169,7 +177,7 @@ class Classifier:
                 counter = Counter(self.data_y)
                 if counter[np.unique(self.data_y)[0]] != counter[np.unique(self.data_y)[1]]:
                     if self.balance: #If balance is True but optimize is False
-                        print('Unbalanced dataset detected, to apply weights set optimize=True.')
+                        print('Unbalanced dataset detected, to apply weights set `optimize`=True.')
 
         if self.clf == 'rf':
             model = RandomForestClassifier(random_state=self.SEED_NO)
@@ -212,7 +220,10 @@ class Classifier:
 
         if self.impute:
             
-            data, self.imputer = impute_missing_values(self.data_x, imputer=None, strategy=self.imp_method)
+            data, self.imputer = impute_missing_values(
+                self.data_x, 
+                imputer=None, 
+                strategy=self.imp_method)
             data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
             
             if self.optimize is False:
@@ -228,7 +239,12 @@ class Classifier:
 
         if self.feats_to_use is None:
 
-            self.feats_to_use, self.feature_history = borutashap_opt(data, self.data_y, boruta_trials=self.boruta_trials, model=self.boruta_model, SEED_NO=self.SEED_NO)
+            self.feats_to_use, self.feature_history = borutashap_opt(
+                data, 
+                self.data_y, 
+                boruta_trials=self.boruta_trials, 
+                model=self.boruta_model, 
+                SEED_NO=self.SEED_NO)
             
             if len(self.feats_to_use) == 0:
                 print('No features selected, increase the number of n_trials when running MicroLIA.optimization.borutashap_opt(). Using all features...')
@@ -243,8 +259,18 @@ class Classifier:
             data_x, self.imputer = self.data_x[:,self.feats_to_use], None
 
         if self.n_iter > 0:
-            self.model, self.best_params, self.optimization_results = hyper_opt(data_x, self.data_y, clf=self.clf, n_iter=self.n_iter, opt_cv=self.opt_cv, 
-                scoring_metric=self.scoring_metric, balance=self.balance, limit_search=self.limit_search, return_study=True, SEED_NO=self.SEED_NO)
+            self.model, self.best_params, self.optimization_results = hyper_opt(
+                data_x, 
+                self.data_y, 
+                clf=self.clf, 
+                n_iter=self.n_iter, 
+                opt_cv=self.opt_cv, 
+                scoring_metric=self.scoring_metric, 
+                balance=self.balance, 
+                limit_search=self.limit_search, 
+                return_study=True, 
+                SEED_NO=self.SEED_NO)
+
         else:
             print("Fitting and returning final model...")
             self.model = hyper_opt(
@@ -294,7 +320,8 @@ class Classifier:
             try:
                 os.makedirs(path)
             except FileExistsError:
-                raise ValueError('The dirname folder already exists!')
+                if overwrite is False:
+                    raise ValueError('The dirname folder already exists!')
 
         try:
             os.mkdir(path + 'MicroLIA_ensemble_model')
@@ -318,6 +345,26 @@ class Classifier:
         if self.optimization_results is not None: joblib.dump(self.optimization_results, path+'HyperOpt_Results')
         if self.best_params is not None: joblib.dump(self.best_params, path+'Best_Params')
         if self.feature_history is not None: joblib.dump(self.feature_history, path+'FeatureOpt_Results')
+
+        # Will save class attributes so that t-sne doesn't have to be re-run each time
+
+        try:
+            #Save all class attributes except the ones that are generated during the routine, as these are saved above
+            exclude_attrs = ['model', 'imputer', 'feats_to_use', 
+                             'optimization_results', 'best_params', 'feature_history', 
+                             ]
+
+            attrs_dict = {attr: getattr(self, attr) for attr in dir(self) 
+                          if not callable(getattr(self, attr)) and 
+                          not attr.startswith("__") and 
+                          attr not in exclude_attrs}
+
+            joblib.dump(attrs_dict, path + 'class_attributes.pkl')
+            print('Succesfully saved all class attributes!')
+        except Exception as e:
+            print(f"Could not save all class attributes to {path} due to error: {e}")
+
+
 
         print('Files saved in: {}'.format(path))
 
@@ -383,7 +430,15 @@ class Classifier:
             optimization_results = '' 
             pass
 
-        print('Successfully loaded the following class attributes: {}{}{}{}{}{}'.format(model, imputer, feats_to_use, best_params, feature_opt_results, optimization_results))
+        try:
+            attrs_dict = joblib.load(path + 'class_attributes.pkl')
+            for attr, value in attrs_dict.items():
+                setattr(self, attr, value)
+            class_attributes = ', class_attributes'
+        except:
+            class_attributes = ''
+
+        print('Successfully loaded the following class attributes: {}{}{}{}{}{}{}'.format(model, imputer, feats_to_use, best_params, feature_opt_results, optimization_results, class_attributes))
         
         self.path = path
 
@@ -426,22 +481,97 @@ class Classifier:
 
         return np.c_[classes, pred[0]]
 
-    def plot_tsne(self, data_y=None, special_class=None, norm=True, norm_method='min-max', pca=False, return_data=False,
-        xlim=None, ylim=None, legend_loc='upper center', title='Feature Parameter Space', savefig=False):
+    def loo_training(self):
+        """
+        This method performs leave-one-out cross validation to assess the training set. This effectively simulates the probability prediction
+        of each training instance during a blind search.
+        """
+        if self.data_x is None:
+            raise ValueError('No feature matrix (`data_x`) has been input!')
+        if self.data_y is None:
+            raise ValueError('No labels array (`data_y`) has been input!')
+        if self.model is None:
+            raise ValueError('No model has been created! Run .create() first.')
+
+        if len(self.data_x.shape) == 1:
+            raise ValueError('Feature matrix only contains a single training instance!')
+
+        self.data_x[np.isinf(self.data_x)] = np.nan
+
+        if self.feats_to_use is not None:
+            data_x = self.data_x[:,self.feats_to_use] 
+            #self.data_x[self.feats_to_use].reshape(1,-1) if len(self.data_x.shape) == 1
+        else:
+            data_x = copy.deepcopy(self.data_x)
+
+        if np.any(np.isnan(data_x)):
+            if self.impute is False:
+                raise ValueError('data_x array contains nan values but impute is set to False! Set impute=True and run again.')
+            else:
+                data_x = impute_missing_values(data_x, self.imputer) if self.imputer is not None else impute_missing_values(data_x, strategy=self.imp_method)[0]
+                
+        data_y = copy.deepcopy(self.data_y)
+        data_x[data_x>1e10], data_x[(data_x<1e-10)&(data_x>0)], data_x[data_x<-1e10] = 1e10, 1e-10, -1e10
+        
+        n = len(data_x)
+       
+        classes = self.model.classes_
+        self.loo_predictions = np.zeros((n, len(classes)))
+
+        progess_bar = bar.FillingSquaresBar('Running leave-one-out cross-validation...', max=n)
+
+        for i in range(n):
+
+            leave_one = data_x[i]
+            training_X = np.delete(data_x, i, axis=0)
+            training_Y = np.delete(data_y, i)
+            #
+            new_model = self.model.fit(training_X, training_Y)
+            self.loo_predictions[i] = self.model.predict_proba(leave_one.reshape(1,-1))
+            #
+            progess_bar.next()
+
+        progess_bar.finish()
+
+        print('Leave-one-Out cross-validation complete! Per-class probabilites stored in the `loo_predictions` class attribute. Re-save the model to store these for future use!')
+
+    def plot_tsne(
+        self, 
+        data_y=None, 
+        highlight_class=None, 
+        norm=True, 
+        norm_method='min-max', 
+        pca=False, 
+        learning_rate=1000, 
+        perplexity=35, 
+        scale_feature=None, 
+        log_feature=False, 
+        scale_proba_class=None, 
+        cmap='viridis',
+        xlim=None, 
+        ylim=None, 
+        legend_loc='upper center', 
+        title='Feature Parameter Space', 
+        savefig=False, 
+        fname='tSNE_Projection.png',
+        hdu=None):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
+
+        Running this method will assign the `tsne_x` and `tsne_y` class attributes, which are the scatter point positions from the t-SNE projection.
+        These x,y positions will correspond with the ordering of the data in the `data_x` feature matrix.
 
         Note:
             To highlight individual samples, use the data_y optional input
             and set that sample's data_y value to a unique name, and set that 
-            same label in the special_class variable so that it can be highlighted 
+            same label in the highlight_class variable so that it can be highlighted 
             clearly in the plot.
 
         Args:
             data_y (ndarray, optional): A custom labels array, that coincides with
                 the labels in model.data_y. Defaults to None, in which case the
                 model.data_y labels are used.
-            special_class (optional): The class label that you wish to highlight,
+            highlight_class (optional): The class label that you wish to highlight,
                 setting this optional parameter will increase the size and alpha parameter
                 for these points in the plot.
             norm (bool): If True the data will be min-max normalized. Defaults
@@ -450,14 +580,46 @@ class Classifier:
             pca (bool): If True the data will be fit to a Principal Component
                 Analysis and all of the corresponding principal components will 
                 be used to generate the t-SNE plot. Defaults to False.
+            learning_rate:
+            perplexity:
+            scale_feature (optional, str): Whether to scale the t-SNE points by a feature value. If None the standard projection is plotted.
+                Currently this only works if the training_data csv has been input. The input feature label must be a column in the csv. Note
+                that the features computed in derivative space have the `_deriv` suffix at the end (e.g., vonNeumannRatio_deriv)
+            log_feature (bool): Whether to log-scale the feature value, only if scale_feature is not None.
+            scale_proba_class (str, int, float): Used to scale the t-SNE points by probability prediction. The input must be
+                the class label for the particular probability prediction to show. Cannot be applied if scale_feature has been enabled. 
+            cmap (str): Colormap to use when scaling the points by either feature value or probability prediction.
             legend_loc (str): Location of legend, using matplotlib style.
             title (str): Title of the figure.
-            savefig (bool): If True the figure will not disply but will be saved instead.
-                Defaults to False. 
+            savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
+            fname (str): Filename to be used if savefig is True. Can also include the path to where figure should be saved.
+                Defaults to `tSNE_Projection.png` which will be saved to the local working directory.
 
         Returns:
             AxesImage. 
         """
+
+        if scale_feature is not None:
+            if self.training_data is None:
+                raise ValueError('The `scale_feature` parameter is only supported if the `training_data` csv has been input!')
+            else:
+                if scale_feature not in self.training_data.columns:
+                    raise ValueError(f'The input `scale_feature` ({scale_feature}) is not a column in the `training_data` dataframe!')
+            if scale_proba_class is not None:
+                print('WARNING: Both scale_feature and scale_proba_class arguments have been provided! The scale_feature will be prioritized.')
+
+        if scale_proba_class is not None:
+            if self.loo_predictions is None:
+                raise ValueError('To show probability-scaled t-SNE projections the `loo_training()` class method must be run first!')
+            try:
+                if self.data_y_ is not None:
+                    proba_index = np.where(np.unique(self.data_y_) == scale_proba_class)[0]
+                else:
+                    proba_index = np.where(np.unique(self.data_y) == scale_proba_class)[0]
+            except Exception as e:
+                print(f'Error trying to find the `scale_proba_class`: {e}'); print()
+                print(f'Ensure the input is a valid class label, note that the model was trained with the following classes: {self.model.classes_}')
+
 
         if self.feats_to_use is not None:
             data = self.data_x[self.feats_to_use].reshape(1,-1) if len(self.data_x.shape) == 1 else self.data_x[:,self.feats_to_use] 
@@ -479,15 +641,17 @@ class Classifier:
             pca_transformation.fit(data) 
             data = pca_transformation.transform(data)
 
-        feats = TSNE(n_components=2, method=method, learning_rate=1000, perplexity=35, init='random').fit_transform(data)
-        x, y = feats[:,0], feats[:,1]
+
+        if self.tsne_x is None or self.tsne_y is None:
+            feats = TSNE(n_components=2, method=method, learning_rate=learning_rate, perplexity=perplexity, init='random', random_state=self.SEED_NO).fit_transform(data)
+            self.tsne_x, self.tsne_y = feats[:,0], feats[:,1]
      
-        markers = ['o', 's', '+', 'v', '.', 'x', 'h', 'p', '<', '>', '*', '*', '>', '<', 'p', 'h', 'x', '.', 'v', '+', 's', 'o']
-        #color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'b', 'g', 'r', 'c']
+        markers = ['o', 's', 'v', 'X', 'h', 'p', '<', '>', '*', '>', '<', 'p', 'h', 'X', 'v', 's', 'o']
         color = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#e41a1c', '#377eb8', '#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#e41a1c', '#377eb8', '#e41a1c', '#377eb8']
 
         _set_style_() if savefig else plt.style.use('default')
 
+        # To convert the `data_y` labels array to text, if possible (i.e., if csv has been input) 
         if data_y is None:
             if self.data_y_ is None:
                 if self.training_data is None:
@@ -520,40 +684,249 @@ class Classifier:
                 data_y = np.array(data_y)
             feats = np.unique(data_y) 
 
+        # The main plot
+        fig, ax = plt.subplots()#figsize=(8, 8))
+
         for count, feat in enumerate(feats):
             if count+1 > len(markers):
                 count = -1
             mask = np.where(data_y == feat)[0]
-            if feat == special_class:
-                pass
+            if feat == highlight_class:
+                continue
             else:
-                plt.scatter(x[mask], y[mask], marker=markers[count], c=color[count], label=str(feat), alpha=0.44)
+                if scale_feature is None and scale_proba_class is None:
 
-        if special_class is not None:
-            mask = np.where(data_y == special_class)[0]
+                    sc = ax.scatter(
+                        self.tsne_x[mask], 
+                        self.tsne_y[mask], 
+                        marker=markers[count], 
+                        c=color[count], 
+                        label=str(feat), 
+                        alpha=0.44,
+                        picker=5 if hdu is not None else False)
+
+                    sc._mask = mask   # <-- attach the global indices
+
+                elif scale_feature is not None:
+
+                    feature_value = np.array(self.training_data[scale_feature])
+                    feature_value = np.log10(feature_value) if log_feature else feature_value
+                    if np.any(np.isnan(feature_value)) or np.any(np.isinf(feature_value)):
+                        print('WARNING: Log-scaled feature is NaN or Inf! Recommend setting `log_feature` to `False`.')
+                    #
+                    norm = plt.Normalize(vmin=np.min(feature_value[np.isfinite(feature_value)]), vmax=np.max(feature_value[np.isfinite(feature_value)]))
+                    sc = ax.scatter(
+                        self.tsne_x[mask], 
+                        self.tsne_y[mask],
+                        c=feature_value[mask],
+                        cmap=cmap,
+                        norm=norm,
+                        marker=markers[count],
+                        facecolors='none',
+                        edgecolors=color[count],
+                        linewidths=1.2,
+                        s=100,
+                        alpha=0.44,
+                        picker=5 if hdu is not None else False
+                    )
+                    sc._mask = mask   # <-- attach the global indices
+
+                    #
+                    if count == 0:
+                        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                        sm.set_array([])
+                        cbar = plt.colorbar(sm, ax=ax)
+                        cbar.set_label(f'{scale_feature}') if log_feature is False else cbar.set_label(r'$\log_{10}$' +f'({scale_feature})')
+
+                else: #scale proba case
+                    feature_value = self.loo_predictions[:,proba_index]
+                    feature_value = np.log10(feature_value) if log_feature else feature_value
+                    if np.any(np.isnan(feature_value)) or np.any(np.isinf(feature_value)):
+                        print('WARNING: Log-scaled feature is NaN or Inf! Recommend setting `log_feature` to `False`.')
+                    #
+                    #
+                    norm = plt.Normalize(vmin=np.min(feature_value), vmax=np.max(feature_value))
+                    sc = ax.scatter(
+                        self.tsne_x[mask], 
+                        self.tsne_y[mask],
+                        c=feature_value[mask],
+                        cmap=cmap,
+                        norm=norm,
+                        marker=markers[count],
+                        facecolors='none',
+                        edgecolors=color[count],
+                        linewidths=1.2,
+                        s=100,
+                        alpha=0.44,
+                        picker=5 if hdu is not None else False
+                    )
+                    sc._mask = mask   # <-- attach the global indices
+
+                    #
+                    if count == 0:
+                        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                        sm.set_array([])
+                        cbar = plt.colorbar(sm, ax=ax, extend='both')
+                        cbar.set_label(fr"$P(y=\rm {scale_proba_class}$" + r"$\mid\rm X)$") if log_feature is False else cbar.set_label(r"$\log_{10}$" + fr"$(P(y=\rm {scale_proba_class}$"+r"$\mid\rm X))$")
+
+
+        # To highlight the specific class if enabled
+        if highlight_class is not None:
+            mask = np.where(data_y == highlight_class)[0]
             if len(mask) == 0:
-                raise ValueError('The data_y array does not contain the value input in the special_class parameter.')
-            plt.scatter(x[mask], y[mask], marker='*', c='red', label=special_class, s=200, alpha=1.0)
-        
-        plt.xlim((xlim)) if xlim is not None else None 
-        plt.ylim((ylim)) if ylim is not None else None 
-        plt.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)
-        plt.title(title); plt.ylabel('t-SNE Dimension 1'); plt.xlabel('t-SNE Dimension 2')
-        plt.xticks(); plt.yticks()
+                raise ValueError('The data_y array does not contain the value input in the `highlight_class` parameter.')
+
+            if scale_feature is None and scale_proba_class is None:
+
+                sc = ax.scatter(
+                    self.tsne_x[mask], 
+                    self.tsne_y[mask], 
+                    marker='*', 
+                    c='red', 
+                    label=highlight_class, 
+                    s=200, alpha=0.9,picker=5 if hdu is not None else False)
+
+                sc._mask = mask   # <-- attach the global indices
+
+
+            else: #scale_feature is not None:
+
+                sc = ax.scatter(
+                        self.tsne_x[mask], 
+                        self.tsne_y[mask],
+                        c=feature_value[mask],
+                        cmap=cmap,
+                        norm=norm,
+                        marker='*',
+                        facecolors='none',
+                        edgecolors='red',
+                        linewidths=1.2,
+                        s=200,
+                        alpha=0.9,
+                        picker=5 if hdu is not None else False
+                    )
+
+                sc._mask = mask   # <-- attach the global indices
+
+            #else:
+            #    pass        
+
+        ax.set_xlim((xlim)) if xlim is not None else None 
+        ax.set_ylim((ylim)) if ylim is not None else None 
+
+        if scale_feature is None and scale_proba_class is None:
+            ax.legend(loc=legend_loc, ncol=len(np.unique(data_y)), frameon=False, handlelength=2)
+        else:#if scale_feature is not None:
+            legend_handles = [
+                mlines.Line2D(
+                    [], [], color=color[i],
+                    marker=markers[i], linestyle='None',
+                    markersize=10, markerfacecolor='none',
+                    markeredgewidth=2.0, alpha=0.8, label=label
+                )
+                for i, label in enumerate(feats)
+            ]
+
+            if highlight_class is not None:
+                legend_handles.append(mlines.Line2D(
+                    [], [], color='red',
+                    marker='*', linestyle='None',
+                    markersize=10, markerfacecolor='none',
+                    markeredgewidth=2.0, alpha=0.8, label=highlight_class))
+
+            ax.legend(handles=legend_handles, title='Class')
+
+        #else:
+        #    pass 
+
+        ax.set_title(title)
+        ax.set_ylabel('t-SNE Dimension 1')
+        ax.set_xlabel('t-SNE Dimension 2')
+       # ax.set_xticks()
+       # ax.set_yticks()
 
         if savefig:
-            plt.savefig('tSNE_Projection.png', bbox_inches='tight', dpi=300)
+            plt.savefig(fname, bbox_inches='tight', dpi=300)
             plt.clf(); plt.style.use('default')
         else:
-            plt.show()
+            if hdu is not None:
+                print('picking...')
 
-        if return_data:
-            return x, y
-        else:
-            return
+                # make sure interactive GUI is on
+                plt.ion()
 
-    def plot_conf_matrix(self, data_y=None, norm=False, norm_method='min-max', pca=False, k_fold=10, normalize=True, 
-        title='Confusion Matrix', savefig=False):
+                # persistent LC window/axes
+                fig_lc, ax_lc = None, None
+
+                def onpick(event):
+                    nonlocal fig_lc, ax_lc
+
+                    # only respond to picks on our t-SNE axes' scatter points
+                    if event.mouseevent.inaxes is not ax:
+                        return
+                    # PathCollection pick: need indices
+                    if not hasattr(event, "ind") or len(event.ind) == 0:
+                        return
+
+                    sc = event.artist
+                    # we attached the global indices here when creating scatters
+                    if not hasattr(sc, "_mask"):
+                        return
+
+                    local_idx = event.ind[0]
+                    global_idx = int(sc._mask[local_idx])
+                    ID = global_idx + 1
+
+                    index = np.where(hdu[1].data['ID'] == ID)[0]
+                    if len(index) == 0:
+                        print(f"No data found for ID={ID}")
+                        return
+
+                    Class = hdu[1].data['Class'][index][0]
+                    print(f"Clicked local={local_idx}, global={global_idx}, Class={Class}, ID={ID}")
+
+                    # create LC window if needed, otherwise reuse
+                    if fig_lc is None or not plt.fignum_exists(fig_lc.number):
+                        fig_lc, ax_lc = plt.subplots()
+
+                    # overwrite same window
+                    ax_lc.clear()
+                    time   = hdu[1].data['time'][index]
+                    mag    = hdu[1].data['mag'][index]
+                    magerr = hdu[1].data['magerr'][index]
+
+                    ax_lc.errorbar(time, mag, magerr, fmt='ro--')
+                    ax_lc.invert_yaxis()
+                    ax_lc.set_xlabel('Time (days)')
+                    ax_lc.set_ylabel('Mag')
+                    ax_lc.set_title(f"{Class} || ID: {ID}")
+
+                    # make sure it appears/updates/comes to front
+                    fig_lc.canvas.draw_idle()
+                    try:
+                        fig_lc.canvas.flush_events()
+                    except Exception:
+                        pass
+                    fig_lc.show()
+                    plt.pause(0.01)
+
+                cid = fig.canvas.mpl_connect("pick_event", onpick)
+
+            # keep the t-SNE window open & interactive
+            plt.show(block=True)
+
+
+    def plot_conf_matrix(
+        self, 
+        data_y=None, 
+        norm=False, 
+        norm_method='min-max', 
+        pca=False, 
+        k_fold=10, 
+        normalize=True, 
+        title='Confusion Matrix', 
+        savefig=False, 
+        fname='Ensemble_Confusion_Matrix.png'):
         """
         Returns a confusion matrix with k-fold validation.
 
@@ -578,6 +951,8 @@ class Classifier:
             title (str): Title of the figure.
             savefig (bool): If True the figure will not disply but will be saved instead.
                 Defaults to False. 
+            fname (str): Filename to be used if savefig is True. Can also include the path to where figure should be saved.
+                Defaults to `Ensemble_Confusion_Matrix.png` which will be saved to the local working directory.
 
         Returns:
             AxesImage.
@@ -623,7 +998,7 @@ class Classifier:
             data = np.asarray(pca_data).astype('float64')
 
         predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
-        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig)
+        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig, fname=fname)
 
     def plot_roc_curve(self, k_fold=10, pca=False, title="Receiver Operating Characteristic Curve", 
         savefig=False):
@@ -1154,7 +1529,7 @@ def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
 
 
 def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=True, 
-    title='Confusion Matrix', savefig=False):
+    title='Confusion Matrix', savefig=False, fname='Ensemble_Confusion_Matrix.png'):
     """
     Generates the confusion matrix using the output from the evaluate_model() function.
 
@@ -1167,6 +1542,8 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
             and displayed as a percentage accuracy. Defaults to True.
         title (str, optional): The title of the output plot. 
         savefig (bool): If True the figure will not disply but will be saved instead. Defaults to False. 
+        fname (str): Filename to be used if savefig is True. Can also include the path to where figure should be saved.
+                Defaults to `Ensemble_Confusion_Matrix.png` which will be saved to the local working directory.
 
     Returns:
         AxesImage.
@@ -1182,7 +1559,7 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
         generate_plot(conf_matrix, classes=classes, normalize=normalize, title=title, savefig=savefig)
     
     if savefig:
-        plt.savefig('Ensemble_Confusion_Matrix.png', bbox_inches='tight', dpi=300)
+        plt.savefig(fname, bbox_inches='tight', dpi=300)
         plt.clf(); plt.style.use('default')
     else:
         plt.show()
