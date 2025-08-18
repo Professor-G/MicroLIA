@@ -944,7 +944,7 @@ class Classifier:
                 Defaults to False.
             k_fold (int, optional): The number of cross-validations to perform.
                 The output confusion matrix will display the mean accuracy across
-                all k_fold iterations. Defaults to 10.
+                all k_fold iterations. Can be set to 'loo' to do leave-one-out CV. Defaults to 10.
             normalize (bool, optional): If False the confusion matrix will display the
                 total number of objects in the sample. Defaults to True, in which case
                 the values are normalized between 0 and 1.
