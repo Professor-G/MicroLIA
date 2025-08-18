@@ -735,7 +735,7 @@ class Classifier:
                     if count == 0:
                         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
                         sm.set_array([])
-                        cbar = plt.colorbar(sm, ax=ax)
+                        cbar = plt.colorbar(sm, ax=ax, extend='both')
                         cbar.set_label(f'{scale_feature}') if log_feature is False else cbar.set_label(r'$\log_{10}$' +f'({scale_feature})')
 
                 else: #scale proba case
@@ -760,7 +760,7 @@ class Classifier:
                         alpha=0.44,
                         picker=5 if hdu is not None else False
                     )
-                    sc._mask = mask   # <-- attach the global indices
+                    sc._mask = mask   # the global indices (since mask is used)
 
                     #
                     if count == 0:
@@ -786,7 +786,7 @@ class Classifier:
                     label=highlight_class, 
                     s=200, alpha=0.9,picker=5 if hdu is not None else False)
 
-                sc._mask = mask   # <-- attach the global indices
+                sc._mask = mask   # the global indices (since mask is used)
 
 
             else: #scale_feature is not None:
@@ -806,7 +806,7 @@ class Classifier:
                         picker=5 if hdu is not None else False
                     )
 
-                sc._mask = mask   # <-- attach the global indices
+                sc._mask = mask   # the global indices (since mask is used)
 
             #else:
             #    pass        
@@ -842,8 +842,8 @@ class Classifier:
         ax.set_title(title)
         ax.set_ylabel('t-SNE Dimension 1')
         ax.set_xlabel('t-SNE Dimension 2')
-       # ax.set_xticks()
-       # ax.set_yticks()
+        #ax.set_xticks()
+        #ax.set_yticks()
 
         if savefig:
             plt.savefig(fname, bbox_inches='tight', dpi=300)
@@ -852,7 +852,7 @@ class Classifier:
             if hdu is not None:
                 print('picking...')
 
-                # make sure interactive GUI is on
+                # to make sure interactive GUI is on
                 plt.ion()
 
                 # persistent LC window/axes
@@ -861,7 +861,7 @@ class Classifier:
                 def onpick(event):
                     nonlocal fig_lc, ax_lc
 
-                    # only respond to picks on our t-SNE axes' scatter points
+                    # only respond to picks on t-SNE axes' scatter points
                     if event.mouseevent.inaxes is not ax:
                         return
                     # PathCollection pick: need indices
@@ -869,7 +869,7 @@ class Classifier:
                         return
 
                     sc = event.artist
-                    # we attached the global indices here when creating scatters
+                    # attach the global indices here when creating scatters
                     if not hasattr(sc, "_mask"):
                         return
 
@@ -891,8 +891,8 @@ class Classifier:
 
                     # overwrite same window
                     ax_lc.clear()
-                    time   = hdu[1].data['time'][index]
-                    mag    = hdu[1].data['mag'][index]
+                    time = hdu[1].data['time'][index]
+                    mag = hdu[1].data['mag'][index]
                     magerr = hdu[1].data['magerr'][index]
 
                     ax_lc.errorbar(time, mag, magerr, fmt='ro--')
@@ -974,6 +974,29 @@ class Classifier:
                     classes = [str(label) for label in np.unique(np.array(self.training_data.label))]
             else:
                 classes = [str(label) for label in np.unique(self.data_y_)]
+
+        #######
+        #######
+        if k_fold == 'loo':
+
+            if self.loo_predictions is None:
+                self.loo_predictions()
+
+            predicted_target = np.argmax(self.loo_predictions, axis=1)
+            predicted_target = [self.model.classes_[i] for i in predicted_target]
+
+            generate_matrix(
+                predicted_target, 
+                self.data_y, 
+                normalize=normalize, 
+                classes=classes, 
+                savefig=savefig, 
+                fname=fname
+                )
+
+            return
+        #######
+        #######
 
         if self.feats_to_use is not None:
             if len(self.data_x.shape) == 1:
