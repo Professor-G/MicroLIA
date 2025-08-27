@@ -12,7 +12,7 @@ setup(
     author="Daniel Godinez",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing event detection",
-    long_description="A machine learning pipeline for detecting microlensing events using tree-based models and feature extraction from OGLE data.",
+    long_description="A machine learning pipeline for detecting microlensing events using tree-based models.",
     license="GPL-3.0",
     url="https://github.com/Professor-G/MicroLIA",
     classifiers=[
