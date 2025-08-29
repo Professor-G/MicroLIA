@@ -915,7 +915,6 @@ class Classifier:
             # keep the t-SNE window open & interactive
             plt.show(block=True)
 
-
     def plot_conf_matrix(
         self, 
         data_y=None, 
@@ -927,101 +926,106 @@ class Classifier:
         title='Confusion Matrix', 
         savefig=False, 
         fname='Ensemble_Confusion_Matrix.png'):
-        """
-        Returns a confusion matrix with k-fold validation.
-
-        Args:
-            data_y (ndarray, str, optional): 1D array containing the corresponing labels.
-                Only use if using XGB algorithm as this method converts labels to numerical,
-                in which case it may be desired to input the original label array using
-                this parameter. Defaults to None, which uses the data_y attribute.
-            norm (bool): If True the data will be min-max normalized. Defaults
-                to False. NOTE: Set this to True if pca=True.
-            norm_method (bool): Normalization method, if `norm` is True. Options are: 'min-max' (default), 'robust', or 'standard'.
-            pca (bool): If True the data will be fit to a Principal Component
-                Analysis and all of the corresponding principal components will 
-                be used to evaluate the classifier and construct the matrix. 
-                Defaults to False.
-            k_fold (int, optional): The number of cross-validations to perform.
-                The output confusion matrix will display the mean accuracy across
-                all k_fold iterations. Can be set to 'loo' to do leave-one-out CV. Defaults to 10.
-            normalize (bool, optional): If False the confusion matrix will display the
-                total number of objects in the sample. Defaults to True, in which case
-                the values are normalized between 0 and 1.
-            title (str): Title of the figure.
-            savefig (bool): If True the figure will not disply but will be saved instead.
-                Defaults to False. 
-            fname (str): Filename to be used if savefig is True. Can also include the path to where figure should be saved.
-                Defaults to `Ensemble_Confusion_Matrix.png` which will be saved to the local working directory.
-
-        Returns:
-            AxesImage.
-        """
 
         if self.data_x is None or self.data_y is None:
             raise ValueError('The data_x and data_y have not been input!')
-
         if self.model is None:
             raise ValueError('No model has been created! Run .create() first.')
 
-        if data_y is not None:
-            classes = [str(label) for label in np.unique(data_y)]
-        else:
-            if self.data_y_ is None:
-                if self.training_data is None:
-                    classes = [str(label) for label in np.unique(self.data_y)]
+        def _classes_from_aligned_text(code_order, y_num, y_txt):
+            """Return names aligned to code_order using the most frequent text per code."""
+            y_num = np.asarray(y_num, dtype=int)
+            y_txt = np.asarray(y_txt)
+            names = []
+            for c in code_order:
+                mask = (y_num == int(c))
+                if mask.any():
+                    vals, cnts = np.unique(y_txt[mask], return_counts=True)
+                    names.append(str(vals[np.argmax(cnts)]))
                 else:
-                    classes = [str(label) for label in np.unique(np.array(self.training_data.label))]
-            else:
-                classes = [str(label) for label in np.unique(self.data_y_)]
+                    names.append(str(int(c)))  # fallback: show the code
+            return names
 
-        #######
-        #######
+        # Need to capture a text label array aligned to self.data_y
+        data_y_text = None
+        if data_y is not None and len(data_y) == len(self.data_y):
+            data_y_text = data_y
+        elif getattr(self, "data_y_", None) is not None and len(self.data_y_) == len(self.data_y):
+            data_y_text = self.data_y_                    # if you stored original text here
+        elif getattr(self, "training_data", None) is not None:
+            try:
+                lbls = np.array(self.training_data.label)
+                if len(lbls) == len(self.data_y):
+                    data_y_text = lbls
+            except Exception:
+                pass
+
         if k_fold == 'loo':
-
             if self.loo_predictions is None:
                 self.loo_predictions()
 
             predicted_target = np.argmax(self.loo_predictions, axis=1)
-            predicted_target = [self.model.classes_[i] for i in predicted_target]
+            if hasattr(self.model, "classes_"):
+                predicted_target = np.array([self.model.classes_[i] for i in predicted_target], dtype=int)
+            else:
+                predicted_target = predicted_target.astype(int)
+
+            actual_codes = np.asarray(self.data_y, dtype=int)
+            code_order = np.sort(np.unique(actual_codes))
+            classes = (_classes_from_aligned_text(code_order, actual_codes, data_y_text)
+                       if data_y_text is not None else [str(int(c)) for c in code_order])
 
             generate_matrix(
-                predicted_target, 
-                self.data_y, 
-                normalize=normalize, 
-                classes=classes, 
-                savefig=savefig, 
+                predicted_target,
+                actual_codes,
+                normalize=normalize,
+                classes=classes,
+                title=title,
+                savefig=savefig,
                 fname=fname
-                )
-
+            )
             return
-        #######
-        #######
 
         if self.feats_to_use is not None:
             if len(self.data_x.shape) == 1:
-                data = self.data_x[self.feats_to_use].reshape(1,-1)
+                data = self.data_x[self.feats_to_use].reshape(1, -1)
             else:
-                data = self.data_x[:,self.feats_to_use]
+                data = self.data_x[:, self.feats_to_use]
         else:
             data = copy.deepcopy(self.data_x)
 
         if np.any(np.isnan(data)):
-            data = impute_missing_values(data, self.imputer) if self.imputer is not None else impute_missing_values(data, strategy=self.imp_method)[0]
-          
-        data[data>1e10], data[(data<1e-10)&(data>0)], data[data<-1e10] = 1e10, 1e-10, -1e10
+            data = (impute_missing_values(data, self.imputer) if self.imputer is not None
+                    else impute_missing_values(data, strategy=self.imp_method)[0])
+
+        data[data > 1e10], data[(data < 1e-10) & (data > 0)], data[data < -1e10] = 1e10, 1e-10, -1e10
 
         if norm:
-            data = standardize_data(data, method=norm_method, return_scaler=False) # scaler.fit_transform(data)
+            data = standardize_data(data, method=norm_method, return_scaler=False)
 
         if pca:
             pca_transformation = decomposition.PCA(n_components=data.shape[1], whiten=True, svd_solver='auto')
-            pca_transformation.fit(data) 
-            pca_data = pca_transformation.transform(data)
-            data = np.asarray(pca_data).astype('float64')
+            pca_transformation.fit(data)
+            data = np.asarray(pca_transformation.transform(data)).astype('float64')
 
-        predicted_target, actual_target = evaluate_model(self.model, data, self.data_y, normalize=normalize, k_fold=k_fold)
-        generate_matrix(predicted_target, actual_target, normalize=normalize, classes=classes, title=title, savefig=savefig, fname=fname)
+        predicted_target, actual_target = evaluate_model(
+            self.model, data, self.data_y, normalize=normalize, k_fold=k_fold
+        )
+
+        actual_target = np.asarray(actual_target, dtype=int)
+        code_order = np.sort(np.unique(actual_target))
+        classes = (_classes_from_aligned_text(code_order, self.data_y, data_y_text)
+                   if data_y_text is not None else [str(int(c)) for c in code_order])
+
+        generate_matrix(
+            predicted_target,
+            actual_target,
+            normalize=normalize,
+            classes=classes,
+            title=title,
+            savefig=savefig,
+            fname=fname
+        )
 
     def plot_roc_curve(self, k_fold=10, pca=False, title="Receiver Operating Characteristic Curve", 
         savefig=False):
