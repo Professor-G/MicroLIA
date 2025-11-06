@@ -160,7 +160,10 @@ class Classifier:
         else:
             self.data_y_ = None 
 
-    def create(self, overwrite_training=False):
+    def create(
+        self, 
+        overwrite_training=False
+        ):
         """
         Creates the machine learning engine, current options are either a
         Random Forest, XGBoost, or a Neural Network classifier. 
@@ -291,7 +294,12 @@ class Classifier:
 
         return
         
-    def save(self, dirname=None, path=None, overwrite=False):
+    def save(
+        self, 
+        dirname=None, 
+        path=None, 
+        overwrite=False
+        ):
         """
         Saves the trained classifier in a new directory named 'MicroLIA_ensemble_model', 
         as well as the imputer and the features to use attributes, if not None.
@@ -372,7 +380,10 @@ class Classifier:
 
         return 
 
-    def load(self, path=None):
+    def load(
+        self, 
+        path=None
+        ):
         """ 
         Loads the model, imputer, and feats to use, if created and saved.
         This function will look for a folder named 'MicroLIA_models' in the
@@ -444,7 +455,15 @@ class Classifier:
 
         return
 
-    def predict(self, time, mag, magerr, convert=True, apply_weights=True, zp=24):
+    def predict(
+        self, 
+        time, 
+        mag, 
+        magerr, 
+        convert=True, 
+        apply_weights=True, 
+        zp=24
+        ):
         """
         Predics the class label of new, unseen data.
 
@@ -554,7 +573,8 @@ class Classifier:
         title='Feature Parameter Space', 
         savefig=False, 
         fname='tSNE_Projection.png',
-        hdu=None):
+        hdu=None
+        ):
         """
         Plots a t-SNE projection using the sklearn.manifold.TSNE() method.
 
@@ -580,8 +600,8 @@ class Classifier:
             pca (bool): If True the data will be fit to a Principal Component
                 Analysis and all of the corresponding principal components will 
                 be used to generate the t-SNE plot. Defaults to False.
-            learning_rate:
-            perplexity:
+            learning_rate (float): The learning rate for t-SNE, usually between 10 and 1000. Default is 1000, can also be set to 'auto'.
+            perplexity (float): Related to the number of nearest neighbors, with larger datasets requiring a larger perplexity. Default is 35.
             scale_feature (optional, str): Whether to scale the t-SNE points by a feature value. If None the standard projection is plotted.
                 Currently this only works if the training_data csv has been input. The input feature label must be a column in the csv. Note
                 that the features computed in derivative space have the `_deriv` suffix at the end (e.g., vonNeumannRatio_deriv)
@@ -925,7 +945,8 @@ class Classifier:
         normalize=True, 
         title='Confusion Matrix', 
         savefig=False, 
-        fname='Ensemble_Confusion_Matrix.png'):
+        fname='Ensemble_Confusion_Matrix.png'
+        ):
 
         if self.data_x is None or self.data_y is None:
             raise ValueError('The data_x and data_y have not been input!')
@@ -1208,8 +1229,18 @@ class Classifier:
 
         return
 
-    def plot_feature_opt(self, feat_names=None, top='all', include_other=True, include_shadow=True, 
-        include_rejected=False, flip_axes=True, title='Feature Importance', save_data=False, savefig=False):
+    def plot_feature_opt(
+        self, 
+        feat_names=None, 
+        top='all', 
+        include_other=True, 
+        include_shadow=True, 
+        include_rejected=False, 
+        flip_axes=True, 
+        title='Feature Importance', 
+        save_data=False, 
+        savefig=False
+        ):
         """
         Returns plot displaying the z-score distribution of each feature
         across all trials.
@@ -1389,7 +1420,11 @@ class Classifier:
 
         return
 
-    def plot_hyper_param_importance(self, plot_time=True, savefig=False):
+    def plot_hyper_param_importance(
+        self, 
+        plot_time=True, 
+        savefig=False
+        ):
         """
         Plots the hyperparameter optimization history.
     
@@ -1515,7 +1550,13 @@ def format_labels(labels: list) -> list:
 
     return new_labels
 
-def evaluate_model(classifier, data_x, data_y, normalize=True, k_fold=10):
+def evaluate_model(
+    classifier, 
+    data_x, 
+    data_y, 
+    normalize=True, 
+    k_fold=10
+    ):
     """
     Cross-checks model accuracy and outputs both the predicted
     and the true class labels. 
@@ -1591,7 +1632,13 @@ def generate_matrix(predicted_labels_list, actual_targets, classes, normalize=Tr
     else:
         plt.show()
     
-def generate_plot(conf_matrix, classes, normalize=False, title='Confusion Matrix', savefig=False):
+def generate_plot(
+    conf_matrix, 
+    classes, 
+    normalize=False, 
+    title='Confusion Matrix', 
+    savefig=False
+    ):
     """
     Generates the confusion matrix figure object, but does not plot.
     
