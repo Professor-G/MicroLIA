@@ -27,6 +27,7 @@ As of version 2.7.0, MicroLIA provides the following new features and improvemen
 * We added data imputation techniques to handle undefined values in the training data.
 * Built-in class methods are now available to visualize the engine parameters and performance, as well as to save and load models post-processing.
 
+As of version 2.8.0, MicroLIA requires Python 3.9 or greater.
 
 # [Documentation](https://microlia.readthedocs.io/en/latest/?)
 
