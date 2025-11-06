@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="MicroLIA",
-    version="2.8.0",
+    version="2.8.1",
     author="Daniel Godinez",
     author_email="danielgodinez123@gmail.com",
     description="Machine learning classifier for microlensing event detection",
