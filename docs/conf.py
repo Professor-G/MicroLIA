@@ -167,7 +167,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'MicroLIA', 'MicroLIA Documentation',
-     author, 'MicroLIA', 'Microlensing Detectiong Algorithm',
+     author, 'MicroLIA', 'Microlensing Detection Algorithm',
      'Miscellaneous'),
 ]
 
